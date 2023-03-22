@@ -1,0 +1,9 @@
+Multi audio frequencies detector
+
+It is intended to buil on all enough large FPGA and ASICs
+
+It detects all the 12 notes of N octaves. The edges of the notes are precise. N can be large if the master clock is high.
+
+It is NOT based on the polyphase which requires a linear progression of the frequencies.
+
+The latency is as short as possible, according with the note (short of high frequencies, low for low frequencies).
