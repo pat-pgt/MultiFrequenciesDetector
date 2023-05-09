@@ -1,0 +1,32 @@
+Frames and word sizes in the input stages.
+That covers the Cordic sine and cosine input stages and the low-pass 1st order pre-filtering
+* Values frames are the lowest level. They handle 32 bits signed fixed worlds. For some reason, an idle bit is in between the frames. Length 33 bits.
+* Phases frames are coded on 32 bits runs in parallel with the value
+* Note frames contain 12 values frames with 12 idle frames in between. The reason is to keep in sync with the filtering stages. The sine and cosine have to be computed together but for the filtering they are independent. Then Cordic runs at 50% of the time and the filtering at 100%. Length 792 bits.
+* Sample rate frames contain N note frames, one per octave. N is decided according to the master clock and the sample rate.
+
+Frames after the pre-filtering and downsampling
+After the pre-filtering, the values are downsampled. Since the cut-off frequency is always low against the downsampled sampling rate, every aliasing is going to be removed by the filter. As an example with a 1KHz downsampling, frequencies from 500Hz to 980Hz are aliased but are cut by the 20Hz filter. Frequencies from 980Hz to 1020Hz are cut by the 1st order pre-filter at about 30Hz then it is attenuated by about 30dB.
+The ratio is more or less the same for all the octaves as higher octaves have higher low-pass frequencies but the downsampling ratio is lower
+* Values inside the IIR pre-filter are still 32 bits signed fixed.
+* Pre-filter outputs values frames now on floating numbers with a common exponent for each sine and its associated cosine. The mantissa may or may not be fully adjusted for a full scale of one of them. The goal is to keep accuracy for the low level signals. The exponent might be on multiples of 2 or 4.
+* Phase frame are voided. A module checks it is always lower than a limit value. It is going to be compiled for the FPGA version for extended tests.
+* Note frames are the same as above.
+* Sample rate frames now contains only one note frame, the N-1 time is idle to allow bandwidth for the filter memory access.
+* Global frames contain a complete run of all the frequencies. Even SR frames contain the highest octave downsampled by 2. Odd SR frames contain octaves below with the same recursive construction. For instance with 4 octaves: 323132303231323<idle>
+
+Frames into the low pass filter
+See dedicated documentations
+
+Frames and word sizes after the low-pass filtering.
+A new set of cordic converts the sine and cosine into amplitude and phase.
+All mantissas are divided by 2 or 4 on the first stage. This be should be taken in account if an absolute amplitude value is needed
+* Value frames are the same as above. The mantissas remain on 32 bits to spare verification time.
+* Exponents of the value are copied as it
+* Phases frames are coded on 32 bits runs in parallel with the value
+* All other frames are the same as above, 
+
+Frames and word sizes after the rectangular to polar conversion
+* Sine frames are voided. A module checks it is always lower than a limit value. It is going to be compiled for the FPGA version for extended tests.
+* All other frames are the same as above.
+
