@@ -1,0 +1,98 @@
+digraph g {
+size="8.267,11.7";
+margin=0;
+node [ shape=record ];
+newrank = true;
+angles_generator_run [
+label = "{|Angles generator|Generates sequentially\nthe current angles\nfor all the channels.|{<f1>meta-data|<f2>angle out}}";
+color="darkgreen";
+];
+test_generator [
+label = "{|Test generator|Generates sequentially\nthe current data\nreleavant for the tests.|{<f1>meta-data|<f2>X out|<f3>Y out|<f4>Z out}}";
+color="darkred";
+];
+input_val [
+label = "{\<from hardware\>|Input|Value latched or not\non the entire frame.|<f1>val}"];
+color="darkgreen";
+zero_gene [
+label = "0";
+shape="ellipse";
+];
+cordic_RZ_2_XY [
+label = "{{<f1>meta-data in|<f2>X in|<f3>Y in|<f4>Z in}|Multistages cordic|Run the algo\nto converge Z to 0.\nForward the meta-data.|{<f5>meta-data out|<f6>X out|<f7>Y out|<f8>Z out}}";
+];
+"angles_generator_run":f1 -> "cordic_RZ_2_XY":f1 [ color = "darkgreen" ];
+"angles_generator_run":f2 -> "cordic_RZ_2_XY":f4 [ color = "darkgreen" ];
+"input_val":f1 -> "cordic_RZ_2_XY":f2 [ color = "darkgreen" ];
+"zero_gene" -> "cordic_RZ_2_XY":f3 [ color = "darkgreen" ];
+"test_generator":f1 -> "cordic_RZ_2_XY":f1 [ color = "darkred" ];
+"test_generator":f2 -> "cordic_RZ_2_XY":f2 [ color = "darkred" ];
+"test_generator":f3 -> "cordic_RZ_2_XY":f3 [ color = "darkred" ];
+"test_generator":f4 -> "cordic_RZ_2_XY":f4 [ color = "darkred" ];
+pre_filter [
+label = "{<f1>input|Pre-filter|Low-pass filter\nusing a minimum or resources\naccording to the meta-data.\nForward the meta-data.|<f2>output}";
+color = "darkgreen";
+];
+void_run  [
+label = "Void";
+shape = "ellipse";
+color = "darkgreen";
+];
+test_Z_checker [
+label = "{<f1>input|Test Z checker|Checks Z is close to zero.|}";
+color = "darkred";
+];
+"cordic_RZ_2_XY":f5 -> "pre_filter":f1 [ label = "MD"; color = "darkgreen" ];
+"cordic_RZ_2_XY":f6 -> "pre_filter":f1 [ label = "X" ; color = "darkgreen" ];
+"cordic_RZ_2_XY":f7 -> "pre_filter":f1 [ label = "Y" ; color = "darkgreen" ];
+"cordic_RZ_2_XY":f8 -> "void_run" [ color = darkgreen ];
+"cordic_RZ_2_XY":f8 -> "test_Z_checker":f1 [ color = darkred ];
+downsampler [
+label = "{<f1>input|Down-sampler|Down samples\naccording to the meta-data.\nForward the meta-data.|<f2>output}";
+color = "darkgreen";
+];
+"pre_filter":f2 -> "downsampler":f1 [ label = "MD" ; color = "darkgreen" ];
+"pre_filter":f2 -> "downsampler":f1 [ label = "X" ; color = "darkgreen" ];
+"pre_filter":f2 -> "downsampler":f1 [ label = "Y" ; color = "darkgreen" ];
+main_filter [
+label = "{<f1>input|Main filter|Low-pass filter\nusing Bessel 5th order\naccording to the meta-data.\nForward the meta-data.|<f2>output}";
+color = "darkgreen";
+]
+"downsampler":f2 -> "main_filter":f1 [ label = "MD" ; color = "darkgreen" ];
+"downsampler":f2 -> "main_filter":f1 [ label = "X" ; color = "darkgreen" ];
+"downsampler":f2 -> "main_filter":f1 [ label = "Y" ; color = "darkgreen" ];
+cordic_XY_2_RZ [
+label = "{{<f1>meta-data in|<f2>X in|<f3>Y in|<f4>Z in}|Multistages cordic|Run the algo\nto converge Y to 0.\nForward the meta-data.|{<f5>meta-data out|<f6>X out|<f7>Y out|<f8>Z out}}";
+];
+"main_filter":f2 -> "cordic_XY_2_RZ":f1 [ label = "MD" ; color = "darkgreen" ];
+"main_filter":f2 -> "cordic_XY_2_RZ":f2 [ label = "X" ; color = "darkgreen" ];
+"main_filter":f2 -> "cordic_XY_2_RZ":f3 [ label = "Y" ; color = "darkgreen" ];
+"zero_gene" -> "cordic_XY_2_RZ":f4;
+"cordic_RZ_2_XY":f5 -> "cordic_XY_2_RZ":f1 [ color = "darkred" ];
+"cordic_RZ_2_XY":f6 -> "cordic_XY_2_RZ":f2 [ color = "darkred" ];
+"cordic_RZ_2_XY":f7 -> "cordic_XY_2_RZ":f3 [ color = "darkred" ];
+normalizer [
+label = "{<f1>input|Normalizer|Convert value\n into mantissa and exponent.\nForward the meta data.|<f2>output}";
+];
+"cordic_XY_2_RZ":f5 -> "normalizer":f1 [ label = "MD" ];
+"cordic_XY_2_RZ":f6 -> "normalizer":f1 [ label = "X" ];
+"cordic_XY_2_RZ":f7 -> "normalizer":f1 [ label = "Y" ];
+test_Y_checker [
+label = "{<f1>input|Test Y checker|Checks Y is close to zero.|}";
+color = "darkred";
+];
+test_fit_test_signal [
+label = "{<f1>input|Test fit test signal|Check X is a constant\nand equal to the input.\nCheck Z \"spins\".|}";
+color = "darkred";
+];
+output_data [
+label = "{<f1>|Output||\<to display or hardware\>}"];
+color="darkgreen";
+"normalizer":f2 -> "void_run" [ label = "Y"; color = "darkgreen" ];
+"normalizer":f2 -> "test_Y_checker":f1 [ label = "Y"; color = "darkred" ];
+"normalizer":f2 -> "output_data":f1 [ label = "X"; color = "darkgreen" ];
+"cordic_XY_2_RZ":f8 -> "output_data":f1 [ label = "Z"; color = "darkgreen" ];
+"normalizer":f2 -> "test_fit_test_signal":f1 [ label = "X"; color = "darkred" ];
+"cordic_XY_2_RZ":f8 -> "test_fit_test_signal":f1 [ label = "Z"; color = "darkred" ];
+
+}
