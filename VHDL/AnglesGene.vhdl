@@ -21,8 +21,17 @@ entity AngleGene is
   port (
     CLK       : in  std_logic;
     RST       : in  std_logic;
+    --! A full cycle of all the requested notes of all the requested octaves
+    --! completed
+    full_sync : out std_logic;
+    --! Starts a new computation of a given note and octave
+    --! Note, it is not in phase with the meta data, but the shift is constant
     reg_sync  : out std_logic;
+    --! angle out, updated with reg_sync
+    --! Only the half high bit are available.
+    --! The others are for the computation precision.
     angle_z   : out reg_type;
+    --! angle out, updated with reg_sync
     meta_data : out meta_data_t
     );
 end entity AngleGene;
@@ -61,6 +70,7 @@ begin
     variable local_sub_add : std_logic_vector(1 downto 0);
     variable reg_temp      : std_logic_vector(reg_type'range);
     variable angle_temp    : std_logic_vector(2 * reg_size - 1 downto 0);
+    variable full_sync_v : std_logic;
   begin
     -- For each note:
     -- * step 1: add a constant to the cumulative angle
@@ -72,6 +82,7 @@ begin
     -- * step3: update the angle out, using only the half high bits
     CLK_IF : if rising_edge(CLK) then
       RST_IF : if RST = '0' then
+        full_sync_v := '0';
         -- arithm counter run from 0 to N as 0 is the sync
         ARITHM_C : if unsigned(arithm_counter) = to_unsigned(reg_size / arithm_size, arithm_counter'length) then
           arithm_counter   <= (others => '0');
@@ -87,6 +98,7 @@ begin
             -- Note counter runs from 0 to N_notes - 1
             if unsigned(note_counter) = to_unsigned(N_notes - 1, note_counter'length) then
               note_counter <= (others => '0');
+              full_sync_v := '1';
             else
               note_counter <= std_logic_vector(unsigned(note_counter) + 1);
             end if;
@@ -111,6 +123,7 @@ begin
           reg_sync       <= '0';
           arithm_counter <= std_logic_vector(unsigned(arithm_counter) + 1);
         end if ARITHM_C;
+        full_sync <= full_sync_v;
       else
         for ind in angle_storage'range loop
           angle_storage(ind) <= (others => '0');
@@ -119,6 +132,7 @@ begin
         arithm_counter <= (others => '0');
         octave_counter <= (others => '0');
         note_counter   <= (others => '0');
+        full_sync      <= '0';
       end if RST_IF;
     end if CLK_IF;
   end process count_proc;

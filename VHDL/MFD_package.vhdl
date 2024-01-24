@@ -74,14 +74,33 @@ package MultiFreqDetect_package is
     --! First one 0 => C/do, last one 0xb => B/si.
     note   : std_logic_vector(3 downto 0);
   end record meta_data_t;
+  --! List of meta datas
+  --! This is mostly used for testing as a list for monitoring
   type meta_data_list_t is array(integer range<>) of meta_data_t;
-
+  --! Data link between the stages
+  --!
+  --! All the values are passed in serial mode bit by bits
+  --! or small groups by small groups
+  --! Metadata and quadrant are passed in parallel mode.
+  type reg_sin_cos_z is record
+    --! LSB comes first.
+    --! For this version, the size is 1 as arithm_size is 1
+    the_sin   : reg_type;
+    --! LSB comes first.
+    --! For this version, the size is 1 as arithm_size is 1
+    the_cos   : reg_type;
+    --! LSB comes first.
+    --! For this version, the size is 1 as arithm_size is 1
+    angle_z   : reg_type;    
+  end record reg_sin_cos_z;
   --! Data link between the stages
   --!
   --! All the values are passed in serial mode.
   --! Metadata and quadrant are passed in parallel mode.
   type reg_sin_cos_toggle is record
+    --! to be removed
     RUN       : std_logic;
+    --! to be removed
     reg_sync  : std_logic;
     --! LSB comes first.
     the_sin   : std_logic;
@@ -148,25 +167,31 @@ package MultiFreqDetect_package is
     port (
       CLK       : in  std_logic;
       RST       : in  std_logic;
+      --! A full cycle of all the requested notes of all the requested octaves
+      --! completed
+      full_sync : out std_logic;
+      --! Starts a new computation of a given note and octave
+      --! Note, it is not in phase with the meta data, but the shift is constant
       reg_sync  : out std_logic;
+      --! Angle out, updated with reg_sync
+      --! Only the half high bit are available.
+      --! The others are for the computation precision.
       angle_z   : out reg_type;
+      --! angle out, updated with reg_sync
       meta_data : out meta_data_t
       );
   end component AngleGene;
-  --! @brief Cordic input stage 
+  --! @brief Cordic Z to 0 input stage 
   --!
-  --! Runs the 3 first Cordic iterations of the bloc before the filters.
-  --! The input value would have been placed on the X axis,
-  --!   Y would have been set to 0 and the angle would have been set to Z.\n
-  --! The vector is placed into the relevant PI/2 steps quadrant.
-  --! A PI/2 multiple is subtracted from the angle. Then Z is between 0 and PI/2.
-  --! The 2 high bits of the quadrant signal are set.\n
-  --! In case Z is greater than PI/4, the symmetry against PI/4 is computed
-  --!   and the quadrant low bit is set.
-  --! At the end, X and Y should be toggled accordingly.\n
-  --! This is mostly to avoid X and Y to grow too much,
-  --!  as only low arc-tg are computed.
-  component MultiCordic_FirstStage is
+  --! Runs the 3 first Cordic iterations.
+  --! That reduces the latency and reduces the cumulative 1/cos(h) products.
+  --! The result is only amplified by 16% rather than 60%
+  --! by placing directly the vector in the relevant PI/4 quadrant.
+  --! Z is updated accordingly.\n
+  --! For the normal mode, the input value is entered to the X input,
+  --!   Y is set to 0 and Z is set to the angle.
+  --! Y can be non-null for test purposes.\n
+  component Cordic_FirstStage_2_to_0 is
     generic (
       debug_mode : boolean := false
       );
@@ -179,12 +204,10 @@ package MultiFreqDetect_package is
       angle_z          : in  reg_type;
       meta_data        : in  meta_data_t;
       -- signed 2's complement
-      -- practically, the input_s is used only for tests
-      --   set it to others => '0' otherwise
-      input_c, input_s : in  reg_type;
-      output_scsa      : out reg_sin_cos_toggle
+      input_c, input_s : in  std_logic_vector;
+      scz              : out reg_sin_cos_z
       );
-  end component MultiCordic_FirstStage;
+  end component Cordic_FirstStage_2_to_0;
   --! @brief Cordic input stage
   --!
   --! Runs the 3 first Cordic iterations of the detection bloc, after the filters.
@@ -362,7 +385,7 @@ package body MultiFreqDetect_package is
     else
       for ind_note in temp'range loop
         for ind2 in temp(ind_note)'range loop
-          if ind2 < (temp(ind_note)'high - 3 - 3 * ind_note ) then
+          if ind2 < (temp(ind_note)'high - 5 - 2 * ind_note ) then
             temp(ind_note)(ind2) := '1';
           else
             temp(ind_note)(ind2) := '0';
