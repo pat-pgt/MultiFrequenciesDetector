@@ -42,11 +42,12 @@ architecture rtl of Cordic_IntermStage is
   signal is_first                               : std_logic;
   signal Z_shifts_count                         : std_logic_vector(5 downto 0);
   signal debug_catch_X_sync, debug_catch_Y_sync : reg_type;
-  signal debug_catch_Z_sync, debug_catch_Z      : reg_type;
+  signal debug_catch_Z_sync      : reg_type;
   signal debug_flipflop                         : std_logic := '0';
   signal debug_flipflop_2                       : std_logic := '0';
   signal angle_add_or_subtract                  : reg_type  := arctg_2_angle(shifts_calc, debug_mode);
   signal CCW_not_CW                             : std_logic;
+  signal X2_plus_Y2 : std_logic_vector( 31 downto 0 );
 begin
   -- To be improved with automatic size
   assert reg_size < 2**remaining_shift_count'length report "Internal error" severity failure;
@@ -76,7 +77,6 @@ begin
   begin
     CLK_IF : if rising_edge(CLK) then
       RST_if : if RST = '0' then
-        debug_catch_Z <= scz_out_s.angle_z;
         REGSYNC_IF : if reg_sync = '1' then
           if Z_not_Y_to_0 then
             -- If Z is negative, the vector should spin CW
@@ -99,7 +99,7 @@ begin
             sign_Y <= scz_in.the_sin(scz_in.the_sin'high);
           end if;
           meta_data_out         <= meta_data_in;
-          remaining_shift_count <= std_logic_vector(to_unsigned(shifts_calc, remaining_shift_count'length));
+          remaining_shift_count <= std_logic_vector(to_unsigned(reg_size - shifts_calc, remaining_shift_count'length));
           Z_shifts_count        <= (others => '0');
           is_first              <= '1';
           if true then
@@ -107,6 +107,14 @@ begin
             debug_catch_X_sync <= scz_out_s.the_cos;
             debug_catch_Y_sync <= scz_out_s.the_sin;
             debug_catch_Z_sync <= scz_out_s.angle_z;
+            -- This should become dynamic to not overflow,
+            -- to respect the bouns as well, if the reg_size is small (<16)
+            -- Be carefull, this is the data of the input,
+            -- then the previous stage
+            X2_plus_Y2 <= std_logic_vector( to_unsigned(
+              to_integer( signed( scz_in.the_sin( scz_in.the_sin'high downto scz_in.the_sin'high - 15) ))**2+
+              to_integer( signed( scz_in.the_cos( scz_in.the_cos'high downto scz_in.the_cos'high - 15) ))**2,
+              X2_plus_Y2'length ));
           end if;
         else
           -- We need to negate the bits for the substractions
@@ -149,9 +157,11 @@ begin
               std_logic_vector(unsigned(remaining_shift_count) - to_unsigned(arithm_size, remaining_shift_count'length));
             -- Not yet, fill up the calculation bloc with the <arithm_size> low bits
             op_S_X(op_S_X'high - 1 downto op_S_X'low) :=
-              scz_in.the_cos(scz_in.the_cos'low + arithm_size - 1 downto scz_in.the_cos'low);
+              scz_in.the_cos(scz_in.the_cos'low + arithm_size - 1 + arithm_size * shifts_calc downto
+                             scz_in.the_cos'low + arithm_size * shifts_calc );
             op_S_Y(op_S_Y'high - 1 downto op_S_Y'low) :=
-              scz_in.the_sin(scz_in.the_sin'low + arithm_size - 1 downto scz_in.the_sin'low);
+              scz_in.the_sin(scz_in.the_sin'low + arithm_size - 1 + arithm_size * shifts_calc downto
+                             scz_in.the_sin'low + arithm_size * shifts_calc );
           end if;
           -- Extract the constant to be added to or subtracted from Z
           op_C_Z(op_C_Z'high - 1 downto op_C_Z'low) :=
@@ -177,15 +187,15 @@ begin
               carry_in_vector_X(carry_in_vector_X'low) := carry_X;
               carry_in_vector_Y(carry_in_vector_Y'low) := carry_Y;
             end if;
-            result_X := std_logic_vector(unsigned(op_N_X) + inverter_mask xor unsigned(op_S_Y) + unsigned(carry_in_vector_X));
-            result_Y := std_logic_vector(unsigned(op_N_X) + unsigned(op_S_Y) + unsigned(carry_in_vector_Y));
+            result_X := std_logic_vector(unsigned(op_N_X) + ( inverter_mask xor unsigned(op_S_Y) ) + unsigned(carry_in_vector_X));
+            result_Y := std_logic_vector(unsigned(op_N_Y) + unsigned(op_S_X) + unsigned(carry_in_vector_Y));
             -- angle decreases
             if is_first = '1' then
               carry_in_vector_Z(carry_in_vector_Z'low) := '1';
             else
               carry_in_vector_Z(carry_in_vector_Z'low) := carry_Z;
             end if;
-            result_Z := std_logic_vector(unsigned(op_N_Z) + inverter_mask xor unsigned(op_C_Z) + unsigned(carry_in_vector_Z));
+            result_Z := std_logic_vector(unsigned(op_N_Z) + ( inverter_mask xor unsigned(op_C_Z) ) + unsigned(carry_in_vector_Z));
           else
             if is_first = '1' then
               carry_in_vector_X(carry_in_vector_X'low) := '0';
@@ -195,7 +205,7 @@ begin
               carry_in_vector_Y(carry_in_vector_Y'low) := carry_Y;
             end if;
             result_X := std_logic_vector(unsigned(op_N_X) + unsigned(op_S_Y) + unsigned(carry_in_vector_X));
-            result_Y := std_logic_vector(unsigned(op_N_X) + inverter_mask xor unsigned(op_S_Y) + unsigned(carry_in_vector_Y));
+            result_Y := std_logic_vector(unsigned(op_N_Y) + ( inverter_mask xor unsigned(op_S_X) ) + unsigned(carry_in_vector_Y));
             -- angle increases
             if is_first = '1' then
               carry_in_vector_Z(carry_in_vector_Z'low) := '0';

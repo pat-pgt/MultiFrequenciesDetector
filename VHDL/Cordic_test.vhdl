@@ -12,7 +12,7 @@ architecture rtl of Cordic_bundle_test_Z_to_0 is
   signal RST                                   : std_logic_vector(10 downto 0)  := (others => '1');
   signal main_counter                          : std_logic_vector(3 downto 0) := (others => '0');
   signal reg_sync_ag, reg_sync_interm, full_sync                   : std_logic;
-  signal input_x                               : std_logic_vector(30 downto 0) := "0100000000000000000000000000000";
+  signal input_x                               : std_logic_vector(30 downto 0) := "0001000000000000000000000000000";
   signal input_y                               : std_logic_vector(30 downto 0) := (others => '0');
   signal angle_z                               : reg_type;
   signal meta_data_1, meta_data_2, meta_data_3 : meta_data_t;
