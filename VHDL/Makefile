@@ -27,9 +27,10 @@ simul_AnglesGene : $(BUILDDIR)packages_compiled $(SCRDIR)AnglesGene.vhdl $(SCRDI
 	echo "The wav file is NOT an audio file, it can be opened, for instance, using gtk-wave" > $(WAVDESTDIR)README.important
 
 
-simul_Cordic : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages.vhdl $(SCRDIR)Cordic_Interm_Stages.vhdl $(SCRDIR)DataMonitor.vhdl $(SCRDIR)Cordic_test.vhdl
+simul_Cordic : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages.vhdl $(SCRDIR)Cordic_Interm_Stages.vhdl $(SCRDIR)Cordic_Bundle_Stages.vhdl $(SCRDIR)DataMonitor.vhdl $(SCRDIR)Cordic_test.vhdl
 	$(GHDL_PROG) -a $(SCRDIR)Cordic_IO_Stages.vhdl
 	$(GHDL_PROG) -a $(SCRDIR)Cordic_Interm_Stages.vhdl
+	$(GHDL_PROG) -a $(SCRDIR)Cordic_Bundle_Stages.vhdl
 	$(GHDL_PROG) -a $(SCRDIR)AnglesGene.vhdl
 	$(GHDL_PROG) -a $(SCRDIR)DataMonitor.vhdl
 	$(GHDL_PROG) -a $(SCRDIR)Cordic_test.vhdl
@@ -48,6 +49,7 @@ synth_AnglesGene	: $(BUILDDIR)packages_compiled
 synth_Cordic	: $(BUILDDIR)packages_compiled
 	$(GHDL_PROG) -a $(SCRDIR)Cordic_IO_Stages.vhdl
 	$(GHDL_PROG) -a $(SCRDIR)Cordic_Interm_Stages.vhdl
+	$(GHDL_PROG) -a $(SCRDIR)Cordic_Bundle_Stages.vhdl
 	mkdir -p $(SYNTHDESTDIR)
 	$(YOSYS_PROG) -m ghdl -p '$(GHDL_PROG) Cordic_Bundle_Z_to_0; synth_ice40 -json $(SYNTHDESTDIR)Cordic.ice40.json' 2>&1 |tee $(SYNTHDESTDIR)Cordic.synth.out.txt
 	$(NEXTPNR-ICE40_PROG) --hx4k --package cm225 --freq 30.00 --top Cordic_Bundle_Z_to_0 --asc $(SYNTHDESTDIR)Cordic.asc --json $(SYNTHDESTDIR)Cordic.ice40.json --placed-svg $(SYNTHDESTDIR)Cordic.placed.svg --routed-svg $(SYNTHDESTDIR)Cordic.routed.svg --report $(SYNTHDESTDIR)Cordic.report.json 2>&1 |tee $(SYNTHDESTDIR)Cordic.P_and_R.out.txt

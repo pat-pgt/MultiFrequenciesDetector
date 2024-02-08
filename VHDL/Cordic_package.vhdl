@@ -16,18 +16,11 @@ package Cordic_package is
 --! Y is computed in the same way than X.
 --! It is used only for tests while providing a PI/2 shifted
 --! input.\n
---! Z is provided as an unsigned vector 0 to 2.PI - epsilon.
---! Z is converted into a signed vector PI to -PI.
---! In fact PI/2 to PI and -PI to -PI/2 are never raised.\n
---! Rules applies in this order
---! to spin the vector while subtracting the angle from Z
---! PI to 2.PI: the high bit of Z is cleared, X=-X and Y=-Y\n 
---! PI/2 to PI: the high - 1 bit of Z is cleared, X=-Y and Y=X
---! For the PI/4 to PI/2 zone,
---! the vector has spun by PI/2, the (remaining) angle
---! is taken from the symmetry against PI/2 and negated
---! Then the Z is transmitted while filling up the 3 high bits
---! using the high - 2 bit of the input Z.
+--! Z is provided as an unsigned vector 0 to 2.PI - epsilon.\n
+--! The output is data in the format of the stages links.
+--! The first vector spin to be executed
+--! is the arc-tan 0.5 that means 26.56 degrees.\n
+--! The latency of one stage has to be considered.
   component Cordic_FirstStage_Z_to_0 is
     generic (
       debug_mode : boolean := false
@@ -35,13 +28,13 @@ package Cordic_package is
     port (
       CLK              : in  std_logic;
       RST              : in  std_logic;
-      -- Comming from the angle generator,
+      -- Coming from the angle generator,
       -- the flag tells the angle has just changed
       -- For the intermediary stages,
       -- the flag tells the data has stopped in order
       -- to update some signals such as CCW_or_CW
       reg_sync_in      : in  std_logic;
-      reg_sync_out : out std_logic;
+      reg_sync_out     : out std_logic;
       -- unsigned min = 0, max = 2.PI - epsilon
       -- come a serial chunks of arithm_size bit
       angle_z          : in  reg_type;
@@ -87,7 +80,7 @@ package Cordic_package is
 --! No process is needed on X and Y as
 --! the prefilter uses the serial data.\n
 --! The checks on Z are for the tests.
---! They can, howaver, be synthetised
+--! They can, however, be synthesised
 --! as some tests can be done using
 --! FPGA (with specific input and
 --! output code).
@@ -118,5 +111,29 @@ package Cordic_package is
       Z_expon_out   : out std_logic_vector(5 downto 0));
   end component Cordic_Bundle_Z_to_0;
 
+--! @brief Cordic Y to 0 first stage
+--!
+--! Perform a pre-processing and format the data
+--! in order to run the stages.
+--! X, Y and Z are provided in the stages links format.\n
+--! The latency of two stages has to be considered.
+  component Cordic_FirstStage_Y_to_0 is
+    generic (
+      debug_mode : boolean := false
+      );
+    port (
+      CLK           : in  std_logic;
+      RST           : in  std_logic;
+      -- For the first and the intermediary stages,
+      -- the flag tells the data has stopped in order
+      -- to update some signals such as CCW_or_CW
+      reg_sync      : in  std_logic;
+      meta_data_in  : in  meta_data_t;
+      meta_data_out : out meta_data_t;
+      --! Input of X, Y and Z.
+      scz_in        : out reg_sin_cos_z;
+      scz_out       : out reg_sin_cos_z
+      );
+  end component Cordic_FirstStage_Y_to_0;
 
 end package Cordic_package;

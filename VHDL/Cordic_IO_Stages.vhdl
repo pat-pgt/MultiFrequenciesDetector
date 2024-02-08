@@ -27,6 +27,17 @@ use IEEE.STD_LOGIC_1164.all,
 --! is taken from the symmetry against PI/2 and negated
 --! Then the Z is transmitted while filling up the 3 high bits
 --! using the high - 2 bit of the input Z.
+--! This preprocessing has two advantages:\n
+--! * reduce the Cordic stages
+--! * keep some dynamic. The algorithm introduces a cosine constant.
+--! 1/cos(arc-tan( 2 )) = 1/cos( 63.43 ) = 2.236
+--! 1/cos(arc-tan( 1 )) = 1/cos( 45 ) = 1.414
+--! 1/cos(arc-tan( 0.5 )) = 1/cos( 26.56 ) = 1.118.
+--! With the preprosessing, the numbers does not grow a lot.
+--! Only one (left) additional bit is needed, no bit is wasted.\n
+--! For the Z to 0, everything is predictable (at the sync pulse).
+--! as it relays on the the three high bits.
+--! Three stages are replaced by on stage.
 entity Cordic_FirstStage_Z_to_0 is
   generic (
     debug_mode : boolean := false
@@ -34,7 +45,7 @@ entity Cordic_FirstStage_Z_to_0 is
   port (
     CLK              : in  std_logic;
     RST              : in  std_logic;
-    -- Comming from the angle generator,
+    -- Coming from the angle generator,
     -- the flag tells the angle has just changed
     -- For the intermediary stages,
     -- the flag tells the data has stopped in order
@@ -180,7 +191,7 @@ use IEEE.STD_LOGIC_1164.all,
 --! No process is needed on X and Y as
 --! the prefilter uses the serial data.\n
 --! The checks on Z are for the tests.
---! They can, however, be synthetised
+--! They can, however, be synthesised
 --! as some tests can be done using
 --! FPGA (with specific input and
 --! output file).
@@ -247,7 +258,7 @@ begin
           angle_working(angle_working'high - arithm_size downto angle_working'low);
         -- If the FPGA is a couple a gates too short, comment this line out
         -- The error that would have been reported is even lower
-        -- than the rouding errors
+        -- than the rounding errors
         angle_working(angle_working'low + arithm_size - 1 downto angle_working'low) <=
           (others => is_negative);
       end if REGSYNC_IF;
@@ -261,64 +272,68 @@ use IEEE.STD_LOGIC_1164.all,
   work.MultiFreqDetect_package.all,
   work.Cordic_package.all;
 
-
-entity Cordic_Bundle_Z_to_0 is
+--! @brief Cordic Y to 0 first stage
+--!
+--! Perform a pre-processing and format the data
+--! in order to run the stages.
+--! X, Y and Z are provided
+--! This preprocessing has two advantages:\n
+--! * reduce the Cordic stages
+--! * keep some dynamic. The algorithm introduces a cosine constant.
+--! 1/cos(arc-tan( 2 )) = 1/cos( 63.43 ) = 2.236
+--! 1/cos(arc-tan( 1 )) = 1/cos( 45 ) = 1.414
+--! 1/cos(arc-tan( 0.5 )) = 1/cos( 26.56 ) = 1.118.
+--! With the preprosessing, the numbers does not grow a lot.
+--! The Y to 0 is supposed to be used after the Z to 0.
+--! The total cumulative cos product is about 1.17.
+--! Applying a second time cordic stages, that makes 1.3689 ( < 2 )\n
+--! The signs of X and Y are predictable (at the syn pulse).
+--! The greater-than needs a stage run.
+--! The toggle needs a stage run after the compare completed.\n
+--! Three Cordic stages are replaced by two preprocess stages.
+entity Cordic_FirstStage_Y_to_0 is
   generic (
-    debug_mode  : boolean               := false;
-    stages_nbre : integer range 2 to 25 := 20
+    debug_mode : boolean := false
     );
   port (
     CLK           : in  std_logic;
     RST           : in  std_logic;
+    -- For the first and the intermediary stages,
+    -- the flag tells the data has stopped in order
+    -- to update some signals such as CCW_or_CW
     reg_sync      : in  std_logic;
     meta_data_in  : in  meta_data_t;
     meta_data_out : out meta_data_t;
+    --! Input of X, Y and Z.
     scz_in        : in  reg_sin_cos_z;
-    X_out         : out std_logic_vector(arithm_size - 1 downto 0);
-    Y_out         : out std_logic_vector(arithm_size - 1 downto 0);
-    Z_expon_out   : out std_logic_vector(5 downto 0));
-end entity Cordic_Bundle_Z_to_0;
+    scz_out       : out reg_sin_cos_z
+    );
+end entity Cordic_FirstStage_Y_to_0;
 
-
-architecture rtl of Cordic_Bundle_Z_to_0 is
-  type scz_array_t is array (0 to stages_nbre) of reg_sin_cos_z;
-  signal scz_array       : scz_array_t;
-  type meta_data_array_t is array(0 to stages_nbre) of meta_data_t;
-  signal meta_data_array : meta_data_array_t;
+architecture rtl of Cordic_FirstStage_Y_to_0 is
+  signal shift_reg_x, shift_reg_y : reg_type;
+  signal shift_reg_z              : reg_type;
+  signal x_is_neg, y_is_neg       : std_logic;
+  signal y_gt_x                   : std_logic;
 begin
-  scz_array(0) <= scz_in;
-  X_out <= scz_array(stages_nbre).the_cos(scz_array(stages_nbre).the_cos'low + arithm_size - 1 downto
-                                          scz_array(stages_nbre).the_cos'low);
-  Y_out <= scz_array(stages_nbre).the_sin(scz_array(stages_nbre).the_sin'low + arithm_size - 1 downto
-                                          scz_array(stages_nbre).the_sin'low);
 
-  meta_data_array(0) <= meta_data_in;
-  meta_data_out      <= meta_data_array(stages_nbre);
+  assert (reg_size - 3) mod arithm_size = 0 report " the register size (" & integer'image(arithm_size) &
+    ") minus 3 should be a multiple of the arithmetic size (" & integer'image(arithm_size) & ")" severity failure;
 
-  gene_interm : for ind in 1 to stages_nbre generate
-    interm_stage_instanc : Cordic_IntermStage generic map
-      (
-        debug_mode   => debug_mode,
-        Z_not_Y_to_0 => true,
-        shifts_calc  => ind
-        )
-      port map
-      (
-        CLK           => CLK,
-        RST           => RST,
-        reg_sync      => reg_sync,
-        meta_data_in  => meta_data_array(ind - 1),
-        meta_data_out => meta_data_array(ind),
-        scz_in        => scz_array(ind - 1),
-        scz_out       => scz_array(ind));
-  end generate gene_interm;
+  main_proc : process(CLK)
+    variable temp_reg_X, temp_reg_Y : reg_type;
+    variable high_bits_Z            : std_logic_vector(2 downto 0);
+  begin
+    CLK_IF : if rising_edge(CLK) then
+--      reg_sync_out <= reg_sync_in;
+      REGSYNC_IF : if reg_sync = '1' then
+        x_is_neg <= scz_in.the_cos(scz_in.the_cos'high);
+        y_is_neg <= scz_in.the_sin(scz_in.the_sin'high);
 
-  last_stage_instanc : Cordic_LastStage_Z_to_0
-    port map (
-      CLK              => CLK,
-      RST              => RST,
-      reg_sync         => reg_sync,
-      scz_in           => scz_array(stages_nbre),
-      Z_error_exponent => Z_expon_out);
+      else
 
+
+      end if REGSYNC_IF;
+    end if CLK_IF;
+  end process main_proc;
 end architecture rtl;

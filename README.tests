@@ -1,0 +1,9 @@
+The test scripts are mostly VHDL code.
+
+It prevents communication errors between different languages.
+
+The test entity should be started. It exits when done. Some progress information is sent using "report ... severity note". When the test is over, a report is sent by the same way.
+
+The report can be an Ok/NOk or data to be inspected. Especially for a low number of bits, the expected result is never reached. For instance sine2+cosine2 is never exactly equal to 1. The minimum and the maximum are generally computed. A decision accepts or rejects the result.
+
+For high genericity, the test is a set of one parametric test and a generic test to run the first one with many configurations. One can choose according with his activities.

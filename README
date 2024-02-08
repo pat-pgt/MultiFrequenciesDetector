@@ -1,11 +1,15 @@
 Multi audio frequencies detector
 
-It is intended to build on every (enough large) FPGA and ASICs as the arithmetic uses serial bit to bit calculations.
+It is intended to build on every (enough large) FPGA and ASICs as the arithmetic uses serial bit to bit calculations. The design is parametric to compute N bits by N bits. It is useful for ASIC but, there is no test planned for now.
 
 It detects all the 12 notes of N octaves. The edges of the notes are precise. N can be large if the master clock is high. Fclk=792.N.SampleRate
 
-It is NOT based on the polyphase which requires a linear progression of the frequencies.
+It is NOT based on the poly-phase which requires a linear progression of the frequencies.
 
 The latency is as short as possible, according to the note (short of high frequencies, long for low frequencies).
 
 This project is in an early stage. The documentation may refer to document not yet written.
+
+The design is a DevOps style. It goes forward to get a working end to end. The detailed tests are going to be done after.
+
+The initial development tests are performed, using a wave viewer. VHDL modules perform extended tests. The run of the tests is done, using scripts rather than mouse actions in a GUI.
