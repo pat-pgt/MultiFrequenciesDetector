@@ -83,7 +83,7 @@ begin
             CCW_not_CW <= not scz_in.angle_z(scz_in.angle_z'high);
           else
             -- If Y is negative, the vector should spin CCW
-            CCW_not_CW <= scz_in.angle_z(scz_in.the_sin'high);
+            CCW_not_CW <= scz_in.the_sin(scz_in.the_sin'high);
           end if;
           -- Forge the values in order to check using a wave viewer
           -- or an automated system

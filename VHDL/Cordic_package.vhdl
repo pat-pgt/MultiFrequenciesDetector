@@ -97,7 +97,7 @@ package Cordic_package is
   component Cordic_Bundle_Z_to_0 is
     generic (
       debug_mode  : boolean               := false;
-      stages_nbre : integer range 1 to 25 := 5
+      stages_nbre : integer range 1 to 25 := 20
       );
     port (
       CLK           : in  std_logic;
@@ -106,6 +106,7 @@ package Cordic_package is
       meta_data_in  : in  meta_data_t;
       meta_data_out : out meta_data_t;
       scz_in        : in  reg_sin_cos_z;
+      scz_out       : out reg_sin_cos_z;      
       X_out         : out std_logic_vector(arithm_size - 1 downto 0);
       Y_out         : out std_logic_vector(arithm_size - 1 downto 0);
       Z_expon_out   : out std_logic_vector(5 downto 0));
@@ -131,9 +132,26 @@ package Cordic_package is
       meta_data_in  : in  meta_data_t;
       meta_data_out : out meta_data_t;
       --! Input of X, Y and Z.
-      scz_in        : out reg_sin_cos_z;
+      scz_in        : in  reg_sin_cos_z;
       scz_out       : out reg_sin_cos_z
       );
   end component Cordic_FirstStage_Y_to_0;
+
+  component Cordic_Bundle_Y_to_0 is
+    generic (
+      debug_mode  : boolean               := false;
+      stages_nbre : integer range 1 to 25 := 20
+      );
+    port (
+      CLK           : in  std_logic;
+      RST           : in  std_logic;
+      reg_sync      : in  std_logic;
+      meta_data_in  : in  meta_data_t;
+      meta_data_out : out meta_data_t;
+      scz_in        : in  reg_sin_cos_z;
+      X_out         : out std_logic_vector(arithm_size - 1 downto 0);
+      Y_out         : out std_logic_vector(arithm_size - 1 downto 0);
+      Z_expon_out   : out std_logic_vector(5 downto 0));
+  end component Cordic_Bundle_Y_to_0;
 
 end package Cordic_package;

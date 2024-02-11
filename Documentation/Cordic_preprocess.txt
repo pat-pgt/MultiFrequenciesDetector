@@ -1,0 +1,88 @@
+This document described the arithmetic operations on X, Y and Z
+to perform "by hand" the first Cordic stages
+
+
+The goal is to limit the cumulative cosine coefficient
+* Two first cordic stages
+The first computation is arc-tan( 1 ), the angle is PI/4, the cumul is about 1.6
+* Three first Cordic stages
+The first computation is arc-tan( 1/2 ), the angle is about 27, the cumul is about 1.16
+* Four first stages would have been irrelevant
+
+Z to 0 pre-processing
+---------------------------------------------------------------------------
+
+Z is spun CW, X and Y are spun CCW
+Let's call Zhb the 3 high bits of Z
+The Z'length - 3 low bits never change
+
+Subtracting PI/2 from T   is adding not PI/2 plus 1       not  010 0..00 + 000 0..01 =>  110 0..00 
+Subtracting PI from T     is adding not PI plus 1         not  100 0..00 + 000 0..01 =>  100 0..00 
+Subtracting 3.PI/2 from T is adding not 3.PI/2 plus 1     not  110 0..00 + 000 0..01 =>  010 0..00 
+Subtracting 2.PI from T   is adding not 2.PI plus 1       not 1000 0..00 + 000 0..01 => 0000 0..00 
+
+0      <= Z <   PI/4           Zhb = "000"
+The vector is kept as it, Z is unchanged
+X<=X;    Y<=Y;     Z<=Z;      Zhb<="000";
+
+PI/4   <= Z <   PI/2           Zhb = "001"
+The vector is spun a fourth turn CCW 
+X<=-Y;   Y<=X;    Z<=Z-PI/2   Zhb<="111"
+
+PI/2   <= Z <   3.PI/4         Zhb = "010"
+The vector is spun a fourth turn CCW 
+X<=-Y;   Y<=X;    Z<=Z-PI/2   Zhb<="000";
+
+3.PI/4 <= Z <   PI             Zhb = "011"
+The vector is spun a half turn CCW 
+X<=-X;   Y<=-Y;   Z<=Z-PI/2   Zhb<="111"
+
+PI     <= Z <   5.PI/4         Zhb = "100"
+The vector is spun a half turn CCW 
+X<=-X;   Y<=-Y;   Z<=Z-PI/2   Zhb<="000";
+
+5.PI/4 <= Z <   3.PI/2         Zhb = "101"
+The vector is spun a 3/4 turn CCW 
+X<=Y;   Y<=-X;   Z<=Z-PI/2    Zhb<="111";
+
+3.PI/2 <= Z <   7.PI/4         Zhb = "110"
+The vector is spun a 3/4 turn CCW 
+X<=Y;   Y<=-X;   Z<=Z-PI/2    Zhb<="000";
+
+7.PI/4 <= Z <   2.PI           Zhb = "111"
+The vector is spun a full turn CCW
+X<=X;   Y<=Y;    Z<=Z-PI/2   Zhb<="111";
+
+
+
+Y to 0 pre-processing
+---------------------------------------------------------------------------
+
+X and Y are spun CCW, Z spun CW
+Let's call Zsv the initial starting value
+
+The first pass checks the sign of X and Y and toggle if negative.
+The first pass check which one is greater as well.
+
+X>=0 Y>=0
+X<=X;     Y<=Y;     Zhb<="000..0";
+
+X<0  Y>=0
+X<=Y;     Y<=-X;    Zhb<="010..0";
+
+X<0  Y<0
+X<=-X;    Y<=-Y;    Zhb<="100..0";
+
+X>=0 Y<0
+X<=-Y;    Y<=X;     Zhb<="110..0";
+
+The second pass toggles X and Y if so.
+At this point X and Y are both positive.
+
+Subtracting PI/2 from T   is adding not PI/2 plus 1       not  010 0..00 + 000 0..01 =>  110 0..00 
+
+X>=Y
+X<=X;     Y<=Y;     Z<=Z
+
+X<Y
+X<=Y;     Y=-X;     Z<=Z + "110 0..0"
