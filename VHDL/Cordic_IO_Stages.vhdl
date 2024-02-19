@@ -340,7 +340,6 @@ begin
   assert (reg_size - 3) mod arithm_size = 0 report " the register size (" & integer'image(arithm_size) &
     ") minus 3 should be a multiple of the arithmetic size (" & integer'image(arithm_size) & ")" severity failure;
 
-
   scz_out <= scz_out_s;
 
   main_proc : process(CLK)

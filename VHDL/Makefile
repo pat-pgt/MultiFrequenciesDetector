@@ -34,8 +34,8 @@ simul_Cordic : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages.vhdl $(SCR
 	$(GHDL_PROG) -a $(SCRDIR)AnglesGene.vhdl
 	$(GHDL_PROG) -a $(SCRDIR)DataMonitor.vhdl
 	$(GHDL_PROG) -a $(SCRDIR)Cordic_test.vhdl
-	$(GHDL_PROG) -e Cordic_bundle_test_Z_to_0
-	$(GHDL_PROG) -r Cordic_bundle_test_Z_to_0 --vcd=$(WAVDESTDIR)Cordic.wav 2>&1 | tee $(DESTDIR)Cordic.out.txt
+	$(GHDL_PROG) -e Cordic_bundle_test_Z_to_0_Y_to_0
+	$(GHDL_PROG) -r Cordic_bundle_test_Z_to_0_Y_to_0 --vcd=$(WAVDESTDIR)Cordic.wav 2>&1 | tee $(DESTDIR)Cordic.out.txt
 	echo "The wav file is NOT an audio file, it can be opened, for instance, using gtk-wave" > $(WAVDESTDIR)README.important
 
 synth_AnglesGene	: $(BUILDDIR)packages_compiled
@@ -52,7 +52,7 @@ synth_Cordic	: $(BUILDDIR)packages_compiled
 	$(GHDL_PROG) -a $(SCRDIR)Cordic_Bundle_Stages.vhdl
 	mkdir -p $(SYNTHDESTDIR)
 	$(YOSYS_PROG) -m ghdl -p '$(GHDL_PROG) Cordic_Bundle_Z_to_0; synth_ice40 -json $(SYNTHDESTDIR)Cordic.ice40.json' 2>&1 |tee $(SYNTHDESTDIR)Cordic.synth.out.txt
-	$(NEXTPNR-ICE40_PROG) --hx4k --package cm225 --freq 30.00 --top Cordic_Bundle_Z_to_0 --asc $(SYNTHDESTDIR)Cordic.asc --json $(SYNTHDESTDIR)Cordic.ice40.json --placed-svg $(SYNTHDESTDIR)Cordic.placed.svg --routed-svg $(SYNTHDESTDIR)Cordic.routed.svg --report $(SYNTHDESTDIR)Cordic.report.json 2>&1 |tee $(SYNTHDESTDIR)Cordic.P_and_R.out.txt
+	$(NEXTPNR-ICE40_PROG) --hx4k --package cm225 --freq 30.00 --top Cordic_Bundle_Z_to_0_Y_to_0 --asc $(SYNTHDESTDIR)Cordic.asc --json $(SYNTHDESTDIR)Cordic.ice40.json --placed-svg $(SYNTHDESTDIR)Cordic.placed.svg --routed-svg $(SYNTHDESTDIR)Cordic.routed.svg --report $(SYNTHDESTDIR)Cordic.report.json 2>&1 |tee $(SYNTHDESTDIR)Cordic.P_and_R.out.txt
 	$(ICEPACK) $(SYNTHDESTDIR)Cordic.asc $(SYNTHDESTDIR)Cordic.bin 2>&1 |tee $(SYNTHDESTDIR)Cordic.pack.out.txt
 
 

@@ -96,8 +96,10 @@ package Cordic_package is
 
   component Cordic_Bundle_Z_to_0 is
     generic (
-      debug_mode  : boolean               := false;
-      stages_nbre : integer range 1 to 25 := 20
+      debug_mode          : boolean               := false;
+      stages_nbre         : integer range 1 to 25 := 20;
+      metadata_catch_list : meta_data_list_t;
+      stages_catch_list   : cordic_stages_num_list
       );
     port (
       CLK           : in  std_logic;
@@ -106,10 +108,12 @@ package Cordic_package is
       meta_data_in  : in  meta_data_t;
       meta_data_out : out meta_data_t;
       scz_in        : in  reg_sin_cos_z;
-      scz_out       : out reg_sin_cos_z;      
+      scz_out       : out reg_sin_cos_z;
       X_out         : out std_logic_vector(arithm_size - 1 downto 0);
       Y_out         : out std_logic_vector(arithm_size - 1 downto 0);
-      Z_expon_out   : out std_logic_vector(5 downto 0));
+      Z_expon_out   : out std_logic_vector(5 downto 0);
+      report_in     : in  std_logic;
+      report_out    : out std_logic);
   end component Cordic_Bundle_Z_to_0;
 
 --! @brief Cordic Y to 0 first stage
@@ -139,8 +143,10 @@ package Cordic_package is
 
   component Cordic_Bundle_Y_to_0 is
     generic (
-      debug_mode  : boolean               := false;
-      stages_nbre : integer range 1 to 25 := 20
+      debug_mode          : boolean               := false;
+      stages_nbre         : integer range 1 to 25 := 20;
+      metadata_catch_list : meta_data_list_t;
+      stages_catch_list   : cordic_stages_num_list
       );
     port (
       CLK           : in  std_logic;
@@ -151,7 +157,35 @@ package Cordic_package is
       scz_in        : in  reg_sin_cos_z;
       X_out         : out std_logic_vector(arithm_size - 1 downto 0);
       Y_out         : out std_logic_vector(arithm_size - 1 downto 0);
-      Z_expon_out   : out std_logic_vector(5 downto 0));
+      Z_expon_out   : out std_logic_vector(5 downto 0);
+      report_in     : in  std_logic;
+      report_out    : out std_logic);
   end component Cordic_Bundle_Y_to_0;
 
+  --! @brief Monitor one cordic stage
+  --!
+  --! This component is called for the stage num_stage
+  --! According with a list of metadata,
+  --! this component catches the data before and after.\n
+  --! The determinant is computed with X and Y, its absolute value is kept.
+  --! The difference of Z is computed, its absolute value is kept.\n
+  --! One can check the details with a wave viewer to investigate bugs.
+  --! The component produces a report of the minimum and maximum deviation at the end.\n
+  --! During the synthesis, the component is not called,
+  --! then its entity should be missing.
+  component Cordic_Interm_monitor is
+    generic (
+      metadata_catch_list : meta_data_list_t
+      );
+    port (
+      CLK             : in std_logic;
+      RST             : in std_logic;
+      reg_sync        : in std_logic;
+      report_in       : in std_logic;
+      report_out      : in std_logic;
+      meta_data_after : in meta_data_t;
+      scz_before      : in reg_sin_cos_z;
+      scz_after       : in reg_sin_cos_z);
+  end component Cordic_Interm_monitor;
+  
 end package Cordic_package;

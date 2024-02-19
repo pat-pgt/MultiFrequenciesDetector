@@ -4,28 +4,32 @@ use IEEE.STD_LOGIC_1164.all,
   work.MultiFreqDetect_package.all,
   work.Cordic_package.all;
 
-entity Cordic_bundle_test_Z_to_0 is
-end entity Cordic_bundle_test_Z_to_0;
+entity Cordic_bundle_test_Z_to_0_Y_to_0 is
+end entity Cordic_bundle_test_Z_to_0_Y_to_0;
 
-architecture rtl of Cordic_bundle_test_Z_to_0 is
-  signal CLK                                     : std_logic                     := '0';
-  signal RST                                     : std_logic_vector(10 downto 0) := (others => '1');
-  signal main_counter                            : unsigned(3 downto 0)          := (others => '0');
-  signal reg_sync_ag, reg_sync_interm, full_sync : std_logic;
-  signal input_x                                 : std_logic_vector(30 downto 0) := "0001000000000000000000000000000";
-  signal input_y                                 : std_logic_vector(30 downto 0) := (others => '0');
-  signal angle_z                                 : reg_type;
-  signal meta_data_1                             : meta_data_t;
-  signal meta_data_2                             : meta_data_t;
-  signal meta_data_3                             : meta_data_t;
-  signal meta_data_4                             : meta_data_t;
-  signal meta_data_5                             : meta_data_t;
-  signal meta_data_6                             : meta_data_t;
-  signal scz_1,scz_2,scz_3                                   : reg_sin_cos_z;
-  signal X_out                                   : std_logic_vector(arithm_size - 1 downto 0);
-  signal Y_out                                   : std_logic_vector(arithm_size - 1 downto 0);
-  signal Z_expon_out                             : std_logic_vector(5 downto 0);
-  signal X2_plus_Y2                              : std_logic_vector(31 downto 0);
+architecture rtl of Cordic_bundle_test_Z_to_0_Y_to_0 is
+  signal CLK                                            : std_logic                     := '0';
+  signal RST                                            : std_logic_vector(10 downto 0) := (others => '1');
+  signal main_counter                                   : unsigned(3 downto 0)          := (others => '0');
+  signal reg_sync_ag, reg_sync_interm, full_sync        : std_logic;
+  signal input_x                                        : std_logic_vector(30 downto 0) := "0001000000000000000000000000000";
+  signal input_y                                        : std_logic_vector(30 downto 0) := (others => '0');
+  signal angle_z                                        : reg_type;
+  signal meta_data_1                                    : meta_data_t;
+  signal meta_data_2                                    : meta_data_t;
+  signal meta_data_3                                    : meta_data_t;
+  signal meta_data_4                                    : meta_data_t;
+  signal meta_data_5                                    : meta_data_t;
+  signal meta_data_6                                    : meta_data_t;
+  signal scz_1, scz_2, scz_3                            : reg_sin_cos_z;
+  signal X_out                                          : std_logic_vector(arithm_size - 1 downto 0);
+  signal Y_out                                          : std_logic_vector(arithm_size - 1 downto 0);
+  signal Z_expon_out                                    : std_logic_vector(5 downto 0);
+  signal X2_plus_Y2                                     : std_logic_vector(31 downto 0);
+  signal metadata_catch_list                            : meta_data_list_t(0 downto 1);
+  signal stages_catch_list                              : cordic_stages_num_list(0 downto 1);
+  signal report_cordic_bundle_1, report_cordic_bundle_2 : std_logic:= '0';
+  
 begin
   X2_plus_Y2 <= std_logic_vector(to_unsigned(
     to_integer(signed(input_y(input_y'high downto input_y'high - 14)))**2+
@@ -35,7 +39,8 @@ begin
   
   main_proc : process
   begin
-    if main_counter /= unsigned(to_signed(-1, main_counter'length)) then
+    COUNT_IF : if main_counter /= unsigned(to_signed(-2, main_counter'length)) and
+      main_counter /= unsigned(to_signed(-1, main_counter'length)) then
       CLK_IF : if CLK = '0' then
         if full_sync = '1' then
           main_counter <= main_counter + 1;
@@ -52,9 +57,16 @@ begin
       end if CLK_IF;
       CLK <= not CLK;
       wait for 10 ns;
+    elsif main_counter = unsigned(to_signed(-2, main_counter'length)) then
+      report"Simulation is over, report comming soon" severity note;
+
+      report "Cordic stages individual reports are:" severity note;
+      report_cordic_bundle_1 <= '1';
+      main_counter <= unsigned(to_signed(-1, main_counter'length));
+      wait for 1 nS;
     else
       wait;
-    end if;
+    end if COUNT_IF;
   end process main_proc;
 
   angle_gene_instanc : AngleGene
@@ -85,8 +97,10 @@ begin
       scz           => scz_1);
 
   cordic_bundle_instanc : Cordic_Bundle_Z_to_0 generic map (
-    debug_mode  => false,
-    stages_nbre => 12
+    debug_mode          => false,
+    stages_nbre         => 12,
+    metadata_catch_list => metadata_catch_list,
+    stages_catch_list   => stages_catch_list
     )
     port map (
       CLK           => CLK,
@@ -98,7 +112,9 @@ begin
       scz_out       => scz_2,
       X_out         => X_out,
       Y_out         => Y_out,
-      Z_expon_out   => Z_expon_out);
+      Z_expon_out   => Z_expon_out,
+      report_in     => report_cordic_bundle_1,
+      report_out    => report_cordic_bundle_2);
 
   cordic_first_2_stage_instanc : Cordic_FirstStage_Y_to_0
     port map (
@@ -107,12 +123,14 @@ begin
       reg_sync      => reg_sync_interm,
       meta_data_in  => meta_data_3,
       meta_data_out => meta_data_4,
-      scz_in           => scz_2,
-      scz_out => scz_3);
+      scz_in        => scz_2,
+      scz_out       => scz_3);
 
   cordic_bundle_2_instanc : Cordic_Bundle_Y_to_0 generic map (
-    debug_mode  => false,
-    stages_nbre => 20
+    debug_mode          => false,
+    stages_nbre         => 20,
+    metadata_catch_list => metadata_catch_list,
+    stages_catch_list   => stages_catch_list
     )
     port map (
       CLK           => CLK,
@@ -123,7 +141,8 @@ begin
       scz_in        => scz_3,
       X_out         => X_out,
       Y_out         => Y_out,
-      Z_expon_out   => Z_expon_out);
+      Z_expon_out   => Z_expon_out,
+      report_in     => report_cordic_bundle_2);
 
 
 end architecture rtl;

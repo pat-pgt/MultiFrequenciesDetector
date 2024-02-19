@@ -71,12 +71,16 @@ package MultiFreqDetect_package is
   type meta_data_t is record
     --! First one 0x0 => octave -1, last one 0x7 => octave 6.
     octave : std_logic_vector(2 downto 0);
-    --! First one 0 => C/do, last one 0xb => B/si.
+    --! First one 0 => C/do, last one 0xb => B/si. \n
+    --! Catch teste with all notes and all octaves 0xff
     note   : std_logic_vector(3 downto 0);
   end record meta_data_t;
   --! List of meta datas
-  --! This is mostly used for testing as a list for monitoring
+  --! This is mostly used for testing as a list of octave notes couple
   type meta_data_list_t is array(integer range<>) of meta_data_t;
+--! List of stage to monitor
+  --! This is mostly used for testing as a list of N and N+1 couples stages
+  type cordic_stages_num_list is array( integer range<> ) of positive;
   --! Data link between the stages
   --!
   --! All the values are passed in serial mode bit by bits
