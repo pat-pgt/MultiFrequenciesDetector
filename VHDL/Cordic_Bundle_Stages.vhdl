@@ -15,6 +15,7 @@ entity Cordic_Bundle_Z_to_0 is
     CLK           : in  std_logic;
     RST           : in  std_logic;
     reg_sync      : in  std_logic;
+    full_sync     : in  std_logic;
     meta_data_in  : in  meta_data_t;
     meta_data_out : out meta_data_t;
     scz_in        : in  reg_sin_cos_z;
@@ -39,13 +40,16 @@ begin
   Catch_monitor_stages : for ind in 1 to stages_catch_list'length generate
     debug_catch_in_operation <= '1';
     Interm_monitor_instanc : Cordic_Interm_monitor generic map(
+      Z_not_Y_to_0        => true,
+      stage_num           => stages_catch_list(stages_catch_list'low + ind - 1),
       metadata_catch_list => metadata_catch_list)
       port map(
         CLK             => CLK,
         RST             => RST,
         reg_sync        => reg_sync,
-        report_in       => report_catch_chain(ind - 1),
-        report_out      => report_catch_chain(ind),
+        full_sync       => full_sync,
+        report_in       => report_catch_chain(report_catch_chain'low + ind - 1),
+        report_out      => report_catch_chain(report_catch_chain'low + ind),
         meta_data_after => meta_data_array(ind),
         scz_before      => scz_array(ind - 1),
         scz_after       => scz_array(ind)
@@ -111,6 +115,7 @@ entity Cordic_Bundle_Y_to_0 is
     CLK           : in  std_logic;
     RST           : in  std_logic;
     reg_sync      : in  std_logic;
+    full_sync     : in  std_logic;
     meta_data_in  : in  meta_data_t;
     meta_data_out : out meta_data_t;
     scz_in        : in  reg_sin_cos_z;
@@ -129,9 +134,28 @@ architecture rtl of Cordic_Bundle_Y_to_0 is
   signal meta_data_array          : meta_data_array_t;
   signal debug_catch_in_operation : std_logic;
   signal report_catch_chain       : std_logic_vector(stages_catch_list'length downto 0);
-begin
 
-  
+begin
+  Catch_monitor_stages : for ind in 1 to stages_catch_list'length generate
+    debug_catch_in_operation <= '1';
+    Interm_monitor_instanc : Cordic_Interm_monitor generic map(
+      Z_not_Y_to_0        => false,
+      stage_num           => stages_catch_list(stages_catch_list'low + ind - 1),
+      metadata_catch_list => metadata_catch_list)
+      port map(
+        CLK             => CLK,
+        RST             => RST,
+        reg_sync        => reg_sync,
+        full_sync       => full_sync,
+        report_in       => report_catch_chain(report_catch_chain'low + ind - 1),
+        report_out      => report_catch_chain(report_catch_chain'low + ind),
+        meta_data_after => meta_data_array(ind),
+        scz_before      => scz_array(ind - 1),
+        scz_after       => scz_array(ind)
+        );
+  end generate Catch_monitor_stages;
+
+
   report_catch_chain(report_catch_chain'low) <= report_in;
   report_out                                 <= report_catch_chain(report_catch_chain'high);
 

@@ -111,10 +111,10 @@ begin
             -- to respect the bouns as well, if the reg_size is small (<16)
             -- Be carefull, this is the data of the input,
             -- then the previous stage
-            X2_plus_Y2 <= std_logic_vector( to_unsigned(
-              to_integer( signed( scz_in.the_sin( scz_in.the_sin'high downto scz_in.the_sin'high - 14) ))**2+
-              to_integer( signed( scz_in.the_cos( scz_in.the_cos'high downto scz_in.the_cos'high - 14) ))**2,
-              X2_plus_Y2'length ));
+            --X2_plus_Y2 <= std_logic_vector( to_unsigned(
+              --to_integer( signed( scz_in.the_sin( scz_in.the_sin'high downto scz_in.the_sin'high - 14) ))**2+
+              --to_integer( signed( scz_in.the_cos( scz_in.the_cos'high downto scz_in.the_cos'high - 14) ))**2,
+              --X2_plus_Y2'length ));
           end if;
         else
           -- We need to negate the bits for the substractions

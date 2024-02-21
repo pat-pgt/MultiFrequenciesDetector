@@ -75,12 +75,24 @@ package MultiFreqDetect_package is
     --! Catch teste with all notes and all octaves 0xff
     note   : std_logic_vector(3 downto 0);
   end record meta_data_t;
+  --! Set from integers
+  function octave_note_to_meta_data(constant octave : integer range 0 to N_octaves - 1;
+                                    constant note   : integer range 0 to N_notes - 1) return meta_data_t;
+  function octave_all_notes_to_meta_data(constant octave : integer range 0 to N_octaves - 1) return meta_data_t;
+  --! Override the comparison operator
+  function "=" (lmd, rmd                                 : meta_data_t) return boolean;
+  --! Convert meta-data into note name or value
+  --!
+  --! If the number of notes, N, per octave is 1, 2, 3, 6 or 12,
+  --! the return string is, for instance, C#4 
+  --! otherwise, the text is base octave multiplied by sqrt(N)powerM
+  function meta_data_image(md                            : meta_data_t) return string;
   --! List of meta datas
   --! This is mostly used for testing as a list of octave notes couple
   type meta_data_list_t is array(integer range<>) of meta_data_t;
---! List of stage to monitor
+  --! List of stage to monitor
   --! This is mostly used for testing as a list of N and N+1 couples stages
-  type cordic_stages_num_list is array( integer range<> ) of positive;
+  type cordic_stages_num_list is array(integer range<>) of positive;
   --! Data link between the stages
   --!
   --! All the values are passed in serial mode bit by bits
@@ -89,13 +101,13 @@ package MultiFreqDetect_package is
   type reg_sin_cos_z is record
     --! LSB comes first.
     --! For this version, the size is 1 as arithm_size is 1
-    the_sin   : reg_type;
+    the_sin : reg_type;
     --! LSB comes first.
     --! For this version, the size is 1 as arithm_size is 1
-    the_cos   : reg_type;
+    the_cos : reg_type;
     --! LSB comes first.
     --! For this version, the size is 1 as arithm_size is 1
-    angle_z   : reg_type;    
+    angle_z : reg_type;
   end record reg_sin_cos_z;
   --! Data link between the stages
   --!
@@ -374,6 +386,49 @@ end package MultiFreqDetect_package;
 
 package body MultiFreqDetect_package is
 
+  function octave_note_to_meta_data(constant octave : integer range 0 to N_octaves - 1;
+                                    constant note   : integer range 0 to N_notes - 1) return meta_data_t is
+    variable the_return : meta_data_t;
+  begin
+    the_return.octave := std_logic_vector(to_unsigned(octave, the_return.octave'length));
+    the_return.note   := std_logic_vector(to_unsigned(note, the_return.note'length));
+    return the_return;
+  end function octave_note_to_meta_data;
+  
+  function octave_all_notes_to_meta_data(constant octave : integer range 0 to N_octaves - 1) return meta_data_t is
+    variable the_return : meta_data_t;
+  begin
+    the_return.octave := std_logic_vector(to_unsigned(octave, the_return.octave'length));
+    the_return.note   := (others => '1');
+    return the_return;
+  end function octave_all_notes_to_meta_data;
+
+  function "=" (lmd, rmd : meta_data_t) return boolean is
+  begin
+    if lmd.note = std_logic_vector(to_signed(-1, lmd.note'length)) or
+      rmd.note = std_logic_vector(to_signed(-1, rmd.note'length)) then
+      return true;
+    else
+      return (lmd.octave = rmd.octave) and (lmd.note = rmd.note);
+    end if;
+  end function "=";
+
+  function meta_data_image(md : meta_data_t) return string is
+    type octaves_list_t is array(0 to 7) of string(1 to 2);
+    constant octaves_list : octaves_list_t := (0 => "00", 1=>"0 ", 2=>"1 ", 3=>"2 ", 4=>"3 ", 5=>"4 ", 6=>"5 ", 7=>"6 ");
+    type notes_list_t is array (0 to 11) of string(1 to 2);
+    constant notes_list : notes_list_t := (0  => "A ", 1=>"A#", 2=>"B ", 3=>"C ", 4=>"C#", 5=>"D ",
+                                            6 =>"D#", 7=>"E ", 8=>"F ", 9=>"F#", 10=>"G ", 11=>"G#");
+  begin
+    if md.note = std_logic_vector( to_signed( -1, md.note'length )) then
+      return "all ";
+    elsif N_notes = 1 or N_notes = 2 or N_notes = 4 or N_notes = 6 or N_notes = 12 then
+      return notes_list((to_integer(unsigned(md.note)) * N_notes) / 12) & octaves_list(to_integer(unsigned(md.octave)));
+    else
+      report "Sorry not yet implemented" severity failure;
+    end if;
+  end function meta_data_image;
+
   function angle_constants_populate(constant debug_mode : boolean) return angle_list_per_note_t is
     variable temp : angle_list_per_note_t;
   begin
@@ -389,7 +444,7 @@ package body MultiFreqDetect_package is
     else
       for ind_note in temp'range loop
         for ind2 in temp(ind_note)'range loop
-          if ind2 < (temp(ind_note)'high - 5 - 2 * ind_note ) then
+          if ind2 < (temp(ind_note)'high - 5 - 2 * ind_note) then
             temp(ind_note)(ind2) := '1';
           else
             temp(ind_note)(ind2) := '0';

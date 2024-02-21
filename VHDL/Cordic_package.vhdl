@@ -105,6 +105,7 @@ package Cordic_package is
       CLK           : in  std_logic;
       RST           : in  std_logic;
       reg_sync      : in  std_logic;
+      full_sync     : in  std_logic;
       meta_data_in  : in  meta_data_t;
       meta_data_out : out meta_data_t;
       scz_in        : in  reg_sin_cos_z;
@@ -152,6 +153,7 @@ package Cordic_package is
       CLK           : in  std_logic;
       RST           : in  std_logic;
       reg_sync      : in  std_logic;
+      full_sync     : in  std_logic;
       meta_data_in  : in  meta_data_t;
       meta_data_out : out meta_data_t;
       scz_in        : in  reg_sin_cos_z;
@@ -165,24 +167,27 @@ package Cordic_package is
   --! @brief Monitor one cordic stage
   --!
   --! This component is called for the stage num_stage
-  --! According with a list of metadata,
-  --! this component catches the data before and after.\n
+  --! According with a list of meta-data.\n
+  --! This component catches the data before and after.\n
   --! The determinant is computed with X and Y, its absolute value is kept.
   --! The difference of Z is computed, its absolute value is kept.\n
   --! One can check the details with a wave viewer to investigate bugs.
   --! The component produces a report of the minimum and maximum deviation at the end.\n
   --! During the synthesis, the component is not called,
-  --! then its entity should be missing.
+  --! then its related entity should be missing.
   component Cordic_Interm_monitor is
     generic (
+      Z_not_Y_to_0 : boolean;
+      stage_num : positive;
       metadata_catch_list : meta_data_list_t
       );
     port (
       CLK             : in std_logic;
       RST             : in std_logic;
       reg_sync        : in std_logic;
+      full_sync       : in  std_logic;
       report_in       : in std_logic;
-      report_out      : in std_logic;
+      report_out      : out std_logic;
       meta_data_after : in meta_data_t;
       scz_before      : in reg_sin_cos_z;
       scz_after       : in reg_sin_cos_z);

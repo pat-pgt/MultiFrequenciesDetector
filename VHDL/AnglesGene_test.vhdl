@@ -21,14 +21,6 @@ architecture rtl of AngleGene_test is
   -- For the whose uses the WAV format rather the GHD format
   signal display_octave : std_logic_vector(meta_data.octave'range);
   signal display_note   : std_logic_vector(meta_data.note'range);
-  function octave_note_to_meta_data(constant octave : integer range 0 to 7;
-                                    constant note   : integer range 0 to 11) return meta_data_t is
-    variable the_return : meta_data_t;
-  begin
-    the_return.octave := std_logic_vector(to_unsigned(octave, the_return.octave'length));
-    the_return.note   := std_logic_vector(to_unsigned(note, the_return.note'length));
-    return the_return;
-  end function octave_note_to_meta_data;
   constant monitor_list : meta_data_list_t :=
     (
       0 => octave_note_to_meta_data(octave => 4, note => 0),

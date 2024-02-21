@@ -10,7 +10,7 @@ end entity Cordic_bundle_test_Z_to_0_Y_to_0;
 architecture rtl of Cordic_bundle_test_Z_to_0_Y_to_0 is
   signal CLK                                            : std_logic                     := '0';
   signal RST                                            : std_logic_vector(10 downto 0) := (others => '1');
-  signal main_counter                                   : unsigned(3 downto 0)          := (others => '0');
+  signal main_counter                                   : unsigned(4 downto 0)          := (others => '0');
   signal reg_sync_ag, reg_sync_interm, full_sync        : std_logic;
   signal input_x                                        : std_logic_vector(30 downto 0) := "0001000000000000000000000000000";
   signal input_y                                        : std_logic_vector(30 downto 0) := (others => '0');
@@ -26,8 +26,14 @@ architecture rtl of Cordic_bundle_test_Z_to_0_Y_to_0 is
   signal Y_out                                          : std_logic_vector(arithm_size - 1 downto 0);
   signal Z_expon_out                                    : std_logic_vector(5 downto 0);
   signal X2_plus_Y2                                     : std_logic_vector(31 downto 0);
-  signal metadata_catch_list                            : meta_data_list_t(0 downto 1);
-  signal stages_catch_list                              : cordic_stages_num_list(0 downto 1);
+--  signal metadata_catch_list                            : meta_data_list_t(0 downto 1);
+  signal metadata_catch_list                            : meta_data_list_t(11 to 14) := (
+    11 => octave_note_to_meta_data( octave => 0, note => 0 ),
+    12 => octave_note_to_meta_data( octave => 3, note => 2 ),
+    13 => octave_note_to_meta_data( octave => 6, note => 4 ),
+    14 => octave_all_notes_to_meta_data(octave => 4)
+    );
+  signal stages_catch_list                              : cordic_stages_num_list(3 to 6) := (1,2,6,12);
   signal report_cordic_bundle_1, report_cordic_bundle_2 : std_logic:= '0';
   
 begin
@@ -106,6 +112,7 @@ begin
       CLK           => CLK,
       RST           => RST(RST'low),
       reg_sync      => reg_sync_interm,
+      full_sync     => full_sync,
       meta_data_in  => meta_data_2,
       meta_data_out => meta_data_3,
       scz_in        => scz_1,
@@ -116,13 +123,17 @@ begin
       report_in     => report_cordic_bundle_1,
       report_out    => report_cordic_bundle_2);
 
+
+  -- Prefilter and filter
+  meta_data_4 <= meta_data_3;
+  
   cordic_first_2_stage_instanc : Cordic_FirstStage_Y_to_0
     port map (
       CLK           => CLK,
       RST           => RST(RST'low),
       reg_sync      => reg_sync_interm,
-      meta_data_in  => meta_data_3,
-      meta_data_out => meta_data_4,
+      meta_data_in  => meta_data_4,
+      meta_data_out => meta_data_5,
       scz_in        => scz_2,
       scz_out       => scz_3);
 
@@ -136,6 +147,7 @@ begin
       CLK           => CLK,
       RST           => RST(RST'low),
       reg_sync      => reg_sync_interm,
+      full_sync     => full_sync,
       meta_data_in  => meta_data_5,
       meta_data_out => meta_data_6,
       scz_in        => scz_3,
