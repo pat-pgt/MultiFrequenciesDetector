@@ -13,6 +13,7 @@ ICEPACK?=icepack
 
 $(BUILDDIR)packages_compiled : $(SCRDIR)MFD_package.vhdl $(SCRDIR)DataMonitor_package.vhdl
 	touch $(BUILDDIR)packages_compiled
+	$(GHDL_PROG) -a $(SCRDIR)Metadata_package.vhdl
 	$(GHDL_PROG) -a $(SCRDIR)MFD_package.vhdl
 	$(GHDL_PROG) -a $(SCRDIR)DataMonitor_package.vhdl
 	$(GHDL_PROG) -a $(SCRDIR)Cordic_package.vhdl

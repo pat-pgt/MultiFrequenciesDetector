@@ -1,6 +1,7 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
+  work.Meta_data_package.all,
   work.MultiFreqDetect_package.all;
 
 
@@ -37,7 +38,7 @@ entity AngleGene is
 end entity AngleGene;
 
 architecture rtl of AngleGene is
-  constant freq_list   : angle_list_per_note_t := angle_constants_populate(true);
+  constant freq_list   : angle_list_per_note_t := angle_constants_populate_reg(true);
 -- temporary, the time a ram is implemented
   signal angle_storage : angle_list_per_note_t;
 

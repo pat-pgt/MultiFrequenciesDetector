@@ -1,6 +1,7 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   work.MultiFreqDetect_package.all,
+  work.Meta_data_package.all,
   work.Cordic_package.all;
 
 
@@ -183,6 +184,7 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
   work.MultiFreqDetect_package.all,
+  work.Meta_data_package.all,
   work.Cordic_package.all;
 
 --! @brief Cordic Z to 0 last stage
@@ -271,6 +273,7 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
   work.MultiFreqDetect_package.all,
+  work.Meta_data_package.all,
   work.Cordic_package.all;
 
 --! @brief Cordic Y to 0 first stage

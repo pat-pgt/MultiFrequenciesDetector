@@ -8,9 +8,9 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
-  work.MultiFreqDetect_package.starting_octave,
+  work.Meta_data_package.starting_octave,
   work.MultiFreqDetect_package.reg_type,
-  work.MultiFreqDetect_package.meta_data_t;
+  work.Meta_data_package.meta_data_t;
 
 entity DataMonitorZ is
   generic (
@@ -96,7 +96,7 @@ use IEEE.STD_LOGIC_1164.all,
   ieee.math_real.all,
   work.MultiFreqDetect_package.reg_type,
   work.MultiFreqDetect_package.reg_sin_cos_z,
-  work.MultiFreqDetect_package.meta_data_t;
+  work.Meta_data_package.meta_data_t;
 
 entity DataMonitorXYZ is
   generic (
@@ -148,8 +148,8 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
   work.MultiFreqDetect_package.reg_type,
-  work.MultiFreqDetect_package.meta_data_t,
-  work.MultiFreqDetect_package.meta_data_list_t,
+  work.Meta_data_package.meta_data_t,
+  work.Meta_data_package.meta_data_list_t,
   work.DataMonitor_package.DataMonitorZ;
 
 entity DataMonitorMultiZ is
@@ -195,8 +195,8 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
   work.MultiFreqDetect_package.reg_type,
-  work.MultiFreqDetect_package.meta_data_t,
-  work.MultiFreqDetect_package.meta_data_list_t,
+  work.Meta_data_package.meta_data_t,
+  work.Meta_data_package.meta_data_list_t,
   work.MultiFreqDetect_package.reg_sin_cos_z,
   work.DataMonitor_package.DataMonitorXYZ;
 

@@ -8,10 +8,10 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
+  work.Meta_data_package.meta_data_t,
+  work.Meta_data_package.meta_data_list_t,
   work.MultiFreqDetect_package.reg_type,
-  work.MultiFreqDetect_package.reg_sin_cos_z,
-  work.MultiFreqDetect_package.meta_data_t,
-  work.MultiFreqDetect_package.meta_data_list_t;
+  work.MultiFreqDetect_package.reg_sin_cos_z;
 
 package DataMonitor_package is
 

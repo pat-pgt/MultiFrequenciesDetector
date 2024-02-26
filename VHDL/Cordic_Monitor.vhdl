@@ -1,7 +1,7 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.math_real.all,
-  work.MultiFreqDetect_package.all;
+  work.Meta_data_package.all;
 
 --! @brief Monitor a given meta-data
 --!
@@ -69,6 +69,7 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
   ieee.math_real.all,
+  work.Meta_data_package.all,
   work.MultiFreqDetect_package.all;
 
 --! @brief Monitor a given cordic stage
@@ -214,12 +215,17 @@ begin
   end process main_proc;
 
   report_proc : process
+    variable the_angle : real;
   begin
     wait until report_in = '1';
     if bad_YZ then
       report "**** Stage " & positive'image(stage_num) & ", WARNING |Z| > PI/4 ****" severity warning;
     else
-      report "Verification of the stage " & positive'image(stage_num) & ", " &
+      the_angle := arctg_2_angle_real( stage_num );
+      -- Convert back as the angle was normalized to 1.0
+      report "Verif. stage " & positive'image(stage_num) &
+        ", angle is (degres): " & real'image( the_angle * 360.0 ) & ", " &
+        "sin(a): " & real'image( sin( 2.0 * MATH_PI * the_angle )) & " . " &
         natural'image(full_cycles_count) & " full cycles"
         severity note;
     end if;

@@ -1,5 +1,6 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
+  work.Meta_data_package.all,
   work.MultiFreqDetect_package.all;
 
 
