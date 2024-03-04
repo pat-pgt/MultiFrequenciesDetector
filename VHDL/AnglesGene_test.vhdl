@@ -2,6 +2,7 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
   work.MultiFreqDetect_package.all,
+  work.Meta_data_package.all,
   work.DataMonitor_package.DataMonitorMultiZ;
 
 
