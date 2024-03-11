@@ -36,8 +36,8 @@ architecture rtl of Cordic_IntermStage is
   signal carry_X, carry_Y, carry_Z              : std_logic;
   -- The shifted operand is always reaching the MSB of the shift registers
   -- before the non shifted.
-  -- Since the new data is coming after the MSB of the current data,
-  -- the high bit should be saved, and used as soon as the current data is over
+  -- Since the new data is coming during the calculation, by the MSB side,
+  -- the high bit should be saved, and used until the current data is over
   signal sign_X, sign_Y                         : std_logic;
   signal remaining_shift_count                  : std_logic_vector(5 downto 0);
   signal is_first                               : std_logic;
