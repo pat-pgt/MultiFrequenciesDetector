@@ -77,12 +77,14 @@ use IEEE.STD_LOGIC_1164.all,
 --! For a given stage, this entity is called
 --! to verify the rotation (CW or CCW) of the vector
 --! and to verify the addition or subtraction of Z
---! According with the metadata.\n
+--! According with the meta-data.\n
 --! This entity catches the data before and after.\n
 --! The determinant is computed with X and Y, its absolute value is kept.
 --! The difference of Z is computed, its absolute value is kept.\n
 --! The entity passes this data to the register component
---! in order to catch the one related to its metadata
+--! in order to catch the one related to its meta-data.\n
+--! It is both used for the Z to 0 and for the Y to 0.\n
+--! It is called by the bundle entity for each "catch" item.
 entity Cordic_Interm_monitor is
   generic (
     Z_not_Y_to_0        : boolean;
@@ -110,7 +112,7 @@ architecture arch of Cordic_Interm_monitor is
   signal x_before, y_before : real;
   signal z_before           : std_logic_vector(scz_before.angle_z'range);
   signal bad_YZ             : boolean   := false;
-  -- It is a little bit arbitrars
+  -- It is a little bit arbitrary
   signal delay_start_regist : natural   := 3;
   signal RST_delayed        : std_logic := '1';
   signal full_cycles_count  : natural   := 0;
@@ -153,7 +155,7 @@ begin
     variable z_after          : real;
     variable determinant_v    : real;
     -- set one bit more for the diff
-    -- One high bit is added to the 2 signed nulbers, they are casted as signed,
+    -- One high bit is added to the 2 signed numbers, they are casted as signed,
     --   the subtraction is performed and the high bit is voided
     variable zb_for_diff      : signed(scz_before.angle_z'length downto 0);
     variable za_for_diff      : signed(scz_after.angle_z'length downto 0);
