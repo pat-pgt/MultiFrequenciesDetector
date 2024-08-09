@@ -4,7 +4,7 @@ It is intended to build on every (enough large) FPGA and ASICs as the arithmetic
 
 It is designed using modules. More or less modules have to be used according with the requiered properties. The schema choices mostly include the amplitude of signals to be detected, with which "neighbour" signals, in which environement (noise, high amplitude signals etc...). For more information, see the README.modules file.
 
-It detects all the 12 notes of N octaves. The edges of the notes are precise. N can be large if the master clock is high. Fclk=792.N.SampleRate
+It detects all the 12 notes of N octaves. The edges of the notes are precise. N can be large if the master clock is high. Fclk=396.N.SampleRate
 
 It is NOT based on the poly-phase which requires a linear progression of the frequencies.
 
