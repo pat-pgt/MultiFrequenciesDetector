@@ -1,6 +1,7 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
+  work.InterModule_formats.all,
   work.MultiFreqDetect_package.all,
   work.Meta_data_package.all,
   work.Prefilter_package.all;
@@ -28,11 +29,22 @@ end entity Prefilter_IIR_compute;
 
 
 architecture rtl of Prefilter_IIR_compute is
+  -- The computation should be something like
+  -- output( N + 1 ) = 0.1 .input + 0.9 . output( N )
+  -- To avoid multiplications, the formula is transformed to:*
+  -- output( N + 1 ) = output( N ) + 0.1 . ( input - output( N ) )
+  -- Since it is a prefilter, only the inverted power of 2
+  -- are used as coefficients.
   --
+  -- The computation is in 3 steps:
+  -- * input - state variable is computed
+  -- * this signal is shifted
+  -- * The shifted signal is added to the state variable
   --
   -- Some copy and paste, unused signals are going to be removed
   --
   --
+
   signal scz_out_s                              : reg_sin_cos_z;
   -- CW or CCW of the vector, means the Z pins CCW or CW
   signal carry_X, carry_Y, carry_Z              : std_logic;
@@ -50,6 +62,11 @@ architecture rtl of Prefilter_IIR_compute is
   signal debug_flipflop_2                       : std_logic := '0';
   signal CCW_not_CW                             : std_logic;
   signal X2_plus_Y2                             : std_logic_vector(31 downto 0);
+
+
+  signal state_var_int1 : reg_type;
+  signal sc_int1 : reg_type;
+  signal carry          : std_logic;
 begin
   -- To be improved with automatic size
   assert reg_size < 2**remaining_shift_count'length report "Internal error" severity failure;
@@ -64,26 +81,46 @@ begin
 
 
 
-  main_proc : process(CLK)
+  proc_V_minus_I : process(CLK)
+    variable carry_vector : std_logic_vector(arithm_size downto 0);
+    variable op_V, op_I   : std_logic_vector(arithm_size downto 0);
+    variable result       : std_logic_vector(arithm_size downto 0);
   begin
     CLK_IF : if rising_edge(CLK) then
       RST_if : if RST = '0' then
         REGSYNC_IF : if reg_sync = '1' then
+          -- Nothing special to do here
+          -- expecially, the computation is independant of the sign of the operands.
+          carry          <= '1';
+          -- ... except to store, in parallel a copy of the state variable for
+          -- the next step
+          state_var_int1 <= state_var_int1;
         else
+          carry_vector(carry_vector'low)                              := carry;
+          carry_vector(carry_vector'high downto carry_vector'low + 1) := (others => '0');
+          op_V(op_V'high)                                             := '0';
+          op_V(op_V'high - 1 downto op_V'low) :=
+            state_var_int1(state_var_int1'low + arithm_size - 1 downto state_var_int1 'low);
+          op_I(op_I'high) := '0';
+          op_I(op_I'high - 1 downto op_I'low) :=
+            sc_in(sc_in'low + arithm_size - 1 downto sc_in'low);
+          result := std_logic_vector(not unsigned(op_V) + unsigned(op_I) + unsigned(carry_vector));
+
+
+          
         end if REGSYNC_IF;
       else
         remaining_shift_count <= (others => '0');
       end if RST_IF;
     end if CLK_IF;
-  end process main_proc;
+  end process proc_V_minus_I;
 end architecture rtl;
 
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
-  work.MultiFreqDetect_package.all,
-  work.Meta_data_package.all,
+  work.InterModule_formats.all,
   work.Prefilter_package.all;
 --! @brief Pre-filter state variable storage
 --!
@@ -208,8 +245,8 @@ begin
             else
               sc_io_regs(sc_io_regs'high - ram_data_size downto sc_io_regs'low) <=
                 sc_io_regs(sc_io_regs'high downto sc_io_regs'low + ram_data_size);
-              sc_io_regs(sc_io_regs'high downto sc_io_regs'high - ram_data_size + 1 ) <=
-                sc_io_regs(sc_io_regs'low + ram_data_size - 1 downto sc_io_regs'low );
+              sc_io_regs(sc_io_regs'high downto sc_io_regs'high - ram_data_size + 1) <=
+                sc_io_regs(sc_io_regs'low + ram_data_size - 1 downto sc_io_regs'low);
 
               if unsigned(ram_pos) = to_unsigned(2 * ram_bloc_size * ram_locations_size - 1, ram_pos'length) then
                 ram_pos <= (others => '0');
@@ -246,7 +283,7 @@ end architecture arch;
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
-  work.MultiFreqDetect_package.all,
+  work.InterModule_formats.all,
   work.Meta_data_package.all,
   work.Prefilter_package.all;
 --! @brief Prefilter stage
@@ -269,6 +306,7 @@ end entity Prefilter_stage;
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
+  work.InterModule_formats.all,
   work.MultiFreqDetect_package.all,
   work.Meta_data_package.all,
   work.Prefilter_package.all;
@@ -276,6 +314,9 @@ use IEEE.STD_LOGIC_1164.all,
 --!
 --! This is the bundle for the whoose wants more stages
 entity Prefilter_bundle is
+  generic (
+    --! Defines the number of stages and their offsets ratios
+    stages_offsets : prefilter_stages_offset_list );
   port (
     CLK           : in  std_logic;
     RST           : in  std_logic;

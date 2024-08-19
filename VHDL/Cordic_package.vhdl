@@ -1,5 +1,6 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
+  work.InterModule_formats.all,
   work.Meta_data_package.all,
   work.MultiFreqDetect_package.all;
 
@@ -193,5 +194,6 @@ package Cordic_package is
       scz_before      : in reg_sin_cos_z;
       scz_after       : in reg_sin_cos_z);
   end component Cordic_Interm_monitor;
-  
+
 end package Cordic_package;
+

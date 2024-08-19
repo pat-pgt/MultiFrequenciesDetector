@@ -1,5 +1,6 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
+  work.InterModule_formats.all,
   work.MultiFreqDetect_package.all,
   work.Meta_data_package.all,
   work.Cordic_package.all;
@@ -101,6 +102,7 @@ end architecture rtl;
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
+  work.InterModule_formats.all,
   work.MultiFreqDetect_package.all,
   work.Meta_data_package.all,
   work.Cordic_package.all;

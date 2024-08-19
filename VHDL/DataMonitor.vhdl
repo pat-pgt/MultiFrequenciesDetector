@@ -8,8 +8,8 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
+  work.InterModule_formats.all,
   work.Meta_data_package.starting_octave,
-  work.MultiFreqDetect_package.reg_type,
   work.Meta_data_package.meta_data_t;
 
 entity DataMonitorZ is
@@ -94,8 +94,7 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
   ieee.math_real.all,
-  work.MultiFreqDetect_package.reg_type,
-  work.MultiFreqDetect_package.reg_sin_cos_z,
+  work.InterModule_formats.all,
   work.Meta_data_package.meta_data_t;
 
 entity DataMonitorXYZ is
@@ -147,7 +146,7 @@ end architecture rtl;
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
-  work.MultiFreqDetect_package.reg_type,
+  work.InterModule_formats.all,
   work.Meta_data_package.meta_data_t,
   work.Meta_data_package.meta_data_list_t,
   work.DataMonitor_package.DataMonitorZ;
@@ -194,10 +193,9 @@ end architecture rtl;
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
-  work.MultiFreqDetect_package.reg_type,
+  work.InterModule_formats.all,
   work.Meta_data_package.meta_data_t,
   work.Meta_data_package.meta_data_list_t,
-  work.MultiFreqDetect_package.reg_sin_cos_z,
   work.DataMonitor_package.DataMonitorXYZ;
 
 entity DataMonitorMultiXYZ is
