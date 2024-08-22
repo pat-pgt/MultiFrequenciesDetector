@@ -39,27 +39,29 @@ architecture rtl of Cordic_Bundle_Z_to_0 is
   signal report_catch_chain       : std_logic_vector(stages_catch_list'length downto 0);
 
 begin
-  Catch_monitor_stages : for ind in 1 to stages_catch_list'length generate
-    debug_catch_in_operation <= '1';
-    Interm_monitor_instanc : Cordic_Interm_monitor generic map(
-      Z_not_Y_to_0        => true,
-      stage_num           => stages_catch_list(stages_catch_list'low + ind - 1),
-      metadata_catch_list => metadata_catch_list)
-      port map(
-        CLK             => CLK,
-        RST             => RST,
-        reg_sync        => reg_sync,
-        full_sync       => full_sync,
-        report_in       => report_catch_chain(report_catch_chain'low + ind - 1),
-        report_out      => report_catch_chain(report_catch_chain'low + ind),
-        meta_data_after => meta_data_array(ind),
-        scz_before      => scz_array(ind - 1),
-        scz_after       => scz_array(ind)
-        );
-  end generate Catch_monitor_stages;
+  has_catch_debugs : if stages_catch_list'length > 0 and metadata_catch_list'length > 0 generate
+    Catch_monitor_stages : for ind in 1 to stages_catch_list'length generate
+      debug_catch_in_operation <= '1';
+      Interm_monitor_instanc : Cordic_Interm_monitor generic map(
+        Z_not_Y_to_0        => true,
+        stage_num           => stages_catch_list(stages_catch_list'low + ind - 1),
+        metadata_catch_list => metadata_catch_list)
+        port map(
+          CLK             => CLK,
+          RST             => RST,
+          reg_sync        => reg_sync,
+          full_sync       => full_sync,
+          report_in       => report_catch_chain(report_catch_chain'low + ind - 1),
+          report_out      => report_catch_chain(report_catch_chain'low + ind),
+          meta_data_after => meta_data_array(ind),
+          scz_before      => scz_array(ind - 1),
+          scz_after       => scz_array(ind)
+          );
+    end generate Catch_monitor_stages;
+  end generate has_catch_debugs;
   report_catch_chain(report_catch_chain'low) <= report_in;
   report_out                                 <= report_catch_chain(report_catch_chain'high);
-
+  
   scz_array(0) <= scz_in;
   scz_out      <= scz_array(stages_nbre);
   X_out <= scz_array(stages_nbre).the_cos(scz_array(stages_nbre).the_cos'low + arithm_size - 1 downto
@@ -140,29 +142,30 @@ architecture rtl of Cordic_Bundle_Y_to_0 is
   signal report_catch_chain       : std_logic_vector(stages_catch_list'length downto 0);
 
 begin
-  Catch_monitor_stages : for ind in 1 to stages_catch_list'length generate
-    debug_catch_in_operation <= '1';
-    Interm_monitor_instanc : Cordic_Interm_monitor generic map(
-      Z_not_Y_to_0        => false,
-      stage_num           => stages_catch_list(stages_catch_list'low + ind - 1),
-      metadata_catch_list => metadata_catch_list)
-      port map(
-        CLK             => CLK,
-        RST             => RST,
-        reg_sync        => reg_sync,
-        full_sync       => full_sync,
-        report_in       => report_catch_chain(report_catch_chain'low + ind - 1),
-        report_out      => report_catch_chain(report_catch_chain'low + ind),
-        meta_data_after => meta_data_array(ind),
-        scz_before      => scz_array(ind - 1),
-        scz_after       => scz_array(ind)
-        );
-  end generate Catch_monitor_stages;
+  has_catch_debugs : if stages_catch_list'length > 0 and metadata_catch_list'length > 0 generate
+    Catch_monitor_stages : for ind in 1 to stages_catch_list'length generate
+      debug_catch_in_operation <= '1';
+      Interm_monitor_instanc : Cordic_Interm_monitor generic map(
+        Z_not_Y_to_0        => false,
+        stage_num           => stages_catch_list(stages_catch_list'low + ind - 1),
+        metadata_catch_list => metadata_catch_list)
+        port map(
+          CLK             => CLK,
+          RST             => RST,
+          reg_sync        => reg_sync,
+          full_sync       => full_sync,
+          report_in       => report_catch_chain(report_catch_chain'low + ind - 1),
+          report_out      => report_catch_chain(report_catch_chain'low + ind),
+          meta_data_after => meta_data_array(ind),
+          scz_before      => scz_array(ind - 1),
+          scz_after       => scz_array(ind)
+          );
+    end generate Catch_monitor_stages;
 
-
+  end generate has_catch_debugs;
   report_catch_chain(report_catch_chain'low) <= report_in;
   report_out                                 <= report_catch_chain(report_catch_chain'high);
-
+    
   scz_array(0) <= scz_in;
   X_out <= scz_array(stages_nbre).the_cos(scz_array(stages_nbre).the_cos'low + arithm_size - 1 downto
                                           scz_array(stages_nbre).the_cos'low);

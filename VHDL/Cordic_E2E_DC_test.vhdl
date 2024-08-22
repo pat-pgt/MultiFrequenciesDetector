@@ -35,7 +35,7 @@ entity Cordic_bundle_test_Z_to_0_Y_to_0 is
       13 => octave_note_to_meta_data( octave => 6, note => 4 ),
       14 => octave_all_notes_to_meta_data(octave => 4)
     );
-    stages_catch_list                              : cordic_stages_num_list(3 to 6) := (1,2,6,12)
+    stages_catch_list                              : cordic_stages_num_list(3 to 7) := (1,2,6,10,17)
     );
 end entity Cordic_bundle_test_Z_to_0_Y_to_0;
     

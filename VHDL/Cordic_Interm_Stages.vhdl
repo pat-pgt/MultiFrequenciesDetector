@@ -48,7 +48,7 @@ architecture rtl of Cordic_IntermStage is
   signal debug_catch_Z_sync      : reg_type;
   signal debug_flipflop                         : std_logic := '0';
   signal debug_flipflop_2                       : std_logic := '0';
-  signal angle_add_or_subtract                  : reg_type  := arctg_2_angle_reg(shifts_calc,debug_mode);
+  constant angle_add_or_subtract                  : reg_type  := arctg_2_angle_reg(shifts_calc,debug_mode);
   signal CCW_not_CW                             : std_logic;
   signal X2_plus_Y2 : std_logic_vector( 31 downto 0 );
 begin
