@@ -12,6 +12,7 @@ use IEEE.STD_LOGIC_1164.all,
 package Meta_data_package is
   -- This part contains the user's definitions
 
+  subtype notes_N_range is integer range 1 to 12;
   --! @brief Number of notes per octave
   --!
   --! If 1, the A is used. If 2, the A and the D# are used.
@@ -19,7 +20,7 @@ package Meta_data_package is
   --! If 5, 7, 8, 9, 10 or 11, a strange result is expected but it does not crash
   --! If 12 all the notes are used\n
   --! This is nice for testing or checking an FPGA size
-  constant N_notes          : integer range 1 to 12   := 12;
+  constant N_notes          : notes_N_range   := 12;
   --! @brief Number of octaves.
   --!
   --! It should be at least two, due to restrictions in the angle generator

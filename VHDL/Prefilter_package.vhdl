@@ -4,7 +4,8 @@ use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
   ieee.math_real.all,
   work.InterModule_formats.all,
-  work.Meta_data_package.all;
+  work.Meta_data_package.all,
+work.Frequencies.all;
 
 --! @brief Pre-filter 
 --!
@@ -117,7 +118,7 @@ package PreFilter_package is
   --!   See the other function Meta_data_2_prefilter_coeff_note.\n
   --! This function computes this offset and the ratio between
   --!   the cut-off frequency and the desired frequency (see README.modules).
-  function Meta_data_2_prefilter_coeff_offset( constant cutoff_ratio : real ) return integer; 
+  function Meta_data_2_prefilter_coeff_shifts( constant cutoff_ratio : real ) return integer; 
 
   --! @brief computes the correction of the first order coefficient
   --!
@@ -130,7 +131,7 @@ package PreFilter_package is
   --!   from a frequency F included to a frequency 2.F excluded,
   --!   This function only gives a threshold to add 1 to the shift.
   --!
-  function Meta_data_2_prefilter_coeff_note( constant cutoff_ratio : real ) return integer;
+  function Meta_data_2_prefilter_coeff_note( constant cutoff_ratio : real ) return notes_N_range;
 
   --! @brief Private function for Meta_data_2_prefilter_coeff_offset and Meta_data_2_prefilter_coeff_note
   --!
@@ -146,22 +147,58 @@ end package PreFilter_package;
 
 package body PreFilter_package is
 
-  function Meta_data_2_prefilter_coeff_offset( constant cutoff_ratio : real ) return integer is
-
+  function Meta_data_2_prefilter_coeff_shifts( constant cutoff_ratio : real ) return integer is
+    constant coeff_required : real := Meta_data_2_prefilter_coeff_real( cutoff_ratio );
+    variable coeff_curr : real := 1.0;
+    variable coeff_shifts : natural := 0;
   begin
-    return 0;
-  end function Meta_data_2_prefilter_coeff_offset;
+    -- Beter to stay at a higher than a lower frequency
+    main_loop : while ( 2.0 * coeff_required ) < coeff_curr loop
+      coeff_curr := coeff_curr / 2.0;
+      coeff_shifts := coeff_shifts + 1;
+    end loop main_loop;
+
+    return coeff_shifts;
+  end function Meta_data_2_prefilter_coeff_shifts;
     
-  function Meta_data_2_prefilter_coeff_note( constant cutoff_ratio : real ) return integer is
-
+  function Meta_data_2_prefilter_coeff_note( constant cutoff_ratio : real ) return notes_N_range is
+    constant coeff_required : real := Meta_data_2_prefilter_coeff_real( cutoff_ratio );
+    variable coeff_by_shifts : real := 1.0 / 2.0 ** Meta_data_2_prefilter_coeff_shifts( cutoff_ratio );
+    constant note_threshold : natural := 0;
+    variable the_return : notes_N_range;
   begin
-    return 0;
+    if N_notes < 2 then
+      return N_notes;
+    end if;
+    -- Due to the coeff_shifts function, the required is always lower
+    --   than the one taken by shifts.
+    -- We are going to divide by the spce between notes until it passes under
+    main_loop : for ind in N_notes - 1 downto 1 loop
+      coeff_by_shifts := coeff_by_shifts / ( 2.0 ** ( real( 1 ) / real( N_notes ) ));
+      main_loop_exit : exit main_loop when coeff_by_shifts < coeff_required;
+      the_return := the_return - 1;
+    end loop main_loop;
+    return the_return;
   end function Meta_data_2_prefilter_coeff_note;
 
   function Meta_data_2_prefilter_coeff_real( constant cutoff_ratio : real ) return real is
-
+    -- The relative space between notes,
+    -- taken at the highest note of the octave, is
+    constant cutoff_rel_bandwidth : real := 2.0 - 2.0 ** ( real(N_notes - 1 ) / real( N_notes ) );
+    -- The lowest filtering frequency
+    -- is half of the bandwidth for A00 ( 440 / 32 )
+    constant cutoff_bandwidth_A00 : real := cutoff_ratio * cutoff_rel_bandwidth * 440.0 / ( 32.0 * 2.0 );
+    -- 
+    constant CLK_cycles_per_sample : positive := ( ( reg_size + 1 ) * N_notes * N_octaves );
   begin
-
-    return 0.0;
+    assert cutoff_ratio >= 1.0
+      report "Cut-off ratio " & real'image( cutoff_ratio ) & " lower than 1 is a non sense"
+      severity warning;
+    assert cutoff_ratio <= 3.0
+      report "Cut-off ratio " & real'image( cutoff_ratio ) & " bigger than 3 is a non sense"
+      severity warning;
+     
+    return exp( - 2.0 * 3.1415926 * cutoff_bandwidth_A00 * real( CLK_cycles_per_sample )/ CLK_freq );
   end function Meta_data_2_prefilter_coeff_real;
+  
 end package body PreFilter_package;
