@@ -103,10 +103,10 @@ package PreFilter_package is
       );
   end component Prefilter_bundle;
 
-    --! @brief computes the first order coefficient as a power of 2
+  --! @brief computes the first order coefficient as a power of 2
   --!
   --! The iteration of a first order IIR is
-  --!   Xnext = ( 1 - coeff ) . Xprev + coeff . input .\n
+  --!   Xnext = coeff . Xprev + ( 1 - coeff ). input .\n
   --! The goal of the pre-filter is to have simple coefficients
   --!   to avoid a multiplication. the inverse of power 2 has been chosen.
   --!   Then only shifts are needed.\n
@@ -123,7 +123,7 @@ package PreFilter_package is
   --! @brief computes the correction of the first order coefficient
   --!
   --! The iteration of a first order IIR is
-  --!   Xnext = ( 1 - coeff ) . Xprev + coeff . input .\n
+  --!   Xnext = coeff . Xprev + ( 1 - coeff ). input .\n
   --! Since the coefficients are a power of 2,
   --!   calculated on highest note of the octave,
   --!   some lower notes could have been filtered at a lower (/2) frequency.\n
@@ -152,7 +152,7 @@ package body PreFilter_package is
     variable coeff_curr : real := 1.0;
     variable coeff_shifts : natural := 0;
   begin
-    -- Beter to stay at a higher than a lower frequency
+    -- Better to stay at a higher than a lower frequency
     main_loop : while ( 2.0 * coeff_required ) < coeff_curr loop
       coeff_curr := coeff_curr / 2.0;
       coeff_shifts := coeff_shifts + 1;
@@ -172,7 +172,7 @@ package body PreFilter_package is
     end if;
     -- Due to the coeff_shifts function, the required is always lower
     --   than the one taken by shifts.
-    -- We are going to divide by the spce between notes until it passes under
+    -- We are going to divide by the space between notes until it passes under
     main_loop : for ind in N_notes - 1 downto 1 loop
       coeff_by_shifts := coeff_by_shifts / ( 2.0 ** ( real( 1 ) / real( N_notes ) ));
       main_loop_exit : exit main_loop when coeff_by_shifts < coeff_required;
@@ -198,7 +198,7 @@ package body PreFilter_package is
       report "Cut-off ratio " & real'image( cutoff_ratio ) & " bigger than 3 is a non sense"
       severity warning;
      
-    return exp( - 2.0 * 3.1415926 * cutoff_bandwidth_A00 * real( CLK_cycles_per_sample )/ CLK_freq );
+    return 1.0 - exp( - 2.0 * 3.1415926 * cutoff_bandwidth_A00 * real( CLK_cycles_per_sample )/ CLK_freq );
   end function Meta_data_2_prefilter_coeff_real;
   
 end package body PreFilter_package;
