@@ -1,0 +1,35 @@
+name: Graphviz documentation CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: environement
+      run: sudo apt-get install -y graphviz
+    - name: setup folders
+      run: |
+        mkdir build
+        mkdir build/pdf
+        mkdir build/jpeg
+        mkdir build/png
+    - name: building
+      run: |
+        cd Documentation
+        make DOTLANG=pdf BUILDDIR=../build/pdf/
+        make DOTLANG=jpeg BUILDDIR=../build/jpeg/
+        make DOTLANG=png BUILDDIR=../build/png/
+    - name: return workflow as artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: MultiFrequenciesDetector-doc
+        path: build/*
