@@ -16,7 +16,8 @@ use IEEE.STD_LOGIC_1164.all,
 --! Since the final filtering is very low (against the sampling rate),
 --! a down-sampling follows.\n
 --! That reduces the final filtering resources because
---! * the low pass frequency is closer than the sampling rate (calculation precision)
+--! * the low pass frequency is closer than the sampling rate,
+--!   that reduces the requested number of bits of the operands.
 --! * there are less multiplication and additions.
 package PreFilter_package is
 
