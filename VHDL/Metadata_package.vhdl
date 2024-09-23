@@ -63,6 +63,7 @@ package Meta_data_package is
   function meta_data_image(md                            : meta_data_t) return string;
   --! List of meta data
   --! This is mostly used for testing as a list of octave notes couple
+  --!   or for latency compensation FIFO
   type meta_data_list_t is array(integer range<>) of meta_data_t;
   --! List of stage to monitor
   --! This is mostly used for testing as a list of N and N+1 couples stages

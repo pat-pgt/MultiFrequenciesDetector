@@ -26,89 +26,42 @@ entity Prefilter_metadata_and_shifts_compute is
     shifts_calc   : out shifts_IIR_data);
 end entity Prefilter_metadata_and_shifts_compute;
 
+architecture arch of Prefilter_metadata_and_shifts_compute is
+
+begin
+
+end architecture arch;
+
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
   work.InterModule_formats.all,
   work.MultiFreqDetect_package.all,
-  work.Meta_data_package.all,
   work.Prefilter_package.all;
---! @brief Pre-filter IIR compute
+--! @brief Pre-filter IIR compute_diff
 --!
---! This entity computes one prefilter. They should be bundled by pair
---! for the sine and the cosine.\n
---! The state variable (of the infinite impulse response)
---! is given at the reg_sync.
---! the N-1 state variable is outputted as well.
-entity Prefilter_IIR_compute is
+--! It works by the same way as the other cordic stages.
+--! It is even simpler as it is always a subtraction,
+--!   independent from any data bit.
+entity Prefilter_IIR_stage_diff is
   port (
-    CLK              : in  std_logic;
-    RST              : in  std_logic;
-    reg_sync         : in  std_logic;
-    --
-    shifts_calc      : in  shifts_IIR_data;
-    state_var_in     : in  reg_type;
-    state_var_sc_out : out reg_type;
-    sc_in            : in  reg_type
+    CLK           : in  std_logic;
+    RST           : in  std_logic;
+    reg_sync      : in  std_logic;
+    state_var_in  : in  reg_type;
+    data_input_in : in  reg_type;
+    data_out      : out reg_type
     );
-end entity Prefilter_IIR_compute;
+end entity Prefilter_IIR_stage_diff;
 
 
-architecture rtl of Prefilter_IIR_compute is
-  -- The computation should be something like
-  -- output( N + 1 ) = 0.1 .input + 0.9 . output( N )
-  -- To avoid multiplications, the formula is transformed to:*
-  -- output( N + 1 ) = output( N ) + 0.1 . ( input - output( N ) )
-  -- Since it is a prefilter, only the inverted power of 2
-  -- are used as coefficients.
-  --
-  -- The computation is in 3 steps:
-  -- * input - state variable is computed
-  --   the note and octave are computed to get a shifts number
-  -- * this signal is shifted
-  -- * The shifted signal is added to the state variable
-  --
-
-
-
-
-  -- Some copy and paste, unused signals are going to be removed
-  -- The first bloc of signal is probably unused
-  --
-
-  signal scz_out_s                              : reg_sin_cos_z;
-  -- CW or CCW of the vector, means the Z pins CCW or CW
-  signal carry_X, carry_Y, carry_Z              : std_logic;
-  -- The shifted operand is always reaching the MSB of the shift registers
-  -- before the non shifted.
-  -- Since the new data is coming after the MSB of the current data,
-  -- the high bit should be saved, and used as soon as the current data is over
-  signal sign_X, sign_Y                         : std_logic;
-  signal remaining_shift_count                  : std_logic_vector(5 downto 0);
-  signal is_first                               : std_logic;
-  signal Z_shifts_count                         : std_logic_vector(5 downto 0);
-  signal debug_catch_X_sync, debug_catch_Y_sync : reg_type;
-  signal debug_catch_Z_sync                     : reg_type;
-  signal debug_flipflop                         : std_logic := '0';
-  signal debug_flipflop_2                       : std_logic := '0';
-  signal CCW_not_CW                             : std_logic;
-  signal X2_plus_Y2                             : std_logic_vector(31 downto 0);
-
-  -- From input and ram to the subtraction
+architecture rtl of Prefilter_IIR_stage_diff is
+  signal data_out_s                 : reg_type;
   signal carry_input_minus_statevar : std_logic;
-  -- From subtraction to the shifts
-  signal input_minus_statevar       : reg_type;
-  signal state_var_latch_1          : reg_type;
   -- From shifts to final addition
   signal shifted_val                : reg_type;
-  signal state_var_latch_2          : reg_type;
-  signal carry_final_add            : std_logic;
-  -- Result to replace to the ram and to send to the output
-  signal state_var_sc_out_s         : reg_type;
   
 begin
-  -- To be improved with automatic size
-  assert reg_size < 2**remaining_shift_count'length report "Internal error" severity failure;
   assert reg_size mod arithm_size = 0
     report "The size of the registers (" & integer'image(reg_size) &
     ") should be a multiple of the arithm_size (" & integer'image(arithm_size) & ")"
@@ -117,6 +70,8 @@ begin
     report "The size of the registers (" & integer'image(reg_size) &
     ") should be at least twice of the arithm_size (" & integer'image(arithm_size) & ")"
     severity failure;
+
+  data_out <= data_out_s;
 
   proc_I_minus_SV : process(CLK)
     variable carry_vector : std_logic_vector(arithm_size downto 0);
@@ -130,8 +85,6 @@ begin
           --   as the computation is independent of the sign of the operands.
           -- Set carry to 1 as the subtraction is A - not B + 1
           carry_input_minus_statevar <= '1';
-          -- Store, in parallel a copy of the state variable for the next step
-          state_var_latch_1          <= state_var_in;
         else
           -- Set the variables
           carry_vector(carry_vector'low)                              := carry_input_minus_statevar;
@@ -141,22 +94,63 @@ begin
             state_var_in(state_var_in'low + arithm_size - 1 downto state_var_in'low);
           op_I(op_I'high) := '0';
           op_I(op_I'high - 1 downto op_I'low) :=
-            sc_in(sc_in'low + arithm_size - 1 downto sc_in'low);
+            data_input_in(data_input_in'low + arithm_size - 1 downto data_input_in'low);
           -- Do it
           result_ImSV := std_logic_vector(not unsigned(op_SV) + unsigned(op_I) + unsigned(carry_vector));
           -- Place the result
-          input_minus_statevar(input_minus_statevar'high downto input_minus_statevar'high - arithm_size + 1) <=
+          data_out_s(data_out_s'high downto data_out_s'high - arithm_size + 1) <=
             result_ImSV(result_ImSV'high - 1 downto result_ImSV'low);
           carry_input_minus_statevar <= result_ImSV(result_ImSV'high);
           -- And shift for arithm_size
-          input_minus_statevar(input_minus_statevar'high - arithm_size downto input_minus_statevar'low) <=
-            input_minus_statevar(input_minus_statevar'high downto input_minus_statevar'low + arithm_size);
+          data_out_s(data_out_s'high - arithm_size downto data_out_s'low) <=
+            data_out_s(data_out_s'high downto data_out_s'low + arithm_size);
         end if REGSYNC_IF;
       else
-        input_minus_statevar <= (others => '0');
+        carry_input_minus_statevar <= '1';
+        data_out_s                 <= (others => '0');
       end if RST_IF;
     end if CLK_IF;
   end process proc_I_minus_SV;
+
+end architecture rtl;
+
+
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.all,
+  ieee.numeric_std.all,
+  work.InterModule_formats.all,
+  work.Meta_data_package.all,
+  work.MultiFreqDetect_package.all,
+  work.Prefilter_package.all;
+
+--! @brief Pre-filter IIR compute the shifts
+--!
+--! This is a little bit tricky.\n
+--! One could have use a large set of selectors
+--!   but it is resource consuming
+--!   and may break the small propagation delay of the others.\n 
+--! Up to now, the data comes as low endian to high endian.
+--! Each module uses the previous shift register for its operands
+--! Each module provides its own register for the results
+--!   and for the operands of the next one.
+--! Then more registers are needed\n
+entity Prefilter_IIR_stage_shift is
+  port(
+    CLK         : in  std_logic;
+    RST         : in  std_logic;
+    reg_sync    : in  std_logic;
+    shifts_calc : in  shifts_IIR_data;
+    data_in     : in  reg_type;
+    data_out    : out reg_type
+    );
+end entity Prefilter_IIR_stage_shift;
+
+architecture arch of Prefilter_IIR_stage_shift is
+  signal data_out_s       : reg_type;
+  signal temporary_shifts : positive := 4;
+begin
+  data_out <= data_out_s;
 
   shift_I_minus_SV : process(CLK)
 
@@ -166,15 +160,52 @@ begin
         REGSYNC_IF : if reg_sync = '1' then
           -- Nothing special to do here about configuration,
           --   as the computation is independent of the sign of the operands.
-          -- Store, in parallel a copy of the state variable for the next step
-          state_var_latch_2 <= state_var_latch_1;
 
+
+          -- Temporary code for testing the test
+          data_out_s(data_out_s'high - temporary_shifts downto data_out_s'low) <=
+            data_in(data_in'high downto data_in'low + temporary_shifts);
+          data_out_s(data_out_s'high downto data_out_s'high - temporary_shifts + 1) <=
+            (others => data_in(data_in'high));
         else
-
+          data_out_s(data_out_s'high - arithm_size downto data_out_s'low) <=
+            data_out_s(data_out_s'high downto data_out_s'low + arithm_size);
+          -- There is no high fill u}p as the load is done in parrallel mode
+          -- For debug
+          data_out_s(data_out_s'high downto data_out_s'high - arithm_size + 1) <= (others => '-');
         end if REGSYNC_IF;
+      else
+        data_out_s <= (others => '0');
       end if RST_IF;
     end if CLK_IF;
   end process shift_I_minus_SV;
+
+end architecture arch;
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.all,
+  ieee.numeric_std.all,
+  work.InterModule_formats.all,
+  work.MultiFreqDetect_package.all,
+  work.Prefilter_package.all;
+
+entity Prefilter_IIR_stage_add is
+  port (
+    CLK                : in  std_logic;
+    RST                : in  std_logic;
+    reg_sync           : in  std_logic;
+    state_var_in       : in  reg_type;
+    data_in            : in  reg_type;
+    state_var_data_out : out reg_type
+    );
+end entity Prefilter_IIR_stage_add;
+
+architecture arch of Prefilter_IIR_stage_add is
+  signal carry_final_add      : std_logic;
+  signal state_var_data_out_s : reg_type;
+
+begin
+  state_var_data_out <= state_var_data_out_s;
 
   final_add_proc : process(CLK)
     variable carry_vector     : std_logic_vector(arithm_size downto 0);
@@ -194,31 +225,29 @@ begin
           carry_vector(carry_vector'high downto carry_vector'low + 1) := (others => '0');
           op_L_SV(op_L_SV'high)                                       := '0';
           op_L_SV(op_L_SV'high - 1 downto op_L_SV'low) :=
-            state_var_latch_2(state_var_latch_2'low + arithm_size - 1 downto state_var_latch_2'low);
+            state_var_in(state_var_in'low + arithm_size - 1 downto state_var_in'low);
           op_SHFT(op_SHFT'high) := '0';
           op_SHFT(op_SHFT'high - 1 downto op_SHFT'low) :=
-            sc_in(sc_in'low + arithm_size - 1 downto sc_in'low);
+            data_in(data_in'low + arithm_size - 1 downto data_in'low);
           -- Do it
           result_fa := std_logic_vector(unsigned(op_L_SV) + unsigned(op_SHFT) + unsigned(carry_vector));
           -- Place the result
-          state_var_sc_out_s(state_var_sc_out_s'high downto state_var_sc_out_s'high - arithm_size + 1) <=
+          state_var_data_out_s(state_var_data_out_s'high downto state_var_data_out_s'high - arithm_size + 1) <=
             result_fa(result_fa'high - 1 downto result_fa'low);
           carry_final_add <= result_fa(result_fa'high);
           -- And shift for arithm_size
-          state_var_sc_out_s(state_var_sc_out_s'high - arithm_size downto state_var_sc_out_s'low) <=
-            state_var_sc_out_s(state_var_sc_out_s'high downto state_var_sc_out_s'low + arithm_size);
+          state_var_data_out_s(state_var_data_out_s'high - arithm_size downto state_var_data_out_s'low) <=
+            state_var_data_out_s(state_var_data_out_s'high downto state_var_data_out_s'low + arithm_size);
           
         end if REGSYNC_IF;
-        -- else
-
+      else
+        carry_final_add      <= '0';
+        state_var_data_out_s <= (others => '0');
       end if RST_IF;
     end if CLK_IF;
   end process final_add_proc;
 
-
-
-
-end architecture rtl;
+end architecture arch;
 
 
 library IEEE;
@@ -258,7 +287,7 @@ entity Prefilter_Storage is
 end entity Prefilter_Storage;
 
 --! This architecture manages the multiplexing
---! of reg_size bits of sine and reg_size bits os cosine into
+--! of reg_size bits of sine and reg_size bits of cosine into
 --! words of ram_data_size of a RAM.\n
 --! Since there is no Arithmetic, ram_data_size is greater than arithm size.
 --! Then there is time between two reg_sync to handle the multiplexing.
@@ -335,7 +364,7 @@ begin
           SV_sin_out_s(SV_sin_out_s'high downto SV_sin_out_s'high - arithm_size + 1) <= (others => '-');
           SV_cos_out_s(SV_cos_out_s'high downto SV_cos_out_s'high - arithm_size + 1) <= (others => '-');
           -- There are ram_bloc_state read_modify write to do    
-          -- * 2 as there is 2 RAZM addr, data and enable states
+          -- * 2 as there is 2 RAM addr, data and enable states
           -- * 2 as there is the sin and the cosine
           MPS : if to_integer(unsigned(multiplex_state)) /= (2 * ram_bloc_size * 2) then
             -- To be compatible with many RAMs, the strategy is
@@ -396,6 +425,10 @@ use IEEE.STD_LOGIC_1164.all,
 --! with their associated memory storage and
 --! delay for the metadata.
 entity Prefilter_stage is
+  generic (
+    the_stage_offset : real                 := 1.0;
+    is_debug_mode    : integer range 0 to 2 := 0
+    );
   port (
     CLK           : in  std_logic;
     RST           : in  std_logic;
@@ -408,43 +441,168 @@ entity Prefilter_stage is
 end entity Prefilter_stage;
 
 architecture arch of Prefilter_stage is
-  signal shifts_calc     : shifts_IIR_data;
-  signal scz_out_s       : reg_sin_cos_z;
+  signal shifts_calc               : shifts_IIR_data;
+  signal scz_out_s                 : reg_sin_cos_z;
+  signal sin_diff_shift            : reg_type;
+  signal cos_diff_shift            : reg_type;
+  signal sin_shift_add             : reg_type;
+  signal cos_shift_add             : reg_type;
+  signal meta_data_diff            : meta_data_t;
   -- Is nice for testing with 3 frequencies
   --   separately from the RAM test
-  signal temporary_RAM_S : reg_type;
-  signal temporary_RAM_C : reg_type;
+  signal temporary_RAM_S           : reg_type;
+  signal temporary_RAM_C           : reg_type;
+  constant prefilter_diff_latency  : positive := 1;
+  constant prefilter_shift_latency : positive := 1;
+  constant prefilter_add_latency   : positive := 1;
+  -- The latency of the diff module is already handled
+  --   in the shift "detector" component
+  signal meta_data_delay : meta_data_list_t(prefilter_diff_latency - 1 +
+                                            prefilter_shift_latency +
+                                            prefilter_add_latency downto 1);
+  signal state_var_delay_s : reg_type_list(prefilter_diff_latency + prefilter_shift_latency downto 1);
+  signal state_var_delay_c : reg_type_list(prefilter_diff_latency + prefilter_shift_latency downto 1);
 begin
-  scz_out <= scz_out_s;
+  scz_out       <= scz_out_s;
+  meta_data_out <= meta_data_delay(meta_data_delay'low);
 
-  temporary_RAM_S <= scz_out_s.the_sin;
-  temporary_RAM_C <= scz_out_s.the_cos;
+  assert state_var_delay_s'length > 1 and state_var_delay_c'length > 1
+    report "Internal error, the delay should be at least 2 reg_sync"
+    severity failure;
+
   
-  sine_IIR_compute : Prefilter_IIR_compute port map(
-    CLK              => CLK,
-    RST              => RST,
-    reg_sync         => reg_sync,
-    shifts_calc      => shifts_calc,
-    state_var_in     => temporary_RAM_S,
-    state_var_sc_out => scz_out_s.the_sin,
-    sc_in            => scz_in.the_sin);
+  main_proc : process (CLK) is
+  begin
+    CLK_IF : if rising_edge(CLK) then
+      REGSYNC_IF : if reg_sync = '1' then
+        -- The metadata is transfered using parallel mode
+        meta_data_delay(meta_data_delay'high - 1 downto meta_data_delay'low) <=
+          meta_data_delay(meta_data_delay'high downto meta_data_delay'low + 1);
+        meta_data_delay(meta_data_delay'high)     <= meta_data_diff;
+        -- The state variable delay line has nothing to do during the sync
+        -- only load
+        state_var_delay_s(state_var_delay_s'high) <= temporary_RAM_S;
+        state_var_delay_c(state_var_delay_c'high) <= temporary_RAM_C;
+      else
+        -- This is equivalent to write a component to transfer
+        --   without any arithmetics, and to place it under a generate
+        shifts_delay_RAM_s : for ind in 1 to state_var_delay_s'length loop
+          -- Shift the register itself
+          state_var_delay_s(state_var_delay_s'low + ind - 1)(
+            state_var_delay_s(state_var_delay_s'low + ind - 1)'high - arithm_size downto
+            state_var_delay_s(state_var_delay_s'low + ind - 1)'low)  <=
+            state_var_delay_s(state_var_delay_s'low + ind - 1)(
+              state_var_delay_s(state_var_delay_s'low + ind - 1)'high downto
+              state_var_delay_s(state_var_delay_s'low + ind - 1)'low + arithm_size);
+          -- And pass the arithm_size low to the high of the next register
+          if ind /= 1 then
+            state_var_delay_s(state_var_delay_s'low + ind - 2)(
+              state_var_delay_s(state_var_delay_s'low + ind - 2)'high downto
+              state_var_delay_s(state_var_delay_s'low + ind - 2)'high - arithm_size + 1)  <=
+              state_var_delay_s(state_var_delay_s'low + ind - 1)(
+                state_var_delay_s(state_var_delay_s'low + ind - 1)'low + arithm_size - 1 downto
+                state_var_delay_s(state_var_delay_s'low + ind - 1)'low);
+          end if;
+        end loop shifts_delay_RAM_s;
+        shifts_delay_RAM_c : for ind in 1 to state_var_delay_c'length loop
+          -- Shift the register itself
+          state_var_delay_c(state_var_delay_c'low + ind - 1)(
+            state_var_delay_c(state_var_delay_c'low + ind - 1)'high - arithm_size downto
+            state_var_delay_c(state_var_delay_c'low + ind - 1)'low)  <=
+            state_var_delay_c(state_var_delay_c'low + ind - 1)(
+              state_var_delay_c(state_var_delay_c'low + ind - 1)'high downto
+              state_var_delay_c(state_var_delay_c'low + ind - 1)'low + arithm_size);
+          if ind /= 1 then
+            state_var_delay_c(state_var_delay_c'low + ind - 2)(
+              state_var_delay_c(state_var_delay_c'low + ind - 2)'high downto
+              state_var_delay_c(state_var_delay_c'low + ind - 2)'high - arithm_size + 1)  <=
+              state_var_delay_c(state_var_delay_c'low + ind - 1)(
+                state_var_delay_c(state_var_delay_c'low + ind - 1)'low + arithm_size - 1 downto
+                state_var_delay_c(state_var_delay_c'low + ind - 1)'low);
+          end if;
+        end loop shifts_delay_RAM_c;
+      end if REGSYNC_IF;
+    end if CLK_if;
+  end process main_proc;
 
-  cosine_IIR_compute : Prefilter_IIR_compute port map(
-    CLK              => CLK,
-    RST              => RST,
-    reg_sync         => reg_sync,
-    shifts_calc      => shifts_calc,
-    state_var_in     => temporary_RAM_C,
-    state_var_sc_out => scz_out_s.the_cos,
-    sc_in            => scz_in.the_cos);
-    
-    
+  --! The full service mode
+  --! There are no restriction on the number of notes nor octves
+  --normal_RAM_mode : if is_debug_mode = 0 generate
+  assert is_debug_mode /= 0 report "Sorry not yet implemented" severity failure;
+  --end generate normal_RAM_mode;
+
+  --! The RAM is replaced by a loopback
+  --! This is to verify the filter itself without the RAM
+  --! The number of notes and octaves should restrict to 3 data.
+  force_RAM_3_values : if is_debug_mode = 1 generate
+    temporary_RAM_S <= scz_out_s.the_sin;
+    temporary_RAM_C <= scz_out_s.the_cos;
+  end generate force_RAM_3_values;
+
+--! The highest debug level
+  --! The output of the RAM is forced to 0
+  --!   in order to check the input goes to the output with
+  --!   some right shifts
+  --! There are no restriction on the number of notes nor octves
+  force_RAM_to_0 : if is_debug_mode = 2 generate
+    temporary_RAM_S <= (others => '0');
+    temporary_RAM_C <= (others => '0');
+  end generate force_RAM_to_0;
+  
+  sine_IIR_diff : Prefilter_IIR_stage_diff port map(
+    CLK           => CLK,
+    RST           => RST,
+    reg_sync      => reg_sync,
+    state_var_in  => temporary_RAM_S,
+    data_out      => sin_diff_shift,
+    data_input_in => scz_in.the_sin);
+
+  sine_IIR_shift : Prefilter_IIR_stage_shift port map(
+    CLK         => CLK,
+    RST         => RST,
+    reg_sync    => reg_sync,
+    shifts_calc => shifts_calc,
+    data_in     => sin_diff_shift,
+    data_out    => sin_shift_add);
+
+  sine_IIR_add : Prefilter_IIR_stage_add port map(
+    CLK                => CLK,
+    RST                => RST,
+    reg_sync           => reg_sync,
+    state_var_in       => state_var_delay_s(state_var_delay_s'low),
+    data_in            => sin_shift_add,
+    state_var_data_out => scz_out_s.the_sin);
+
+  cose_IIR_diff : Prefilter_IIR_stage_diff port map(
+    CLK           => CLK,
+    RST           => RST,
+    reg_sync      => reg_sync,
+    state_var_in  => temporary_RAM_S,
+    data_out      => cos_diff_shift,
+    data_input_in => scz_in.the_cos);
+
+  cose_IIR_shift : Prefilter_IIR_stage_shift port map(
+    CLK         => CLK,
+    RST         => RST,
+    reg_sync    => reg_sync,
+    shifts_calc => shifts_calc,
+    data_in     => cos_diff_shift,
+    data_out    => cos_shift_add);
+
+  cose_IIR_add : Prefilter_IIR_stage_add port map(
+    CLK                => CLK,
+    RST                => RST,
+    reg_sync           => reg_sync,
+    state_var_in       => state_var_delay_c(state_var_delay_c'low),
+    data_in            => cos_shift_add,
+    state_var_data_out => scz_out_s.the_cos);
+
   meta_data_compute : Prefilter_metadata_and_shifts_compute port map (
     CLK           => CLK,
     RST           => RST,
     reg_sync      => reg_sync,
     meta_data_in  => meta_data_in,
-    meta_data_out => meta_data_out,
+    meta_data_out => meta_data_diff,
     shifts_calc   => shifts_calc);
 
 end architecture arch;
@@ -463,7 +621,8 @@ use IEEE.STD_LOGIC_1164.all,
 entity Prefilter_bundle is
   generic (
     --! Defines the number of stages and their offsets ratios
-    stages_offsets : prefilter_stages_offset_list);
+    stages_offsets : prefilter_stages_offset_list;
+    is_debug_mode  : integer range 0 to 2 := 0);
   port (
     CLK           : in  std_logic;
     RST           : in  std_logic;
@@ -475,3 +634,29 @@ entity Prefilter_bundle is
     );
 end entity Prefilter_bundle;
 
+architecture arch of Prefilter_bundle is
+  signal scz_interm       : reg_sin_cos_z_list(stages_offsets'length downto 0);
+  signal meta_data_interm : meta_data_list_t(stages_offsets'length downto 0);
+begin
+  assert stages_offsets'length > 0 report "The number of pre-filter stages should not be 0" severity failure;
+
+  meta_data_interm(meta_data_interm'high) <= meta_data_in;
+  meta_data_out                           <= meta_data_interm(meta_data_interm'low);
+  scz_interm(scz_interm'high)             <= scz_in;
+  scz_out                                 <= scz_interm(scz_interm'low);
+
+  Prefilter_generate : for ind in 0 to stages_offsets'length - 1 generate
+    bundle_elem : Prefilter_stage generic map (
+      the_stage_offset => stages_offsets(stages_offsets'low - ind),
+      is_debug_mode    => is_debug_mode)
+      port map (
+        CLK           => CLK,
+        RST           => RST,
+        reg_sync      => reg_sync,
+        meta_data_in  => meta_data_interm(meta_data_interm'low + ind + 1),
+        meta_data_out => meta_data_interm(meta_data_interm'low + ind),
+        scz_in        => scz_interm(scz_interm'low + ind + 1),
+        scz_out       => scz_interm(scz_interm'low + ind));
+  end generate Prefilter_generate;
+  
+end architecture arch;

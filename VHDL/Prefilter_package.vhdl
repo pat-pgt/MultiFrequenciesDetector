@@ -3,6 +3,7 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
   ieee.math_real.all,
+  work.MultiFreqDetect_package.all,
   work.InterModule_formats.all,
   work.Meta_data_package.all,
   work.Frequencies.all;
@@ -18,7 +19,12 @@ use IEEE.STD_LOGIC_1164.all,
 --! That reduces the final filtering resources because
 --! * the low pass frequency is closer than the sampling rate,
 --!   that reduces the requested number of bits of the operands.
---! * there are less multiplication and additions.
+--! * there are less multiplication and additions.\n
+--! ***********************************************|||**
+--! *               WARNING                            *
+--! * Some additional assertions have to be written    *
+--! * To validate the shifts "detection" and execution *
+--! ****************************************************
 package PreFilter_package is
 
   constant ram_data_size : positive := 16;
@@ -53,22 +59,89 @@ package PreFilter_package is
 
 --! @brief Pre-filter IIR compute
 --!
---! This component computes one prefilter. They should be bundled by pair
---! for the sine and the cosine.\n
---! The state variable (of the infinite impulse response)
---! is given at the reg_sync.
---! the N-1 state variable is outputted as well.
-  component Prefilter_IIR_compute is
+--! This a a dummy component to include some documentation
+--!   used both by the 3 computation components.\n
+--! They should be bundle by pair to compute the sine and the cosine.\n
+--! The computation should be something like
+  --! output( N + 1 ) = 0.1 .input + 0.9 . output( N )
+  --! To avoid multiplications, the formula is transformed to:*
+  --! output( N + 1 ) = output( N ) + 0.1 . ( input - output( N ) )
+  --! Since it is a prefilter, only the inverted power of 2
+  --! are used as coefficients.
+  --!
+  --! The computation is in 3 steps:
+  --! * input - state variable is computed
+  --!   the note and octave are computed to get a shifts number
+  --! * this signal is shifted
+  --! * The shifted signal is added to the state variable
+  component Prefilter_IIR_stage_dummy is
+    port (
+      CLK              : in  std_logic;
+      state_var_in     : in  reg_type
+      );
+  end component Prefilter_IIR_stage_dummy;
+
+
+
+--! @brief Pre-filter IIR compute the diff
+--!
+--! This component computes the diff beween
+--!   the input and the state variable.\n
+--! Even with data lost by the shift,
+--!   It is slightly better and
+--!   and wouldn't consume too much resources
+--!   to perform the calculation on the full precision.
+--! For more information about the calculation,
+--!   see Prefilter_IIR_stage_dummy.
+  component Prefilter_IIR_stage_diff is
+    port (
+      CLK              : in  std_logic;
+      RST              : in  std_logic;
+      reg_sync         : in  std_logic;
+      state_var_in     : in  reg_type;
+      data_input_in    : in  reg_type;
+      data_out         : out reg_type
+      );
+  end component Prefilter_IIR_stage_diff;
+--! @brief Pre-filter IIR compute the shifts
+--!
+--! This component computes the shift
+--!   to divide by 2**N.\n
+--! It may need, in the future a configure statement
+--!   to switch different architectures
+--!   for different groups of configuration.
+--!   See in the entity documentation.\n
+--! For more information about the calculation,
+--!   see Prefilter_IIR_stage_dummy.
+  component Prefilter_IIR_stage_shift is
     port (
       CLK              : in  std_logic;
       RST              : in  std_logic;
       reg_sync         : in  std_logic;
       shifts_calc      : in  shifts_IIR_data;
-      state_var_in     : in  reg_type;
-      state_var_sc_out : out reg_type;
-      sc_in            : in  reg_type
+      data_in          : in  reg_type;
+      data_out         : out reg_type
       );
-  end component Prefilter_IIR_compute;
+  end component Prefilter_IIR_stage_shift;
+--! @brief Pre-filter IIR compute the add
+--!
+--! This component computes the final addition.\n
+--! The result is the output and the new state variable
+--!   to be stored into the RAM.\n
+--! For more information about the calculation,
+--!   see Prefilter_IIR_stage_dummy.
+  component Prefilter_IIR_stage_add is
+    port (
+      CLK                : in  std_logic;
+      RST                : in  std_logic;
+      reg_sync           : in  std_logic;
+      -- This signal has to be delayed
+      -- the latency of the diff and the shift
+      state_var_in       : in  reg_type;
+      data_in            : in  reg_type;
+      state_var_data_out : out reg_type
+      );
+  end component Prefilter_IIR_stage_add;
 
 
 --! @brief Pre-filter state variable storage
@@ -107,6 +180,10 @@ package PreFilter_package is
 --! with their associated memory storage and
 --! delay for the meta-data.
   component Prefilter_stage is
+    generic (
+      the_stage_offset : real := 1.0;
+      is_debug_mode : integer range 0 to 2 := 0
+      );
     port (
       CLK           : in  std_logic;
       RST           : in  std_logic;
@@ -121,6 +198,10 @@ package PreFilter_package is
 --!
 --! This is the bundle for the whose wants more stages
   component Prefilter_bundle is
+    generic (
+      --! Defines the number of stages and their offsets ratios
+      stages_offsets : prefilter_stages_offset_list;
+      is_debug_mode : integer range 0 to 2 := 0);
     port (
       CLK           : in  std_logic;
       RST           : in  std_logic;

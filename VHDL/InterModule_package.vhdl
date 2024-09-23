@@ -44,6 +44,9 @@ package InterModule_formats is
   --! It is relevant to also keep Z in the same scale as X and Y.\n
   --! Since we are using serial calculation, all the 3 have the same length.
   subtype reg_type is std_logic_vector(reg_size - 1 downto 0);
+  --! List of reg types
+  --! This is mostly used for latency compensation FIFO
+  type reg_type_list is array(integer range<>) of reg_type;  
   --! Data link between the stages
   --!
   --! All the values are passed in serial mode bit by bits
@@ -61,5 +64,6 @@ package InterModule_formats is
     angle_z : reg_type;
   end record reg_sin_cos_z;
 
-
+  type reg_sin_cos_z_list is array(integer range<>) of reg_sin_cos_z;
+  
 end package InterModule_formats;
