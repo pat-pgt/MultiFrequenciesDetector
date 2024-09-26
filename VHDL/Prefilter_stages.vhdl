@@ -58,9 +58,7 @@ end entity Prefilter_IIR_stage_diff;
 architecture rtl of Prefilter_IIR_stage_diff is
   signal data_out_s                 : reg_type;
   signal carry_input_minus_statevar : std_logic;
-  -- From shifts to final addition
-  signal shifted_val                : reg_type;
-  
+-- From shifts to final addition
 begin
   assert reg_size mod arithm_size = 0
     report "The size of the registers (" & integer'image(reg_size) &
@@ -91,12 +89,12 @@ begin
           carry_vector(carry_vector'high downto carry_vector'low + 1) := (others => '0');
           op_SV(op_SV'high)                                           := '0';
           op_SV(op_SV'high - 1 downto op_SV'low) :=
-            state_var_in(state_var_in'low + arithm_size - 1 downto state_var_in'low);
+            not state_var_in(state_var_in'low + arithm_size - 1 downto state_var_in'low);
           op_I(op_I'high) := '0';
           op_I(op_I'high - 1 downto op_I'low) :=
             data_input_in(data_input_in'low + arithm_size - 1 downto data_input_in'low);
           -- Do it
-          result_ImSV := std_logic_vector(not unsigned(op_SV) + unsigned(op_I) + unsigned(carry_vector));
+          result_ImSV := std_logic_vector(unsigned(op_SV) + unsigned(op_I) + unsigned(carry_vector));
           -- Place the result
           data_out_s(data_out_s'high downto data_out_s'high - arithm_size + 1) <=
             result_ImSV(result_ImSV'high - 1 downto result_ImSV'low);
@@ -427,7 +425,7 @@ use IEEE.STD_LOGIC_1164.all,
 entity Prefilter_stage is
   generic (
     the_stage_offset : real                 := 1.0;
-    is_debug_mode    : integer range 0 to 2 := 0
+    debug_level      : integer range 0 to 2 := 0
     );
   port (
     CLK           : in  std_logic;
@@ -527,14 +525,14 @@ begin
 
   --! The full service mode
   --! There are no restriction on the number of notes nor octves
-  --normal_RAM_mode : if is_debug_mode = 0 generate
-  assert is_debug_mode /= 0 report "Sorry not yet implemented" severity failure;
+  --normal_RAM_mode : if debug_level = 0 generate
+  assert debug_level /= 0 report "Sorry not yet implemented" severity failure;
   --end generate normal_RAM_mode;
 
   --! The RAM is replaced by a loopback
   --! This is to verify the filter itself without the RAM
   --! The number of notes and octaves should restrict to 3 data.
-  force_RAM_3_values : if is_debug_mode = 1 generate
+  force_RAM_3_values : if debug_level = 1 generate
     temporary_RAM_S <= scz_out_s.the_sin;
     temporary_RAM_C <= scz_out_s.the_cos;
   end generate force_RAM_3_values;
@@ -544,7 +542,7 @@ begin
   --!   in order to check the input goes to the output with
   --!   some right shifts
   --! There are no restriction on the number of notes nor octves
-  force_RAM_to_0 : if is_debug_mode = 2 generate
+  force_RAM_to_0 : if debug_level = 2 generate
     temporary_RAM_S <= (others => '0');
     temporary_RAM_C <= (others => '0');
   end generate force_RAM_to_0;
@@ -622,7 +620,7 @@ entity Prefilter_bundle is
   generic (
     --! Defines the number of stages and their offsets ratios
     stages_offsets : prefilter_stages_offset_list;
-    is_debug_mode  : integer range 0 to 2 := 0);
+    debug_level    : integer range 0 to 2 := 0);
   port (
     CLK           : in  std_logic;
     RST           : in  std_logic;
@@ -648,7 +646,7 @@ begin
   Prefilter_generate : for ind in 0 to stages_offsets'length - 1 generate
     bundle_elem : Prefilter_stage generic map (
       the_stage_offset => stages_offsets(stages_offsets'low - ind),
-      is_debug_mode    => is_debug_mode)
+      debug_level      => debug_level)
       port map (
         CLK           => CLK,
         RST           => RST,

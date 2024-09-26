@@ -50,11 +50,17 @@ simul_Prefilter_Storage : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages
 	$(GHDL_PROG) -e Prefilter_Storage_Test
 	$(GHDL_PROG) -r Prefilter_Storage_Test --vcd=$(WAVDESTDIR)PrefilterStorage.wav 2>&1 | tee $(DESTDIR)PrefilterStorage.out.txt
 
-simul_Prefilter_Stages : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages.vhdl $(SCRDIR)Cordic_Interm_Stages.vhdl $(SCRDIR)Cordic_Bundle_Stages.vhdl $(SCRDIR)DataMonitor.vhdl
+simul_Prefilter_Stages_debug2 : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages.vhdl $(SCRDIR)Cordic_Interm_Stages.vhdl $(SCRDIR)Cordic_Bundle_Stages.vhdl $(SCRDIR)DataMonitor.vhdl
 	$(GHDL_PROG) -a $(SCRDIR)Prefilter_stages.vhdl
 	$(GHDL_PROG) -a $(SCRDIR)Prefilter_test.vhdl
-	$(GHDL_PROG) -e Prefilter_Stages_test
-	$(GHDL_PROG) -r Prefilter_Stages_test --vcd=$(WAVDESTDIR)PrefilterStages.wav 2>&1 | tee $(DESTDIR)PrefilterStages.out.txt
+	$(GHDL_PROG) -e Prefilter_Stages_test_debug2
+	$(GHDL_PROG) -r Prefilter_Stages_test_debug2 --vcd=$(WAVDESTDIR)PrefilterStagesTestDebug2.wav 2>&1 | tee $(DESTDIR)PrefilterStagesTestDebug2.out.txt
+
+simul_Prefilter_Stages_debug1 : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages.vhdl $(SCRDIR)Cordic_Interm_Stages.vhdl $(SCRDIR)Cordic_Bundle_Stages.vhdl $(SCRDIR)DataMonitor.vhdl
+	$(GHDL_PROG) -a $(SCRDIR)Prefilter_stages.vhdl
+	$(GHDL_PROG) -a $(SCRDIR)Prefilter_test.vhdl
+	$(GHDL_PROG) -e Prefilter_Stages_test_debug1
+	$(GHDL_PROG) -r Prefilter_Stages_test_debug1 --vcd=$(WAVDESTDIR)PrefilterStagesTestDebug1.wav 2>&1 | tee $(DESTDIR)PrefilterStagesTestDebug1.out.txt
 
 synth_AnglesGene	: $(BUILDDIR)packages_compiled
 	$(GHDL_PROG) -a $(SCRDIR)AnglesGene.vhdl

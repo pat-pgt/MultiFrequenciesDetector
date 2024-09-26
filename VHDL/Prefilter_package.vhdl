@@ -182,7 +182,7 @@ package PreFilter_package is
   component Prefilter_stage is
     generic (
       the_stage_offset : real := 1.0;
-      is_debug_mode : integer range 0 to 2 := 0
+      debug_level : integer range 0 to 2 := 0
       );
     port (
       CLK           : in  std_logic;
@@ -201,7 +201,7 @@ package PreFilter_package is
     generic (
       --! Defines the number of stages and their offsets ratios
       stages_offsets : prefilter_stages_offset_list;
-      is_debug_mode : integer range 0 to 2 := 0);
+      debug_level : integer range 0 to 2 := 0);
     port (
       CLK           : in  std_logic;
       RST           : in  std_logic;
