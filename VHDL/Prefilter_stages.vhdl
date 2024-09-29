@@ -56,7 +56,6 @@ end entity Prefilter_IIR_stage_diff;
 
 
 architecture rtl of Prefilter_IIR_stage_diff is
-  signal data_out_s                 : reg_type;
   signal carry_input_minus_statevar : std_logic;
 -- From shifts to final addition
 begin
@@ -68,8 +67,6 @@ begin
     report "The size of the registers (" & integer'image(reg_size) &
     ") should be at least twice of the arithm_size (" & integer'image(arithm_size) & ")"
     severity failure;
-
-  data_out <= data_out_s;
 
   proc_I_minus_SV : process(CLK)
     variable carry_vector : std_logic_vector(arithm_size downto 0);
@@ -96,16 +93,16 @@ begin
           -- Do it
           result_ImSV := std_logic_vector(unsigned(op_SV) + unsigned(op_I) + unsigned(carry_vector));
           -- Place the result
-          data_out_s(data_out_s'high downto data_out_s'high - arithm_size + 1) <=
+          data_out(data_out'high downto data_out'high - arithm_size + 1) <=
             result_ImSV(result_ImSV'high - 1 downto result_ImSV'low);
           carry_input_minus_statevar <= result_ImSV(result_ImSV'high);
           -- And shift for arithm_size
-          data_out_s(data_out_s'high - arithm_size downto data_out_s'low) <=
-            data_out_s(data_out_s'high downto data_out_s'low + arithm_size);
+          data_out(data_out'high - arithm_size downto data_out'low) <=
+            data_out(data_out'high downto data_out'low + arithm_size);
         end if REGSYNC_IF;
       else
         carry_input_minus_statevar <= '1';
-        data_out_s                 <= (others => '0');
+        data_out                 <= (others => '0');
       end if RST_IF;
     end if CLK_IF;
   end process proc_I_minus_SV;
@@ -145,10 +142,8 @@ entity Prefilter_IIR_stage_shift is
 end entity Prefilter_IIR_stage_shift;
 
 architecture arch of Prefilter_IIR_stage_shift is
-  signal data_out_s       : reg_type;
   signal temporary_shifts : positive := 4;
 begin
-  data_out <= data_out_s;
 
   shift_I_minus_SV : process(CLK)
 
@@ -161,19 +156,19 @@ begin
 
 
           -- Temporary code for testing the test
-          data_out_s(data_out_s'high - temporary_shifts downto data_out_s'low) <=
+          data_out(data_out'high - temporary_shifts downto data_out'low) <=
             data_in(data_in'high downto data_in'low + temporary_shifts);
-          data_out_s(data_out_s'high downto data_out_s'high - temporary_shifts + 1) <=
+          data_out(data_out'high downto data_out'high - temporary_shifts + 1) <=
             (others => data_in(data_in'high));
         else
-          data_out_s(data_out_s'high - arithm_size downto data_out_s'low) <=
-            data_out_s(data_out_s'high downto data_out_s'low + arithm_size);
+          data_out(data_out'high - arithm_size downto data_out'low) <=
+            data_out(data_out'high downto data_out'low + arithm_size);
           -- There is no high fill u}p as the load is done in parrallel mode
           -- For debug
-          data_out_s(data_out_s'high downto data_out_s'high - arithm_size + 1) <= (others => '-');
+          data_out(data_out'high downto data_out'high - arithm_size + 1) <= (others => '-');
         end if REGSYNC_IF;
       else
-        data_out_s <= (others => '0');
+        data_out <= (others => '0');
       end if RST_IF;
     end if CLK_IF;
   end process shift_I_minus_SV;
@@ -200,10 +195,8 @@ end entity Prefilter_IIR_stage_add;
 
 architecture arch of Prefilter_IIR_stage_add is
   signal carry_final_add      : std_logic;
-  signal state_var_data_out_s : reg_type;
 
 begin
-  state_var_data_out <= state_var_data_out_s;
 
   final_add_proc : process(CLK)
     variable carry_vector     : std_logic_vector(arithm_size downto 0);
@@ -230,17 +223,17 @@ begin
           -- Do it
           result_fa := std_logic_vector(unsigned(op_L_SV) + unsigned(op_SHFT) + unsigned(carry_vector));
           -- Place the result
-          state_var_data_out_s(state_var_data_out_s'high downto state_var_data_out_s'high - arithm_size + 1) <=
+          state_var_data_out(state_var_data_out'high downto state_var_data_out'high - arithm_size + 1) <=
             result_fa(result_fa'high - 1 downto result_fa'low);
           carry_final_add <= result_fa(result_fa'high);
           -- And shift for arithm_size
-          state_var_data_out_s(state_var_data_out_s'high - arithm_size downto state_var_data_out_s'low) <=
-            state_var_data_out_s(state_var_data_out_s'high downto state_var_data_out_s'low + arithm_size);
+          state_var_data_out(state_var_data_out'high - arithm_size downto state_var_data_out'low) <=
+            state_var_data_out(state_var_data_out'high downto state_var_data_out'low + arithm_size);
           
         end if REGSYNC_IF;
       else
         carry_final_add      <= '0';
-        state_var_data_out_s <= (others => '0');
+        state_var_data_out <= (others => '0');
       end if RST_IF;
     end if CLK_IF;
   end process final_add_proc;
