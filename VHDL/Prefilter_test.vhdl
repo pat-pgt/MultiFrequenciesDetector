@@ -4,6 +4,23 @@ use IEEE.STD_LOGIC_1164.all,
   ieee.math_real.all,
   work.InterModule_formats.all;
 
+--! @brief Patterns generator
+--!
+--! This is a standard interface to generate the test patterns\n
+--! A new value should be issued at each fall of the clock,
+--!   which is not the master clock of the project.\n
+--! The global counter is divided into
+--! * a cycles count from 0 to 2**cycles_bits -1
+--! * a sub_cycles count from 0 to 2**sub_cycles_bits -1
+--! * a sample count from 0 to the Prefilter latency ( -1 ).\n
+--! The sum of the cycles and the sub_cycles bits
+--!   is guarantee to be less than the reg_size.\n
+--! Many patterns are possible and are instantiated
+--!   into many architectures.
+--! The switch is done, using the configuration statements,
+--!   in order to choose which one is tested or
+--!   to run run all of them in parallel.\n
+--! The checker should be the one designed for the generator in use.
 entity Prefilter_stages_gen_pattern is
   generic (
     cycles_bits     : integer range 2 to reg_size;
@@ -18,6 +35,13 @@ entity Prefilter_stages_gen_pattern is
     );
 end entity Prefilter_stages_gen_pattern;
 
+--! @brief Basic counters stitching, mode 1
+--!
+--! This is intended to check the input passes through
+--!   the pre-filter without RAM, with a constant shift.\n
+--! The content of the RAM (last state variable) should be tied to 0.\n
+--! In this mode, the bits are padded at the bottom by 0's or 1's,
+--!   according with the sample_count.
 architecture Patterns_1_RAM_tied_0 of Prefilter_stages_gen_pattern is
 begin
   main_proc : process(CLK_fall) is
@@ -38,6 +62,13 @@ begin
   end process main_proc;
 end architecture Patterns_1_RAM_tied_0;
 
+--! @brief Basic counters stitching, mode 2
+--!
+--! This is intended to check the input passes through
+--!   the pre-filter without RAM, with a constant shift.\n
+--! The content of the RAM (last state variable) should be tied to 0.\n
+--! In this mode, the bits are padded at the middle by 0's or 1's,
+--!   according with the sample_count.
 architecture Patterns_2_RAM_tied_0 of Prefilter_stages_gen_pattern is
 begin
   main_proc : process(CLK_fall) is
@@ -58,6 +89,13 @@ begin
   end process main_proc;
 end architecture Patterns_2_RAM_tied_0;
 
+--! @brief Default architecture
+--!
+--! Assume, all the VHDL compilers take the last one
+--!  when nothing is specified.\n
+--! This can occur if no configuration statement is defined
+--!   or if the top level is the test entity, rather than the configure.\n
+--! This should ALWAYS be the last one.
 architecture arch of Prefilter_stages_gen_pattern is
 begin
   assert false report "Prefilter_Stages_test should not be called without pattern" severity error;
@@ -70,25 +108,119 @@ use IEEE.STD_LOGIC_1164.all,
   ieee.math_real.all,
   work.InterModule_formats.all;
 
+--! @brief Patterns checker
+--!
+--! This is a standard interface to check the test patterns\n
+--! The latency is handled by the "host" test entity,
+--!   as the pattern generator is delayed by the latency of the pre-filter.\n 
+--! A new value should be issued at each fall of the clock,
+--!   which is not the master clock of the project.\n 
+--! The global counter is divided into
+--! * a cycles count from 0 to 2**cycles_bits -1
+--! * a sub_cycles count from 0 to 2**sub_cycles_bits -1
+--! * a sample count from 0 to the Prefilter latency ( -1 ).\n
+--! The sum of the cycles and the sub_cycles bits
+--!   is guarantee to be less than the reg_size.\n
+--! Many checks are possible and are instantiated
+--!   into many architectures.
+--! The switch is done, using the configuration statements,
+--!   in order to choose which one is tested or
+--!   to run run all of them in parallel.\n
+--! The pattern generator should be the one designed for the checker in use.\n
+--! This entity does not have outputs, as they store the results
+--!   and their statistics.
+--! For the multiple test configuration, to display them properly,
+--!   at the end of the simulation, a report chain triggers them
+--!   one after the other.
 entity Prefilter_stages_check_pattern is
+  generic (
+    cycles_bits     : integer range 2 to reg_size;
+    sub_cycles_bits : integer range 2 to reg_size;
+    debug_text : string
+    );
   port (
-    CLK        : in  std_logic;
-    RST        : in  std_logic;
-    reg_sync   : in  std_logic;
-    val_in     : in  reg_type;
-    report_in  : in  bit;
-    report_out : out bit
+    CLK_fall       : in  std_logic;
+    RST            : in  std_logic;
+    reg_sync       : in  std_logic;
+    sample_count     : in  integer range 0 to 2;
+    cycles_count     : in  natural;
+    sub_cycles_count : in  natural;
+    val_in         : in  reg_type;
+    prefiltered_in : in  reg_type;
+    -- metadata    : in  metadata;
+    report_in      : in  bit;
+    report_out     : out bit
     );
 end entity Prefilter_stages_check_pattern;
 
--- architecture Patterns_1_RAM_tied_0 of Prefilter_stages_check_pattern is
+--! @brief Basic counters stitching, mode 1 and 2
+--!
+--! This is intended to check the input passes through
+--!   the pre-filter without RAM, with a constant shift.\n
+--! The content of the RAM (last state variable) should be tied to 0.\n
+--! In this mode, the bits are padded somewhere by 0's or 1's.\n
+--! The test check the ratio between the prefiltered and the input
+--!   is a constant.\n
+--! TODO: check the constant is the one that match the meta-data.
+architecture Patterns_1_2_RAM_tied_0 of Prefilter_stages_check_pattern is
+  signal input_real_in  : real;
+  signal input_real_pre : real;
+  signal ratio_min      : real := real'high;
+  signal ratio_max      : real := real'low;
+  signal in_0_out_min   : real := real'high;
+  signal in_0_out_max   : real := real'low;
+begin
+  main_proc : process(CLK_fall) is
+    variable ratio_working : real;
+    variable input_real_pre_v : real;
+    variable input_real_in_v : real;
+  begin
+    CLK_IF : if falling_edge(CLK_fall) then
+      RST_IF : if RST = '0' then
+        input_real_in_v := real(to_integer(signed(val_in)));
+        input_real_pre_v := real(to_integer(signed(prefiltered_in)));
+        Check_ZERO : if input_real_in /= 0.0 then
+          ratio_working := input_real_pre / input_real_in;
+          if ratio_working > ratio_max then
+            ratio_max <= ratio_working;
+          end if;
+          if ratio_working < ratio_min then
+            ratio_min <= ratio_working;
+          end if;
+        else
+          if input_real_pre_v > in_0_out_max then
+            in_0_out_max <= input_real_pre_v;
+          end if;
+          if input_real_pre_v < in_0_out_min then
+            in_0_out_min <= input_real_pre_v;
+          end if;
+        end if CHECK_ZERO;
+        input_real_pre <= input_real_pre_v;
+        input_real_in <= input_real_in_v;
+      end if RST_IF;
+    end if CLK_IF;
+  end process main_proc;
 
--- end architecture Patterns_1_RAM_tied_0;
+  report_proc : process
+  begin
+    wait until report_in = '1';
+    report "RAM tied 0 mode 2: " & debug_text
+      severity note;
+    report real'image(ratio_min) & " < in out ratio < " & real'image(ratio_max) & ",  " &
+      real'image(in_0_out_min) & " < out when in=0 < " & real'image(in_0_out_max)
+      severity note;
+    report_out <= '1';
+  end process report_proc;
 
--- architecture Patterns_2_RAM_tied_0 of Prefilter_stages_check_pattern is
+end architecture Patterns_1_2_RAM_tied_0;
 
--- end architecture Patterns_2_RAM_tied_0;
-
+--! @brief Default architecture
+--!
+--! Assume, all the VHDL compilers take the last one
+--!  when nothing is specified.\n
+--! This can occur if no configuration statement is defined
+--!   or if the top level is the test entity, rather than the configure.\n
+--! This should ALWAYS be the last one.
 architecture arch of Prefilter_stages_check_pattern is
 begin
   assert false report "Prefilter_Stages_test should not be called without checker" severity error;
@@ -138,8 +270,8 @@ architecture arch of Prefilter_Stages_test is
   constant sub_cycles_max           : natural                                  := 2 ** sub_cycles_bits - 1;
   signal sub_cycles_count           : natural                                  := 0;
   signal reset_count                : natural                                  := 5;
-  signal reset_check_count          : natural                                  := 5;
-  signal reports_chain              : bit_vector(2 downto 0)                   := (others => '0');
+  signal reset_check_count          : natural                                  := 6;
+  signal reports_chain              : bit_vector(3 downto 0)                   := (others => '0');
   signal RST                        : std_logic                                := '1';
   signal RST_check                  : std_logic                                := '1';
   signal reg_sync                   : std_logic;
@@ -171,6 +303,26 @@ architecture arch of Prefilter_Stages_test is
       val_out          : out reg_type
       );
   end component Prefilter_stages_gen_pattern;
+  component Prefilter_stages_check_pattern is
+    generic (
+      cycles_bits     : integer range 2 to reg_size;
+      sub_cycles_bits : integer range 2 to reg_size;
+      debug_text      : string
+      );
+    port (
+      CLK_fall         : in  std_logic;
+      RST              : in  std_logic;
+      reg_sync         : in  std_logic;
+      sample_count     : in  integer range 0 to 2;
+      cycles_count     : in  natural;
+      sub_cycles_count : in  natural;
+      val_in           : in  reg_type;
+      prefiltered_in   : in  reg_type;
+      -- metadata    : in  metadata;
+      report_in        : in  bit;
+      report_out       : out bit
+      );
+  end component Prefilter_stages_check_pattern;
   signal sin_gene_pattern : reg_type;
   signal cos_gene_pattern : reg_type;
 begin
@@ -218,7 +370,7 @@ begin
               reset_count <= reset_count - 1;
             elsif reset_check_count > 0 then
               reset_check_count <= reset_check_count - 1;
-              RST <= '0';
+              RST               <= '0';
             else
               RST_check <= '0';
               if sub_cycles_count /= sub_cycles_max then
@@ -288,6 +440,7 @@ begin
       sub_cycles_count => sub_cycles_count,
       val_out          => sin_gene_pattern
       );
+  
   cos_gene_pattern_instanc : Prefilter_stages_gen_pattern
     generic map (cycles_bits, sub_cycles_bits)
     port map (
@@ -296,6 +449,38 @@ begin
       cycles_count     => cycles_count,
       sub_cycles_count => sub_cycles_count,
       val_out          => cos_gene_pattern
+      );
+
+  sin_check_pattern_instanc : Prefilter_stages_check_pattern
+    generic map (cycles_bits, sub_cycles_bits,
+                 debug_text => "SIN")
+    port map (
+      CLK_fall         => reg_sync,
+      RST              => RST_check,
+      reg_sync         => reg_sync,
+      sample_count     => sample_count,
+      cycles_count     => cycles_count,
+      sub_cycles_count => sub_cycles_count,
+      prefiltered_in   => sc_out.the_sin,
+      val_in           => out_and_delay_s(out_and_delay_s'low),
+      report_in        => reports_chain(reports_chain'high - 1),
+      report_out       => reports_chain(reports_chain'high - 2)
+      );
+
+  cos_check_pattern_instanc : Prefilter_stages_check_pattern
+    generic map (cycles_bits, sub_cycles_bits,
+                 debug_text => "COS")
+    port map (
+      CLK_fall         => reg_sync,
+      RST              => RST_check,
+      reg_sync         => reg_sync,
+      sample_count     => sample_count,
+      cycles_count     => cycles_count,
+      sub_cycles_count => sub_cycles_count,
+      prefiltered_in   => sc_out.the_cos,
+      val_in           => out_and_delay_s(out_and_delay_c'low),
+      report_in        => reports_chain(reports_chain'high - 2),
+      report_out       => reports_chain(reports_chain'high - 3)
       );
 
   
@@ -314,7 +499,8 @@ begin
   report_proc : process
   begin
     wait until reports_chain(reports_chain'high) = '1';
-    report"C'est fini" severity note;
+    report"C'est fini, TODO" severity note;
+    reports_chain(reports_chain'high - 1) <= '1';
   end process report_proc;
 
 end architecture arch;
@@ -328,6 +514,9 @@ configuration Prefilter_Stages_test_debug2_reversed of Prefilter_Stages_test is
     for cos_gene_pattern_instanc : Prefilter_stages_gen_pattern
       use entity work.Prefilter_stages_gen_pattern(Patterns_1_RAM_tied_0);
     end for;
+    for all : Prefilter_stages_check_pattern
+      use entity work.Prefilter_stages_check_pattern(Patterns_1_2_RAM_tied_0);
+    end for;
   end for;
 end configuration Prefilter_Stages_test_debug2_reversed;
 
@@ -338,6 +527,9 @@ configuration Prefilter_Stages_test_debug2 of Prefilter_Stages_test is
     end for;
     for cos_gene_pattern_instanc : Prefilter_stages_gen_pattern
       use entity work.Prefilter_stages_gen_pattern(Patterns_2_RAM_tied_0);
+    end for;
+    for all : Prefilter_stages_check_pattern
+      use entity work.Prefilter_stages_check_pattern(Patterns_1_2_RAM_tied_0);
     end for;
   end for;
 end configuration Prefilter_Stages_test_debug2;
