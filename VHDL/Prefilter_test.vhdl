@@ -179,8 +179,8 @@ begin
       RST_IF : if RST = '0' then
         input_real_in_v := real(to_integer(signed(val_in)));
         input_real_pre_v := real(to_integer(signed(prefiltered_in)));
-        Check_ZERO : if input_real_in /= 0.0 then
-          ratio_working := input_real_pre / input_real_in;
+        Check_ZERO : if input_real_in_v /= 0.0 then
+          ratio_working := input_real_pre_v / input_real_in_v;
           if ratio_working > ratio_max then
             ratio_max <= ratio_working;
           end if;
@@ -288,8 +288,8 @@ architecture arch of Prefilter_Stages_test is
   signal out_real_c                 : real;
   signal delayed_real_c             : real;
   signal input_real_s, input_real_c : real;
-  signal ratio_s_min, ratio_c_min   : real                                     := real'high;
-  signal ratio_s_max, ratio_c_max   : real                                     := real'low;
+  -- signal ratio_s_min, ratio_c_min   : real                                     := real'high;
+  -- signal ratio_s_max, ratio_c_max   : real                                     := real'low;
   component Prefilter_stages_gen_pattern is
     generic (
       cycles_bits     : integer range 2 to reg_size;
@@ -342,25 +342,26 @@ begin
           reg_sync       <= '0';
           reg_sync_count <= reg_sync_count + 1;
           if reg_sync_count = 0 and RST_check = '0' then
+            -- This is to find the bugs, it is going to be deleted when done
             out_real_s     <= real(to_integer(signed(sc_out.the_sin)));
             delayed_real_s <= real(to_integer(signed(out_and_delay_s(out_and_delay_s'low))));
             out_real_c     <= real(to_integer(signed(sc_out.the_cos)));
             delayed_real_c <= real(to_integer(signed(out_and_delay_c(out_and_delay_c'low))));
-            if real(to_integer(signed(out_and_delay_s(out_and_delay_s'low)))) /= 0.0 then
-              ratio_working := real(to_integer(signed(sc_out.the_sin))) /
-                               real(to_integer(signed(out_and_delay_s(out_and_delay_s'low))));
-              if ratio_working < ratio_s_min then
-                ratio_s_min <= ratio_working;
-              end if;
-              if ratio_working > ratio_s_max then
-                ratio_s_max <= ratio_working;
-              end if;
-            elsif real(to_integer(signed(sc_out.the_sin))) /= 0.0 then
-                                        -- The other one should be null as well
-                                        -- otherwise, it is an error
-              ratio_s_min <= real'low;
-              ratio_s_max <= real'high;
-            end if;
+            --if real(to_integer(signed(out_and_delay_s(out_and_delay_s'low)))) /= 0.0 then
+            --  ratio_working := real(to_integer(signed(sc_out.the_sin))) /
+            --                   real(to_integer(signed(out_and_delay_s(out_and_delay_s'low))));
+            --  if ratio_working < ratio_s_min then
+            --    ratio_s_min <= ratio_working;
+            --  end if;
+            --  if ratio_working > ratio_s_max then
+            --    ratio_s_max <= ratio_working;
+            --  end if;
+            --elsif real(to_integer(signed(sc_out.the_sin))) /= 0.0 then
+            --                            -- The other one should be null as well
+            --                            -- otherwise, it is an error
+            --  ratio_s_min <= real'low;
+            --  ratio_s_max <= real'high;
+            --end if;
           end if;
         else
           sample_count_if : if sample_count < 2 then
@@ -478,7 +479,7 @@ begin
       cycles_count     => cycles_count,
       sub_cycles_count => sub_cycles_count,
       prefiltered_in   => sc_out.the_cos,
-      val_in           => out_and_delay_s(out_and_delay_c'low),
+      val_in           => out_and_delay_c(out_and_delay_c'low),
       report_in        => reports_chain(reports_chain'high - 2),
       report_out       => reports_chain(reports_chain'high - 3)
       );
