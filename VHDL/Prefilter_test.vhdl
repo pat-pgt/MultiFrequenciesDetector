@@ -136,20 +136,20 @@ entity Prefilter_stages_check_pattern is
   generic (
     cycles_bits     : integer range 2 to reg_size;
     sub_cycles_bits : integer range 2 to reg_size;
-    debug_text : string
+    debug_text      : string
     );
   port (
-    CLK_fall       : in  std_logic;
-    RST            : in  std_logic;
-    reg_sync       : in  std_logic;
+    CLK_fall         : in  std_logic;
+    RST              : in  std_logic;
+    reg_sync         : in  std_logic;
     sample_count     : in  integer range 0 to 2;
     cycles_count     : in  natural;
     sub_cycles_count : in  natural;
-    val_in         : in  reg_type;
-    prefiltered_in : in  reg_type;
+    val_in           : in  reg_type;
+    prefiltered_in   : in  reg_type;
     -- metadata    : in  metadata;
-    report_in      : in  bit;
-    report_out     : out bit
+    report_in        : in  bit;
+    report_out       : out bit
     );
 end entity Prefilter_stages_check_pattern;
 
@@ -158,45 +158,46 @@ end entity Prefilter_stages_check_pattern;
 --! This is intended to check the input passes through
 --!   the pre-filter without RAM, with a constant shift.\n
 --! The content of the RAM (last state variable) should be tied to 0.\n
---! In this mode, the bits are padded somewhere by 0's or 1's.\n
 --! The test check the ratio between the prefiltered and the input
---!   is a constant.\n
+--!   is the expecrted one.\n
+--! Due to the limited precision, the ratio may be wrong
+--!   especially for low values.
+--! The criteria is to check if the shifted is equal to what is expected,
+--!   1 lower than, 1 greter than, or other.
+--! The last case is a unique counter as it should not happened
+--!   for any values.
 --! TODO: check the constant is the one that match the meta-data.
 architecture Patterns_1_2_RAM_tied_0 of Prefilter_stages_check_pattern is
-  signal input_real_in  : real;
-  signal input_real_pre : real;
-  signal ratio_min      : real := real'high;
-  signal ratio_max      : real := real'low;
-  signal in_0_out_min   : real := real'high;
-  signal in_0_out_max   : real := real'low;
+  signal input_int_in                 : integer;
+  signal input_int_pre                : integer;
+  signal delta_0, delta_p1, delta_m1  : natural := 0;
+  signal delta_other_p, delta_other_m : natural := 0;
 begin
   main_proc : process(CLK_fall) is
-    variable ratio_working : real;
-    variable input_real_pre_v : real;
-    variable input_real_in_v : real;
+    variable shifts          : natural;
+    variable input_int_pre_v : integer;
+    variable input_int_in_v  : integer;
   begin
     CLK_IF : if falling_edge(CLK_fall) then
       RST_IF : if RST = '0' then
-        input_real_in_v := real(to_integer(signed(val_in)));
-        input_real_pre_v := real(to_integer(signed(prefiltered_in)));
-        Check_ZERO : if input_real_in_v /= 0.0 then
-          ratio_working := input_real_pre_v / input_real_in_v;
-          if ratio_working > ratio_max then
-            ratio_max <= ratio_working;
-          end if;
-          if ratio_working < ratio_min then
-            ratio_min <= ratio_working;
-          end if;
-        else
-          if input_real_pre_v > in_0_out_max then
-            in_0_out_max <= input_real_pre_v;
-          end if;
-          if input_real_pre_v < in_0_out_min then
-            in_0_out_min <= input_real_pre_v;
-          end if;
-        end if CHECK_ZERO;
-        input_real_pre <= input_real_pre_v;
-        input_real_in <= input_real_in_v;
+        -- This is a tremporary solution
+        shifts          := 4;
+        input_int_in_v  := to_integer(signed(val_in));
+        input_int_pre_v := to_integer(signed(prefiltered_in));
+        input_int_in_v  := input_int_in_v / 2 ** shifts;
+        case input_int_in_v - input_int_pre_v is
+          when 0  => delta_0  <= delta_0 + 1;
+          when 1  => delta_p1 <= delta_p1 + 1;
+          when -1 => delta_m1 <= delta_m1 + 1;
+          when others =>
+            if input_int_in_v > input_int_pre_v then
+              delta_other_p <= delta_other_p + 1;
+            else
+              delta_other_m <= delta_other_m + 1;
+            end if;
+        end case;
+        input_int_pre <= input_int_pre_v;
+        input_int_in  <= input_int_in_v;
       end if RST_IF;
     end if CLK_IF;
   end process main_proc;
@@ -204,10 +205,13 @@ begin
   report_proc : process
   begin
     wait until report_in = '1';
-    report "RAM tied 0 mode 2: " & debug_text
+    report "RAM tied 0: " & debug_text
       severity note;
-    report real'image(ratio_min) & " < in out ratio < " & real'image(ratio_max) & ",  " &
-      real'image(in_0_out_min) & " < out when in=0 < " & real'image(in_0_out_max)
+    report " = " & integer'image(delta_0) & ",  " &
+      " >1 " & integer'image(delta_p1) & ",  " &
+      " <1 " & integer'image(delta_m1) & ",  " &
+      " > " & integer'image(delta_other_p) & ",  " &
+      " < " & integer'image(delta_other_m)
       severity note;
     report_out <= '1';
   end process report_proc;
@@ -347,21 +351,21 @@ begin
             delayed_real_s <= real(to_integer(signed(out_and_delay_s(out_and_delay_s'low))));
             out_real_c     <= real(to_integer(signed(sc_out.the_cos)));
             delayed_real_c <= real(to_integer(signed(out_and_delay_c(out_and_delay_c'low))));
-            --if real(to_integer(signed(out_and_delay_s(out_and_delay_s'low)))) /= 0.0 then
-            --  ratio_working := real(to_integer(signed(sc_out.the_sin))) /
-            --                   real(to_integer(signed(out_and_delay_s(out_and_delay_s'low))));
-            --  if ratio_working < ratio_s_min then
-            --    ratio_s_min <= ratio_working;
-            --  end if;
-            --  if ratio_working > ratio_s_max then
-            --    ratio_s_max <= ratio_working;
-            --  end if;
-            --elsif real(to_integer(signed(sc_out.the_sin))) /= 0.0 then
-            --                            -- The other one should be null as well
-            --                            -- otherwise, it is an error
-            --  ratio_s_min <= real'low;
-            --  ratio_s_max <= real'high;
-            --end if;
+          --if real(to_integer(signed(out_and_delay_s(out_and_delay_s'low)))) /= 0.0 then
+          --  ratio_working := real(to_integer(signed(sc_out.the_sin))) /
+          --                   real(to_integer(signed(out_and_delay_s(out_and_delay_s'low))));
+          --  if ratio_working < ratio_s_min then
+          --    ratio_s_min <= ratio_working;
+          --  end if;
+          --  if ratio_working > ratio_s_max then
+          --    ratio_s_max <= ratio_working;
+          --  end if;
+          --elsif real(to_integer(signed(sc_out.the_sin))) /= 0.0 then
+          --                            -- The other one should be null as well
+          --                            -- otherwise, it is an error
+          --  ratio_s_min <= real'low;
+          --  ratio_s_max <= real'high;
+          --end if;
           end if;
         else
           sample_count_if : if sample_count < 2 then
@@ -441,7 +445,7 @@ begin
       sub_cycles_count => sub_cycles_count,
       val_out          => sin_gene_pattern
       );
-  
+
   cos_gene_pattern_instanc : Prefilter_stages_gen_pattern
     generic map (cycles_bits, sub_cycles_bits)
     port map (
