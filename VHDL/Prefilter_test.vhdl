@@ -23,7 +23,7 @@ use IEEE.STD_LOGIC_1164.all,
 --! The checker should be the one designed for the generator in use.
 entity Prefilter_stages_gen_pattern is
   generic (
-    cycles_bits     : integer range 2 to reg_size;
+    cycles_bits     : integer range 6 to reg_size;
     sub_cycles_bits : integer range 2 to reg_size
     );
   port (
@@ -39,6 +39,9 @@ end entity Prefilter_stages_gen_pattern;
 --!
 --! This is intended to check the input passes through
 --!   the pre-filter without RAM, with a constant shift.\n
+--! The values issued are independent to each other.
+--!   The counters generate as many as possible values
+--!   in order to check rail to rail.\n
 --! The content of the RAM (last state variable) should be tied to 0.\n
 --! In this mode, the bits are padded at the bottom by 0's or 1's,
 --!   according with the sample_count.
@@ -66,6 +69,9 @@ end architecture Patterns_1_RAM_tied_0;
 --!
 --! This is intended to check the input passes through
 --!   the pre-filter without RAM, with a constant shift.\n
+--! The values issued are independent to each other.
+--!   The counters generate as many as possible values
+--!   in order to check rail to rail.\n
 --! The content of the RAM (last state variable) should be tied to 0.\n
 --! In this mode, the bits are padded at the middle by 0's or 1's,
 --!   according with the sample_count.
@@ -88,6 +94,53 @@ begin
     end if CLK_IF;
   end process main_proc;
 end architecture Patterns_2_RAM_tied_0;
+
+--! @brief
+--!
+--! This mode is intended to check the filter with a light RAM
+--!   of a couple of state variables.\n
+--! The values issued are 3 step signals, in the ratio of 1:4:16?\n
+--! The content of the RAM (last state variable) should NOT be tied to 0.\n
+architecture Patterns_1_RAM_light of Prefilter_stages_gen_pattern is
+  
+begin
+  main_proc : process(CLK_fall) is
+    variable cycle_count_std_logic : std_logic_vector( cycles_bits downto 1 );
+  begin
+    CLK_IF : if falling_edge(CLK_fall) then
+      cycle_count_std_logic := std_logic_vector( to_unsigned( cycles_count, cycle_count_std_logic'length ));
+      SAMPLE_COUNT_CASE : case sample_count is
+        when 0 =>
+          val_out( val_out'high downto val_out'high - 1 ) <=
+            cycle_count_std_logic( cycle_count_std_logic'high downto cycle_count_std_logic'high - 1 );
+          -- Fill up with the not high bit in order to test
+          --   as more rail to rail as possible
+          val_out( val_out'high - 2 downto val_out'low ) <=
+            ( others => not cycle_count_std_logic( cycle_count_std_logic'high )); 
+        when 1 =>
+          val_out( val_out'high downto val_out'high - 1 ) <=
+            cycle_count_std_logic( cycle_count_std_logic'high - 2 downto cycle_count_std_logic'high - 3 );
+          val_out( val_out'high - 2 downto val_out'high - 3 ) <=
+            cycle_count_std_logic( cycle_count_std_logic'high - 2 downto cycle_count_std_logic'high - 3 );
+          -- Fill up with the not high bit in order to test
+          --   as more rail to rail as possible
+          val_out( val_out'high - 4 downto val_out'low ) <=
+            ( others => not cycle_count_std_logic( cycle_count_std_logic'high )); 
+        when 2 =>
+          val_out( val_out'high downto val_out'high - 1 ) <=
+            cycle_count_std_logic( cycle_count_std_logic'high - 4 downto cycle_count_std_logic'high - 5 );
+          val_out( val_out'high - 2 downto val_out'high - 3 ) <=
+            cycle_count_std_logic( cycle_count_std_logic'high - 4 downto cycle_count_std_logic'high - 5 );
+          val_out( val_out'high - 4 downto val_out'high - 5 ) <=
+            cycle_count_std_logic( cycle_count_std_logic'high - 4 downto cycle_count_std_logic'high - 5 );
+          -- Fill up with the not high bit in order to test
+          --   as more rail to rail as possible
+          val_out( val_out'high - 6 downto val_out'low ) <=
+            ( others => not cycle_count_std_logic( cycle_count_std_logic'high ));
+      end case SAMPLE_COUNT_CASE;
+    end if CLK_IF;
+  end process main_proc;  
+end architecture Patterns_1_RAM_light;
 
 --! @brief Default architecture
 --!
@@ -134,7 +187,7 @@ use IEEE.STD_LOGIC_1164.all,
 --!   one after the other.
 entity Prefilter_stages_check_pattern is
   generic (
-    cycles_bits     : integer range 2 to reg_size;
+    cycles_bits     : integer range 6 to reg_size;
     sub_cycles_bits : integer range 2 to reg_size;
     debug_text      : string
     );
@@ -218,6 +271,47 @@ begin
 
 end architecture Patterns_1_2_RAM_tied_0;
 
+architecture Paterns1_RAM_light of Prefilter_stages_check_pattern is
+  signal delayed_in_1, out_1 : integer;
+  signal delayed_in_2, out_2 : integer;
+  signal delayed_in_3, out_3 : integer;
+begin
+
+  main_proc : process(CLK_fall) is
+    variable shifts          : natural;
+    variable input_int_pre_v : integer;
+    variable input_int_in_v  : integer;
+  begin
+    CLK_IF : if falling_edge(CLK_fall) then
+      RST_IF : if RST = '0' then
+        -- This is a tremporary solution
+        shifts          := 4;
+        input_int_in_v  := to_integer(signed(val_in));
+        input_int_pre_v := to_integer(signed(prefiltered_in));
+        case sample_count is
+          when 0 =>
+            delayed_in_1 <= input_int_in_v;
+            out_1 <= input_int_pre_v;
+          when 1 =>
+            delayed_in_2 <= input_int_in_v;
+            out_2 <= input_int_pre_v;
+          when 2 =>
+            delayed_in_3 <= input_int_in_v;
+            out_3 <= input_int_pre_v;            
+        end case;
+      end if RST_IF;
+    end if CLK_IF;
+  end process main_proc;
+
+  report_proc : process
+  begin
+    wait until report_in = '1';
+    report "RAM light FIFO: " & debug_text
+      severity note;
+    report_out <= '1';
+  end process report_proc;
+
+end architecture Paterns1_RAM_light;
 --! @brief Default architecture
 --!
 --! Assume, all the VHDL compilers take the last one
@@ -255,9 +349,6 @@ use IEEE.STD_LOGIC_1164.all,
 --!   between the sine and the cosine and
 --!   between steps of the processing.
 entity Prefilter_Stages_test is
-  generic (
-    debug_level : integer range 0 to 2 := 2
-    );
 end entity Prefilter_Stages_test;
 
 
@@ -266,11 +357,11 @@ architecture arch of Prefilter_Stages_test is
   signal reg_sync_count             : integer range 0 to 32                    := 0;
   signal sample_count               : integer range 0 to 2                     := 0;
 -- Defined by the user, or should be moved into the generics
-  constant cycles_bits              : integer range 2 to reg_size              := 3;
+  constant cycles_bits              : integer range 6 to reg_size              := 7;
   constant cycles_max               : natural                                  := 2 ** cycles_bits;
   signal cycles_count               : natural                                  := 0;
 -- Defined by the user, or should be moved into the generics
-  constant sub_cycles_bits          : integer range 2 to reg_size              := 5;
+  constant sub_cycles_bits          : integer range 2 to reg_size              := 4;
   constant sub_cycles_max           : natural                                  := 2 ** sub_cycles_bits - 1;
   signal sub_cycles_count           : natural                                  := 0;
   signal reset_count                : natural                                  := 5;
@@ -296,7 +387,7 @@ architecture arch of Prefilter_Stages_test is
   -- signal ratio_s_max, ratio_c_max   : real                                     := real'low;
   component Prefilter_stages_gen_pattern is
     generic (
-      cycles_bits     : integer range 2 to reg_size;
+      cycles_bits     : integer range 6 to reg_size;
       sub_cycles_bits : integer range 2 to reg_size
       );
     port (
@@ -309,7 +400,7 @@ architecture arch of Prefilter_Stages_test is
   end component Prefilter_stages_gen_pattern;
   component Prefilter_stages_check_pattern is
     generic (
-      cycles_bits     : integer range 2 to reg_size;
+      cycles_bits     : integer range 6 to reg_size;
       sub_cycles_bits : integer range 2 to reg_size;
       debug_text      : string
       );
@@ -489,9 +580,9 @@ begin
       );
 
   
-  DUT_instanc : Prefilter_bundle generic map (
-    stages_offsets => offsets_list,
-    debug_level    => debug_level)
+  DUT_instanc : Prefilter_bundle
+    generic map (
+      stages_offsets => offsets_list)
     port map (
       CLK           => CLK,
       RST           => RST,
@@ -511,8 +602,13 @@ begin
 end architecture arch;
 
 
-configuration Prefilter_Stages_test_debug2_reversed of Prefilter_Stages_test is
+configuration Prefilter_Stages_test_debug1 of Prefilter_Stages_test is
   for arch
+    for all : Prefilter_bundle
+      use entity work.Prefilter_bundle(arch)
+        generic map (debug_level     => 2,
+                      stages_offsets => offsets_list);
+    end for;
     for sin_gene_pattern_instanc : Prefilter_stages_gen_pattern
       use entity work.Prefilter_stages_gen_pattern(Patterns_2_RAM_tied_0);
     end for;
@@ -523,10 +619,15 @@ configuration Prefilter_Stages_test_debug2_reversed of Prefilter_Stages_test is
       use entity work.Prefilter_stages_check_pattern(Patterns_1_2_RAM_tied_0);
     end for;
   end for;
-end configuration Prefilter_Stages_test_debug2_reversed;
+end configuration Prefilter_Stages_test_debug1;
 
 configuration Prefilter_Stages_test_debug2 of Prefilter_Stages_test is
   for arch
+    for all : Prefilter_bundle
+      use entity work.Prefilter_bundle(arch)
+        generic map (debug_level     => 2,
+                      stages_offsets => offsets_list);
+    end for;
     for sin_gene_pattern_instanc : Prefilter_stages_gen_pattern
       use entity work.Prefilter_stages_gen_pattern(Patterns_1_RAM_tied_0);
     end for;
@@ -538,3 +639,19 @@ configuration Prefilter_Stages_test_debug2 of Prefilter_Stages_test is
     end for;
   end for;
 end configuration Prefilter_Stages_test_debug2;
+
+configuration Prefilter_Stages_test_debug3 of Prefilter_Stages_test is
+  for arch
+    for all : Prefilter_bundle
+      use entity work.Prefilter_bundle(arch)
+        generic map (debug_level     => 1,
+                      stages_offsets => offsets_list);
+    end for;
+    for all : Prefilter_stages_gen_pattern
+      use entity work.Prefilter_stages_gen_pattern(Patterns_1_RAM_light);
+    end for;
+    for all : Prefilter_stages_check_pattern
+      use entity work.Prefilter_stages_check_pattern(Paterns1_RAM_light);
+    end for;
+  end for;
+end configuration Prefilter_Stages_test_debug3;
