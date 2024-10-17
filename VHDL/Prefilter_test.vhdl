@@ -24,7 +24,8 @@ use IEEE.STD_LOGIC_1164.all,
 entity Prefilter_stages_gen_pattern is
   generic (
     cycles_bits     : integer range 6 to reg_size;
-    sub_cycles_bits : integer range 2 to reg_size
+    sub_cycles_bits : integer range 2 to reg_size;
+    which_pattern   : natural
     );
   port (
     CLK_fall         : in  std_logic;
@@ -43,57 +44,49 @@ end entity Prefilter_stages_gen_pattern;
 --!   The counters generate as many as possible values
 --!   in order to check rail to rail.\n
 --! The content of the RAM (last state variable) should be tied to 0.\n
---! In this mode, the bits are padded at the bottom by 0's or 1's,
+--! In the mode 0, the bits are padded at the bottom by 0's or 1's,
 --!   according with the sample_count.
-architecture Patterns_1_RAM_tied_0 of Prefilter_stages_gen_pattern is
+--! In the mode 1, the bits are padded at the middle by 0's or 1's,
+--!   according with the sample_count.\n
+--! All the tests here test the full range of the 2'nd complement
+--!   regardless all the values are reachable or not (see the input Cordic handling).
+architecture Patterns_RAM_tied_0 of Prefilter_stages_gen_pattern is
 begin
   main_proc : process(CLK_fall) is
   begin
     CLK_IF : if falling_edge(CLK_fall) then
-      val_out(val_out'high downto val_out'high - cycles_bits + 1) <=
-        std_logic_vector(unsigned(to_unsigned(cycles_count, cycles_bits)));
-      val_out(val_out'high - cycles_bits downto val_out'high - cycles_bits - sub_cycles_bits + 1) <=
-        std_logic_vector(unsigned(to_unsigned(sub_cycles_count, sub_cycles_bits)));
-      if sample_count < 2 then
-        val_out(val_out'high - cycles_bits - sub_cycles_bits downto val_out'low) <=
-          (others => '0');
-      else
-        val_out(val_out'high - cycles_bits - sub_cycles_bits downto val_out'low) <=
-          (others => '1');
-      end if;
-    end if CLK_IF;
-  end process main_proc;
-end architecture Patterns_1_RAM_tied_0;
+      PATTERN_CASE : case which_pattern is
+        when 1 =>
+          val_out(val_out'high downto val_out'high - cycles_bits + 1) <=
+            std_logic_vector(unsigned(to_unsigned(cycles_count, cycles_bits)));
+          val_out(val_out'high - cycles_bits downto val_out'high - cycles_bits - sub_cycles_bits + 1) <=
+            std_logic_vector(unsigned(to_unsigned(sub_cycles_count, sub_cycles_bits)));
+          if sample_count < 2 then
+            val_out(val_out'high - cycles_bits - sub_cycles_bits downto val_out'low) <=
+              (others => '0');
+          else
+            val_out(val_out'high - cycles_bits - sub_cycles_bits downto val_out'low) <=
+              (others => '1');
+          end if;
+        when 2 =>
+          val_out(val_out'high downto val_out'high - sub_cycles_bits + 1) <=
+            std_logic_vector(unsigned(to_unsigned(sub_cycles_count, sub_cycles_bits)));
+          if sample_count < 2 then
+            val_out(val_out'high - sub_cycles_bits downto val_out'low + cycles_bits) <=
+              (others => '1');
+          else
+            val_out(val_out'high - sub_cycles_bits downto val_out'low + cycles_bits) <=
+              (others => '0');
+          end if;
+          val_out(val_out'low + cycles_bits - 1 downto val_out'low) <=
+            std_logic_vector(unsigned(to_unsigned(cycles_count, cycles_bits)));
 
---! @brief Basic counters stitching, mode 2
---!
---! This is intended to check the input passes through
---!   the pre-filter without RAM, with a constant shift.\n
---! The values issued are independent to each other.
---!   The counters generate as many as possible values
---!   in order to check rail to rail.\n
---! The content of the RAM (last state variable) should be tied to 0.\n
---! In this mode, the bits are padded at the middle by 0's or 1's,
---!   according with the sample_count.
-architecture Patterns_2_RAM_tied_0 of Prefilter_stages_gen_pattern is
-begin
-  main_proc : process(CLK_fall) is
-  begin
-    CLK_IF : if falling_edge(CLK_fall) then
-      val_out(val_out'high downto val_out'high - sub_cycles_bits + 1) <=
-        std_logic_vector(unsigned(to_unsigned(sub_cycles_count, sub_cycles_bits)));
-      if sample_count < 2 then
-        val_out(val_out'high - sub_cycles_bits downto val_out'low + cycles_bits) <=
-          (others => '1');
-      else
-        val_out(val_out'high - sub_cycles_bits downto val_out'low + cycles_bits) <=
-          (others => '0');
-      end if;
-      val_out(val_out'low + cycles_bits - 1 downto val_out'low) <=
-        std_logic_vector(unsigned(to_unsigned(cycles_count, cycles_bits)));
+        when others =>
+          assert false report "The pattern " & integer'image(which_pattern) & " is not known" severity failure;
+      end case PATTERN_CASE;
     end if CLK_IF;
   end process main_proc;
-end architecture Patterns_2_RAM_tied_0;
+end architecture Patterns_RAM_tied_0;
 
 --! @brief
 --!
@@ -101,45 +94,46 @@ end architecture Patterns_2_RAM_tied_0;
 --!   of a couple of state variables.\n
 --! The values issued are 3 step signals, in the ratio of 1:4:16?\n
 --! The content of the RAM (last state variable) should NOT be tied to 0.\n
+--! This test is intended to test for reachable values (see the input Cordic handling).
+--! Due to the cumulative product of the cosine(h),
+--!   the input is supplied by numbers contained between 1010xxx and 0101xxx.\n
+--! Another test check the fall back outside these values.
 architecture Patterns_1_RAM_light of Prefilter_stages_gen_pattern is
-  
+
 begin
   main_proc : process(CLK_fall) is
-    variable cycle_count_std_logic : std_logic_vector( cycles_bits downto 1 );
+    variable cycle_count_std_logic : std_logic_vector(cycles_bits downto 1);
   begin
     CLK_IF : if falling_edge(CLK_fall) then
-      cycle_count_std_logic := std_logic_vector( to_unsigned( cycles_count, cycle_count_std_logic'length ));
+      cycle_count_std_logic := std_logic_vector(to_unsigned(cycles_count, cycle_count_std_logic'length));
       SAMPLE_COUNT_CASE : case sample_count is
         when 0 =>
-          val_out( val_out'high downto val_out'high - 1 ) <=
-            cycle_count_std_logic( cycle_count_std_logic'high downto cycle_count_std_logic'high - 1 );
-          -- Fill up with the not high bit in order to test
-          --   as more rail to rail as possible
-          val_out( val_out'high - 2 downto val_out'low ) <=
-            ( others => not cycle_count_std_logic( cycle_count_std_logic'high )); 
-        when 1 =>
-          val_out( val_out'high downto val_out'high - 1 ) <=
-            cycle_count_std_logic( cycle_count_std_logic'high - 2 downto cycle_count_std_logic'high - 3 );
-          val_out( val_out'high - 2 downto val_out'high - 3 ) <=
-            cycle_count_std_logic( cycle_count_std_logic'high - 2 downto cycle_count_std_logic'high - 3 );
-          -- Fill up with the not high bit in order to test
-          --   as more rail to rail as possible
-          val_out( val_out'high - 4 downto val_out'low ) <=
-            ( others => not cycle_count_std_logic( cycle_count_std_logic'high )); 
-        when 2 =>
-          val_out( val_out'high downto val_out'high - 1 ) <=
-            cycle_count_std_logic( cycle_count_std_logic'high - 4 downto cycle_count_std_logic'high - 5 );
-          val_out( val_out'high - 2 downto val_out'high - 3 ) <=
-            cycle_count_std_logic( cycle_count_std_logic'high - 4 downto cycle_count_std_logic'high - 5 );
-          val_out( val_out'high - 4 downto val_out'high - 5 ) <=
-            cycle_count_std_logic( cycle_count_std_logic'high - 4 downto cycle_count_std_logic'high - 5 );
-          -- Fill up with the not high bit in order to test
-          --   as more rail to rail as possible
-          val_out( val_out'high - 6 downto val_out'low ) <=
+          val_out(val_out'high downto val_out'high - 2) <=
             ( others => not cycle_count_std_logic( cycle_count_std_logic'high ));
+          val_out(val_out'high - 3 downto val_out'high - 4) <=
+            cycle_count_std_logic(cycle_count_std_logic'high downto cycle_count_std_logic'high - 1);
+          val_out(val_out'high - 5 downto val_out'low) <=
+            (others => not cycle_count_std_logic(cycle_count_std_logic'high));
+        when 1 =>
+          val_out(val_out'high downto val_out'high - 1) <=
+            ( others => not cycle_count_std_logic( cycle_count_std_logic'high ));
+          val_out(val_out'high - 2 downto val_out'high - 3) <=
+            cycle_count_std_logic(cycle_count_std_logic'high - 2 downto cycle_count_std_logic'high - 3);
+          val_out(val_out'high - 4 downto val_out'low) <=
+            (others => not cycle_count_std_logic(cycle_count_std_logic'high));
+        when 2 =>
+          val_out(val_out'high ) <= not cycle_count_std_logic( cycle_count_std_logic'high );
+          val_out(val_out'high - 1 downto val_out'high - 2) <=
+            cycle_count_std_logic( cycle_count_std_logic'high - 4 downto cycle_count_std_logic'high - 5 );
+          val_out(val_out'high - 3 downto val_out'high - 4) <=
+            cycle_count_std_logic(cycle_count_std_logic'high - 4 downto cycle_count_std_logic'high - 5);
+          -- Fill up with the not high bit in order to test
+          --   as more rail to rail as possible
+          val_out(val_out'high - 5 downto val_out'low) <=
+            (others => not cycle_count_std_logic(cycle_count_std_logic'high));
       end case SAMPLE_COUNT_CASE;
     end if CLK_IF;
-  end process main_proc;  
+  end process main_proc;
 end architecture Patterns_1_RAM_light;
 
 --! @brief Default architecture
@@ -291,13 +285,13 @@ begin
         case sample_count is
           when 0 =>
             delayed_in_1 <= input_int_in_v;
-            out_1 <= input_int_pre_v;
+            out_1        <= input_int_pre_v;
           when 1 =>
             delayed_in_2 <= input_int_in_v;
-            out_2 <= input_int_pre_v;
+            out_2        <= input_int_pre_v;
           when 2 =>
             delayed_in_3 <= input_int_in_v;
-            out_3 <= input_int_pre_v;            
+            out_3        <= input_int_pre_v;
         end case;
       end if RST_IF;
     end if CLK_IF;
@@ -376,8 +370,8 @@ architecture arch of Prefilter_Stages_test is
   constant offsets_list             : prefilter_stages_offset_list(1 downto 1) := (1      => 1.0);
   -- The package should include functions to return the latencies
   constant latencies                : natural                                  := 3;
-  signal out_and_delay_s            : reg_type_list(latencies - 1 downto 0);
-  signal out_and_delay_c            : reg_type_list(latencies - 1 downto 0);
+  signal out_and_delay_s            : reg_type_list(latencies downto 0);
+  signal out_and_delay_c            : reg_type_list(latencies downto 0);
   signal out_real_s                 : real;
   signal delayed_real_s             : real;
   signal out_real_c                 : real;
@@ -388,7 +382,8 @@ architecture arch of Prefilter_Stages_test is
   component Prefilter_stages_gen_pattern is
     generic (
       cycles_bits     : integer range 6 to reg_size;
-      sub_cycles_bits : integer range 2 to reg_size
+      sub_cycles_bits : integer range 2 to reg_size;
+      which_pattern   : natural
       );
     port (
       CLK_fall         : in  std_logic;
@@ -442,21 +437,6 @@ begin
             delayed_real_s <= real(to_integer(signed(out_and_delay_s(out_and_delay_s'low))));
             out_real_c     <= real(to_integer(signed(sc_out.the_cos)));
             delayed_real_c <= real(to_integer(signed(out_and_delay_c(out_and_delay_c'low))));
-          --if real(to_integer(signed(out_and_delay_s(out_and_delay_s'low)))) /= 0.0 then
-          --  ratio_working := real(to_integer(signed(sc_out.the_sin))) /
-          --                   real(to_integer(signed(out_and_delay_s(out_and_delay_s'low))));
-          --  if ratio_working < ratio_s_min then
-          --    ratio_s_min <= ratio_working;
-          --  end if;
-          --  if ratio_working > ratio_s_max then
-          --    ratio_s_max <= ratio_working;
-          --  end if;
-          --elsif real(to_integer(signed(sc_out.the_sin))) /= 0.0 then
-          --                            -- The other one should be null as well
-          --                            -- otherwise, it is an error
-          --  ratio_s_min <= real'low;
-          --  ratio_s_max <= real'high;
-          --end if;
           end if;
         else
           sample_count_if : if sample_count < 2 then
@@ -528,7 +508,7 @@ begin
   end process env_proc;
 
   sin_gene_pattern_instanc : Prefilter_stages_gen_pattern
-    generic map (cycles_bits, sub_cycles_bits)
+    generic map (cycles_bits, sub_cycles_bits, which_pattern => 0)
     port map (
       CLK_fall         => reg_sync,
       sample_count     => sample_count,
@@ -538,7 +518,7 @@ begin
       );
 
   cos_gene_pattern_instanc : Prefilter_stages_gen_pattern
-    generic map (cycles_bits, sub_cycles_bits)
+    generic map (cycles_bits, sub_cycles_bits, which_pattern => 0)
     port map (
       CLK_fall         => reg_sync,
       sample_count     => sample_count,
@@ -606,14 +586,18 @@ configuration Prefilter_Stages_test_debug1 of Prefilter_Stages_test is
   for arch
     for all : Prefilter_bundle
       use entity work.Prefilter_bundle(arch)
-        generic map (debug_level     => 2,
-                      stages_offsets => offsets_list);
+        generic map (debug_level    => 2,
+                     stages_offsets => offsets_list);
     end for;
     for sin_gene_pattern_instanc : Prefilter_stages_gen_pattern
-      use entity work.Prefilter_stages_gen_pattern(Patterns_2_RAM_tied_0);
+      use entity work.Prefilter_stages_gen_pattern(Patterns_RAM_tied_0)
+      generic map (
+        cycles_bits => cycles_bits, sub_cycles_bits => sub_cycles_bits, which_pattern => 1);        
     end for;
     for cos_gene_pattern_instanc : Prefilter_stages_gen_pattern
-      use entity work.Prefilter_stages_gen_pattern(Patterns_1_RAM_tied_0);
+      use entity work.Prefilter_stages_gen_pattern(Patterns_RAM_tied_0)
+      generic map (
+        cycles_bits => cycles_bits, sub_cycles_bits => sub_cycles_bits, which_pattern => 2);
     end for;
     for all : Prefilter_stages_check_pattern
       use entity work.Prefilter_stages_check_pattern(Patterns_1_2_RAM_tied_0);
@@ -625,14 +609,18 @@ configuration Prefilter_Stages_test_debug2 of Prefilter_Stages_test is
   for arch
     for all : Prefilter_bundle
       use entity work.Prefilter_bundle(arch)
-        generic map (debug_level     => 2,
-                      stages_offsets => offsets_list);
+        generic map (debug_level    => 2,
+                     stages_offsets => offsets_list);
     end for;
     for sin_gene_pattern_instanc : Prefilter_stages_gen_pattern
-      use entity work.Prefilter_stages_gen_pattern(Patterns_1_RAM_tied_0);
+      use entity work.Prefilter_stages_gen_pattern(Patterns_RAM_tied_0)
+      generic map (
+        cycles_bits => cycles_bits, sub_cycles_bits => sub_cycles_bits, which_pattern => 2);
     end for;
     for cos_gene_pattern_instanc : Prefilter_stages_gen_pattern
-      use entity work.Prefilter_stages_gen_pattern(Patterns_2_RAM_tied_0);
+      use entity work.Prefilter_stages_gen_pattern(Patterns_RAM_tied_0)
+      generic map (
+        cycles_bits => cycles_bits, sub_cycles_bits => sub_cycles_bits, which_pattern => 1);
     end for;
     for all : Prefilter_stages_check_pattern
       use entity work.Prefilter_stages_check_pattern(Patterns_1_2_RAM_tied_0);
@@ -644,8 +632,8 @@ configuration Prefilter_Stages_test_debug3 of Prefilter_Stages_test is
   for arch
     for all : Prefilter_bundle
       use entity work.Prefilter_bundle(arch)
-        generic map (debug_level     => 1,
-                      stages_offsets => offsets_list);
+        generic map (debug_level    => 1,
+                     stages_offsets => offsets_list);
     end for;
     for all : Prefilter_stages_gen_pattern
       use entity work.Prefilter_stages_gen_pattern(Patterns_1_RAM_light);

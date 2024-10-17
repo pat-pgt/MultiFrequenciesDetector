@@ -143,6 +143,7 @@ end entity Prefilter_IIR_stage_shift;
 
 architecture arch of Prefilter_IIR_stage_shift is
   signal temporary_shifts : positive := 4;
+  signal data_shift : reg_type;
 begin
 
   shift_I_minus_SV : process(CLK)
@@ -156,19 +157,24 @@ begin
 
 
           -- Temporary code for testing the test
-          data_out(data_out'high - temporary_shifts downto data_out'low) <=
+          data_shift(data_shift'high - temporary_shifts downto data_shift'low) <=
             data_in(data_in'high downto data_in'low + temporary_shifts);
-          data_out(data_out'high downto data_out'high - temporary_shifts + 1) <=
+          data_shift(data_shift'high downto data_shift'high - temporary_shifts + 1) <=
             (others => data_in(data_in'high));
         else
-          data_out(data_out'high - arithm_size downto data_out'low) <=
-            data_out(data_out'high downto data_out'low + arithm_size);
+          data_shift(data_shift'high - arithm_size downto data_shift'low) <=
+            data_shift(data_shift'high downto data_shift'low + arithm_size);
           -- There is no high fill u}p as the load is done in parrallel mode
           -- For debug
-          data_out(data_out'high downto data_out'high - arithm_size + 1) <= (others => '-');
+          data_shift(data_shift'high downto data_shift'high - arithm_size + 1) <= (others => '-');
+          data_out(data_out'high - arithm_size downto data_out'low ) <=
+            data_out(data_out'high downto data_out'low + arithm_size );
+          data_out(data_out'high downto data_out'high - arithm_size + 1 )
+            <= data_shift(data_shift'low + arithm_size - 1 downto data_shift'low );
         end if REGSYNC_IF;
       else
         data_out <= (others => '0');
+        data_shift <= (others => '0');
       end if RST_IF;
     end if CLK_IF;
   end process shift_I_minus_SV;
@@ -216,7 +222,8 @@ begin
           carry_vector(carry_vector'high downto carry_vector'low + 1) := (others => '0');
           op_L_SV(op_L_SV'high)                                       := '0';
           op_L_SV(op_L_SV'high - 1 downto op_L_SV'low) :=
-            state_var_in(state_var_in'low + arithm_size - 1 downto state_var_in'low);
+-- (others =>'0');
+          state_var_in(state_var_in'low + arithm_size - 1 downto state_var_in'low);
           op_SHFT(op_SHFT'high) := '0';
           op_SHFT(op_SHFT'high - 1 downto op_SHFT'low) :=
             data_in(data_in'low + arithm_size - 1 downto data_in'low);
@@ -472,8 +479,8 @@ begin
         meta_data_delay(meta_data_delay'high)     <= meta_data_diff;
         -- The state variable delay line has nothing to do during the sync
         -- only load
-        state_var_delay_s(state_var_delay_s'high) <= temporary_RAM_S;
-        state_var_delay_c(state_var_delay_c'high) <= temporary_RAM_C;
+--        state_var_delay_s(state_var_delay_s'high) <= temporary_RAM_S;
+--        state_var_delay_c(state_var_delay_c'high) <= temporary_RAM_C;
       else
         -- This is equivalent to write a component to transfer
         --   without any arithmetics, and to place it under a generate
@@ -493,6 +500,11 @@ begin
               state_var_delay_s(state_var_delay_s'low + ind - 1)(
                 state_var_delay_s(state_var_delay_s'low + ind - 1)'low + arithm_size - 1 downto
                 state_var_delay_s(state_var_delay_s'low + ind - 1)'low);
+          else
+            state_var_delay_s(state_var_delay_s'high)(
+              state_var_delay_s(state_var_delay_s'high)'high downto
+              state_var_delay_s(state_var_delay_s'high)'high - arithm_size + 1)  <=
+              temporary_RAM_S( temporary_RAM_S'low +arithm_size - 1 downto temporary_RAM_S'low );               
           end if;
         end loop shifts_delay_RAM_s;
         shifts_delay_RAM_c : for ind in 1 to state_var_delay_c'length loop
@@ -510,6 +522,11 @@ begin
               state_var_delay_c(state_var_delay_c'low + ind - 1)(
                 state_var_delay_c(state_var_delay_c'low + ind - 1)'low + arithm_size - 1 downto
                 state_var_delay_c(state_var_delay_c'low + ind - 1)'low);
+          else
+            state_var_delay_c(state_var_delay_c'high)(
+              state_var_delay_c(state_var_delay_c'high)'high downto
+              state_var_delay_c(state_var_delay_c'high)'high - arithm_size + 1)  <=
+              temporary_RAM_C( temporary_RAM_C'low +arithm_size - 1 downto temporary_RAM_C'low );               
           end if;
         end loop shifts_delay_RAM_c;
       end if REGSYNC_IF;
@@ -568,7 +585,7 @@ begin
     CLK           => CLK,
     RST           => RST,
     reg_sync      => reg_sync,
-    state_var_in  => temporary_RAM_S,
+    state_var_in  => temporary_RAM_C,
     data_out      => cos_diff_shift,
     data_input_in => scz_in.the_cos);
 
