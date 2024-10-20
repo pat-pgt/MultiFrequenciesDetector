@@ -1,3 +1,9 @@
+-----------------
+General strategy.
+-----------------
+
+This document is a general overview of the tests. Some more detailed information may be found inside the folders or inside the files.
+
 The test scripts are mostly VHDL code.
 
 It prevents communication errors between different languages.
@@ -9,3 +15,138 @@ To prevent mixture of lines, coming from different entities, there is a manageme
 The report can be an Ok/NOk or data to be inspected. Especially for a low number of bits, the expected result is never reached. For instance sine2+cosine2 is never exactly equal to 1. The minimum and the maximum are generally computed. A decision accepts or rejects the result.
 
 For high genericity, the test is a set of one parametric test and a generic test to run the first one with many configurations. One can choose according with his activities.
+
+
+
+
+----------------------
+ASIC production tests.
+----------------------
+
+Low level.
+----------
+The communication inter-modules is standard and uses a shift register. Future versions of the project are going to replace the shift registers by an entity. Its first architecture reproduces the SR as today. The second architecture adds injection and monitoring. during all the reg_sync, the master clock of the modules can be stopped and the registers are all connected in series to load and store the data. By this way all the modules can be tested separately
+Since the data is locally injected in each module, the expected monitored result should be exactly what is expected using simulation or calculation.
+
+High level.
+-----------
+TODO
+
+
+
+
+----------------------
+FPGA production tests.
+----------------------
+
+Low level.
+----------
+The FPGA are supposed to be verified.
+
+High level.
+-----------
+The same rules as the ASIC production test applies.
+
+
+
+
+--------------------------
+FGPA instantiations tests.
+--------------------------
+
+Since the simulation on a computer is very long, some of the extended development tests are done, using partial FPGA instantiations.
+TODO
+
+
+
+
+----------------------------------
+Working station simulations tests.
+----------------------------------
+
+
+This section is mostly incomplete.
+
+
+Despite in the run mode, the frequencies come always in a predictable order, for all the tests, the frequencies came in random order. The meta data should describe the data.
+This is due to the instantiation of the angle gene. If it is involved AND relevant to the DUT, it is explicitly noticed.
+
+
+Angle generator test.
+---------------------
+TODO
+
+
+
+Cordic individual stages.
+-------------------------
+They are done for many tg while checking the X and the Y before and after the stage.
+Since the Cordic algorithm spins vectors CW or CCW the angle or its cosine should always be a constant regardless the data provided.
+This value comes from the meta data.
+For that purpose the scalar product divided by both the modules is computed.
+The test is limited to the data that does not cause overflows. There is no loop-back, in case of "a cosmic ray" that set a wrong data, the flow pushes it.
+The data is locally injected and monitored in each module, however, there are some computations using limited precision.
+  The result should be close to what is expected. A mask should be established.
+
+
+
+Cordic set of Z to 0 stages.
+----------------------------
+They are done for many inputs and for a large number of stages while checking the module of the last vector and the Z angle.
+It should grows always by the same coefficient, regardless the input data and the meta-data.
+The test include large (as long as it respect rule the input is one bit less than reg_size) and small vector modules.
+It should include X=input, Y=0, X=0 Y=input, X=Y=input configurations as well.
+Since the test covers a large number of stages the expected monitored result should be what is expected with a maximum of <number of Z to 0 stages> points.
+
+
+
+Cordic pass through stages.
+---------------------------
+They are done while connecting the angle generator, the Z to 0, to the Y to 0 set of stages, without prefilter, filter nor down sampling.
+The output should be
+* a X equal to the module of the input vector multiplied by the square of the grow coefficient,
+* an Y close to 0 and a Z
+* a Z showing a saw triangle aspect.
+  The Z frequency is extracted and compared to the metadata.
+Since the test covers a large number of stages the expected monitored result should be what is expected
+  with a maximum of <number of Z to 0 stages> plus <number of Y to 0 stages> points.
+
+
+
+Pre-filter without RAM.
+-----------------------
+Due to the complexity of an IIR filter and the RAM multiplexing, these two part are tested separately.
+* The first set of tests is done while the RAM is tied to 0. The output is equal to the input divided by 1/2**shifts.
+* The second set of tests loops directly the output to simulate a 0 length RAM. The test is done using 3 signals, for the case of an IIR filter latency of 3.
+  The test is limited to the data that does not cause overflows.
+* The third set of tests checks overflow data always falls back to normal values. This is due to the loop back.
+The first test should match with a maximum of one bit error. The second test should match within a mask. The third one should only leave extreme values.
+
+
+
+Pre-filter RAM storage.
+-----------------------
+Due to the complexity of an IIR filter and the RAM multiplexing, these two part are tested separately.
+This set of tests is very similar to standard memory design tests.
+TODO
+
+
+
+Full pre-filter.
+----------------
+TODO
+
+
+
+Pre-filter frequencies to shifts and to RTL.
+--------------------------------------------
+The goal is to test the VHDL instantiation against the requirements (and not only the formulas).
+For speed reasons, the strategy is to reproduce, using float and integers, the filtering.
+TODO
+
+
+
+Down-sampling.
+--------------
+This set of tests requires the frequencies to come using the angle gene order.
+TODO
