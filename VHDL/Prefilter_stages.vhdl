@@ -291,7 +291,9 @@ end entity Prefilter_Storage;
 --! Then there is time between two reg_sync to handle the multiplexing.
 --! That avoid the compiler to try to do it and to reduce the master clock frequency.\n
 --! If the FGPA or the ASIC allows a direct reg_size * 2 data RAM,
---! another architecture can be written.
+--! another architecture can be written.\n
+--! To keep a standard inter-modules interface, we build reg_type registers
+--! shifted by arithm size between the reg_sync (active)
 architecture arch of Prefilter_Storage is
   --! Is the number of blocs of ram_data_size to store an arithm_size vector.\n
   --! The reg_size may not be a multiple of the ram_data_size.
@@ -305,10 +307,6 @@ architecture arch of Prefilter_Storage is
   signal write_read_enable          : std_logic;
   -- RAM global counter
   signal ram_pos                    : std_logic_vector(ram_addr_size - 1 downto 0);
-  --! Output sine and cosine registers.\n
-  --! To keep a standard inter-modules interface, we build reg_type registers
-  --! shifted by arithm size between the reg_sync (active)
-  signal SV_sin_out_s, SV_cos_out_s : reg_type;
   -- This should be improved with a function to compute
   -- the number of bits for the ram
   -- It should have states for:
@@ -329,10 +327,6 @@ begin
   assert 2**ram_addr_size >= 2 * ram_locations_size * ram_bloc_size report "Internal error" severity failure;
   assert ram_data_size * ram_bloc_size >= reg_size report "Internal error" severity failure;
 
-  SV_cos_out <= SV_cos_out_s;
-  SV_sin_out <= SV_sin_out_s;
-
-
   main_proc : process(CLK)
   begin
     CLK_IF : if rising_edge(CLK) then
@@ -343,24 +337,24 @@ begin
           sc_io_regs(sc_io_regs'low + sc_io_regs'length / 2 + reg_size - 1 downto
                      sc_io_regs'low + sc_io_regs'length / 2) <= SV_cos_in;
           -- Load the output shift registers from the internal registers
-          SV_sin_out_s <= sc_io_regs(sc_io_regs'low + reg_size - 1 downto sc_io_regs'low);
-          SV_cos_out_s <= sc_io_regs(sc_io_regs'low + sc_io_regs'length / 2 + reg_size - 1 downto
+          SV_sin_out <= sc_io_regs(sc_io_regs'low + reg_size - 1 downto sc_io_regs'low);
+          SV_cos_out <= sc_io_regs(sc_io_regs'low + sc_io_regs'length / 2 + reg_size - 1 downto
                                      sc_io_regs'low + sc_io_regs'length / 2);
           multiplex_state <= (others => '0');
         else
           -- Shift the output registers
-          SV_sin_out_s(SV_sin_out_s'high - arithm_size downto SV_sin_out_s'low) <=
-            SV_sin_out_s(SV_sin_out_s'high downto SV_sin_out_s'low + arithm_size);
-          SV_cos_out_s(SV_cos_out_s'high - arithm_size downto SV_sin_out_s'low) <=
-            SV_cos_out_s(SV_cos_out_s'high downto SV_sin_out_s'low + arithm_size);
+          SV_sin_out(SV_sin_out'high - arithm_size downto SV_sin_out'low) <=
+            SV_sin_out(SV_sin_out'high downto SV_sin_out'low + arithm_size);
+          SV_cos_out(SV_cos_out'high - arithm_size downto SV_sin_out'low) <=
+            SV_cos_out(SV_cos_out'high downto SV_sin_out'low + arithm_size);
           -- No new data is coming using a serial mode
           -- The new data is loaded using parallel mode on the reg_sync
           -- Please note, the client can NOT use the reg_sync to set some
           -- variables such as the sign
           -- However, it is not a problem as this entity is intended
           -- to the IIR filter only
-          SV_sin_out_s(SV_sin_out_s'high downto SV_sin_out_s'high - arithm_size + 1) <= (others => '-');
-          SV_cos_out_s(SV_cos_out_s'high downto SV_cos_out_s'high - arithm_size + 1) <= (others => '-');
+          SV_sin_out(SV_sin_out'high downto SV_sin_out'high - arithm_size + 1) <= (others => '-');
+          SV_cos_out(SV_cos_out'high downto SV_cos_out'high - arithm_size + 1) <= (others => '-');
           -- There are ram_bloc_state read_modify write to do    
           -- * 2 as there is 2 RAM addr, data and enable states
           -- * 2 as there is the sin and the cosine
@@ -440,7 +434,6 @@ end entity Prefilter_stage;
 
 architecture arch of Prefilter_stage is
   signal shifts_calc               : shifts_IIR_data;
-  signal scz_out_s                 : reg_sin_cos_z;
   signal sin_diff_shift            : reg_type;
   signal cos_diff_shift            : reg_type;
   signal sin_shift_add             : reg_type;
@@ -461,7 +454,6 @@ architecture arch of Prefilter_stage is
   signal state_var_delay_s : reg_type_list(prefilter_diff_latency + prefilter_shift_latency downto 1);
   signal state_var_delay_c : reg_type_list(prefilter_diff_latency + prefilter_shift_latency downto 1);
 begin
-  scz_out       <= scz_out_s;
   meta_data_out <= meta_data_delay(meta_data_delay'low);
 
   assert state_var_delay_s'length > 1 and state_var_delay_c'length > 1
@@ -543,8 +535,8 @@ begin
   --! This is to verify the filter itself without the RAM
   --! The number of notes and octaves should restrict to 3 data.
   force_RAM_3_values : if debug_level = 1 generate
-    temporary_RAM_S <= scz_out_s.the_sin;
-    temporary_RAM_C <= scz_out_s.the_cos;
+    temporary_RAM_S <= scz_out.the_sin;
+    temporary_RAM_C <= scz_out.the_cos;
   end generate force_RAM_3_values;
 
 --! The highest debug level
@@ -579,7 +571,7 @@ begin
     reg_sync           => reg_sync,
     state_var_in       => state_var_delay_s(state_var_delay_s'low),
     data_in            => sin_shift_add,
-    state_var_data_out => scz_out_s.the_sin);
+    state_var_data_out => scz_out.the_sin);
 
   cose_IIR_diff : Prefilter_IIR_stage_diff port map(
     CLK           => CLK,
@@ -603,7 +595,7 @@ begin
     reg_sync           => reg_sync,
     state_var_in       => state_var_delay_c(state_var_delay_c'low),
     data_in            => cos_shift_add,
-    state_var_data_out => scz_out_s.the_cos);
+    state_var_data_out => scz_out.the_cos);
 
   meta_data_compute : Prefilter_metadata_and_shifts_compute port map (
     CLK           => CLK,
