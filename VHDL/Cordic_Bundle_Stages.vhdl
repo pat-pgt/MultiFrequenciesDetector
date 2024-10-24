@@ -31,6 +31,19 @@ end entity Cordic_Bundle_Z_to_0;
 
 
 architecture rtl of Cordic_Bundle_Z_to_0 is
+  -- We use, for now, stages_catch_list, should be changed
+  function highest_rank( the_list : in cordic_stages_num_list ) return natural is
+    variable the_return : natural := 0; 
+  begin
+    for ind in the_list'low to the_list'high loop
+      if the_list( ind ) > the_return then
+        the_return := the_list( ind );
+      end if;
+    end loop;
+    return the_return;
+  end function highest_rank;
+  constant stages_nbre_detected : natural := highest_rank( stages_catch_list );
+  
   type scz_array_t is array (0 to stages_nbre) of reg_sin_cos_z;
   signal scz_array                : scz_array_t;
   type meta_data_array_t is array(0 to stages_nbre) of meta_data_t;
@@ -39,6 +52,10 @@ architecture rtl of Cordic_Bundle_Z_to_0 is
   signal report_catch_chain       : std_logic_vector(stages_catch_list'length downto 0);
 
 begin
+  assert stages_nbre_detected > 0
+    report "Internal error, the number of Cordic stages should be at least 1"
+    severity failure;
+  
   has_catch_debugs : if stages_catch_list'length > 0 and metadata_catch_list'length > 0 generate
     Catch_monitor_stages : for ind in 1 to stages_catch_list'length generate
       debug_catch_in_operation <= '1';

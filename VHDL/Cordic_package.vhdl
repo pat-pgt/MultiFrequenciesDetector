@@ -7,6 +7,13 @@ use IEEE.STD_LOGIC_1164.all,
 
 package Cordic_package is
 
+  type converg_mode is (Z_to_0, Y_to_0, none_to_0);
+  type meta_scz_rank is record
+    rank      : natural;
+    meta_data : meta_data_t;
+    scz       : reg_sin_cos_z;
+  end record meta_scz_rank;
+  type meta_scz_rank_list is array(natural range<>) of meta_scz_rank;
 --! @brief Cordic Z to 0 first stage
 --!
 --! Perform a pre-processing and format the data
@@ -179,20 +186,20 @@ package Cordic_package is
   --! then its related entity should be missing.
   component Cordic_Interm_monitor is
     generic (
-      Z_not_Y_to_0 : boolean;
-      stage_num : positive;
+      Z_not_Y_to_0        : boolean;
+      stage_num           : positive;
       metadata_catch_list : meta_data_list_t
       );
     port (
-      CLK             : in std_logic;
-      RST             : in std_logic;
-      reg_sync        : in std_logic;
+      CLK             : in  std_logic;
+      RST             : in  std_logic;
+      reg_sync        : in  std_logic;
       full_sync       : in  std_logic;
-      report_in       : in std_logic;
+      report_in       : in  std_logic;
       report_out      : out std_logic;
-      meta_data_after : in meta_data_t;
-      scz_before      : in reg_sin_cos_z;
-      scz_after       : in reg_sin_cos_z);
+      meta_data_after : in  meta_data_t;
+      scz_before      : in  reg_sin_cos_z;
+      scz_after       : in  reg_sin_cos_z);
   end component Cordic_Interm_monitor;
 
 end package Cordic_package;
