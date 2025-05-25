@@ -40,7 +40,11 @@ use IEEE.STD_LOGIC_1164.all,
   work.Prefilter_package.all;
 --! @brief Pre-filter IIR compute_diff
 --!
---! It works by the same way as the other cordic stages.
+--! It works by the same way as the other cordic stages.\n
+--! It takes its data from the shift register of the previous stages:
+--!   * the filter input
+--!   * the state variable storage
+--! It places the result in its output shift register.\n
 --! It is even simpler as it is always a subtraction,
 --!   independent from any data bit.
 entity Prefilter_IIR_stage_diff is
@@ -121,7 +125,14 @@ use IEEE.STD_LOGIC_1164.all,
 
 --! @brief Pre-filter IIR compute the shifts
 --!
---! This is a little bit tricky.\n
+--! The shifts architectures of the Cordic stages
+--!   are designed for fixed numbers of shifts
+--!   (defined in the generics).
+--! This entity shifts against a signal.\n
+--! It takes its data from the shift register of the previous stage
+--!   and place the result in its output shift register.
+
+
 --! One could have use a large set of selectors
 --!   but it is resource consuming
 --!   and may break the small propagation delay of the others.\n 
@@ -188,6 +199,15 @@ use IEEE.STD_LOGIC_1164.all,
   work.MultiFreqDetect_package.all,
   work.Prefilter_package.all;
 
+--! @brief Pre-filter IIR compute_add
+--!
+--! It works by the same way as the other cordic stages.\n
+--! It takes its data from the shift register of the previous stages:
+--! * the shifter
+--! * the delayed state variable storage
+--! It places the result in its output shift register.
+--! It is even simpler as it is always a addition,
+--!   independent from any data bit.
 entity Prefilter_IIR_stage_add is
   port (
     CLK                : in  std_logic;

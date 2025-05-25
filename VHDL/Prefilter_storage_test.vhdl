@@ -1,6 +1,7 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
+  work.InterModule_formats.all,
   work.MultiFreqDetect_package.all,
   work.Prefilter_package.all;
 

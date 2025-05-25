@@ -54,6 +54,10 @@ architecture arch of Prefilter_coeff_test is
 
   signal report_in : std_logic;
 begin
+
+  --! Since there is a "warm up" to stabilize the output signal,
+  --!   the filter is going to run a certain number of periods
+  --!   before the monitoring starts
   main_proc : process
   begin
     case state is
@@ -92,6 +96,9 @@ begin
     
   end process main_proc;
 
+  --! The sine and cosine are generated and the algo is applied.
+  --! In order to measure the amplitude and offset in one period,
+  --!   there is a need to synchronise the capture.
   filter_simul : process (curr_period)
     variable the_sin, the_cos : real;
     variable the_output       : real;

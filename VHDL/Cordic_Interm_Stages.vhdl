@@ -9,7 +9,7 @@ use IEEE.STD_LOGIC_1164.all,
 
 --! @brief Cordic intermediary stages
 --!
---! This computes one cordic vector spin with its angle (Z) update\n
+--! This computes one Cordic vector spin with its angle (Z) update\n
 --! It is common for both\n
 --! * To multiply a value by an angle vector, the angle should converged to 0\n
 --! * To convert rectangular coordinates to polar, The Y should convergent to 0.
@@ -41,6 +41,10 @@ architecture rtl of Cordic_IntermStage is
   -- Since the new data is coming during the calculation, by the MSB side,
   -- the high bit should be saved, and used until the current data is over
   signal sign_X, sign_Y                         : std_logic;
+  --! The 2**N divided data is done by picking up in the middle of the shift register.
+  --! This counter tell the data is over.
+  --! Today, it is a basic counter, it may be changed into something else
+  --!   in order to not limit the bandwidth.
   signal remaining_shift_count                  : std_logic_vector(5 downto 0);
   signal is_first                               : std_logic;
   signal Z_shifts_count                         : std_logic_vector(5 downto 0);
@@ -62,7 +66,10 @@ begin
     report "The size of the registers (" & integer'image(reg_size) &
     ") should be at least twice of the arithm_size (" & integer'image(arithm_size) & ")"
     severity failure;
-
+  -- Some code has to be written for the case the arithm_size is not 1
+  -- For now, this set a restriction, using this code.
+  assert shifts_calc mod arithm_size = 0 report "This is not uyet implemented" severity error;
+  
   scz_out <= scz_out_s;
 
 
@@ -111,8 +118,8 @@ begin
             debug_catch_Y_sync <= scz_out_s.the_sin;
             debug_catch_Z_sync <= scz_out_s.angle_z;
             -- This should become dynamic to not overflow,
-            -- to respect the bouns as well, if the reg_size is small (<16)
-            -- Be carefull, this is the data of the input,
+            -- to respect the bounds as well, if the reg_size is small (<16)
+            -- Be careful, this is the data of the input,
             -- then the previous stage
             --X2_plus_Y2 <= std_logic_vector( to_unsigned(
               --to_integer( signed( scz_in.the_sin( scz_in.the_sin'high downto scz_in.the_sin'high - 14) ))**2+
@@ -120,7 +127,7 @@ begin
               --X2_plus_Y2'length ));
           end if;
         else
-          -- We need to negate the bits for the substractions
+          -- We need to negate the bits for the subtractions
           -- however, we should not negate the "spare" bit on the left
           inverter_mask(inverter_mask'high - 1 downto 0) := (others => '1');
           inverter_mask(inverter_mask'high)              := '0';
@@ -139,11 +146,13 @@ begin
             scz_in.the_sin(scz_in.the_sin'low + arithm_size - 1 downto scz_in.the_sin'low);
           op_N_Z(op_N_Z'high - 1 downto op_N_Z'low) :=
             scz_in.angle_z(scz_in.angle_z'low + arithm_size - 1 downto scz_in.angle_z'low);
-          -- Extract the shifted operands that are going to be added or subtracted        
-          -- This is more tricky, as the shift register is receiving
-          -- the new data by the MSB side.
-          -- Then after about shifts_calc,
-          -- the data should be replaced by the stored carry
+          -- Extract the shifted operands that are going to be added or subtracted
+          -- The division is performed by a classic shift register
+          --   with a loop on the MSB.
+          -- The registers can not have a loop as they are receiving the data
+          --   for the next value.
+          -- After the counter reached its end, the data is supplied with the sign bit
+          --   stored at the reg sync
           if unsigned(remaining_shift_count) = to_unsigned(0, remaining_shift_count'length) then
             --All the arithmetic blocs are over, loop on the sign bit
             op_S_X(op_S_X'high - 1 downto op_S_X'low) := (others => sign_X);
@@ -154,7 +163,9 @@ begin
           -- high bits are populated with stored the carry
           -- This should never happened if the arithmetic size is 1
           --
+          -- Of course, we can NOT do that
           -- assert arithm_size = 1 report "Internal error" severity error;
+          -- For now, there is an assert at the beginning
           else
             remaining_shift_count <=
               std_logic_vector(unsigned(remaining_shift_count) - to_unsigned(arithm_size, remaining_shift_count'length));
@@ -264,3 +275,4 @@ begin
     end if CLK_IF;
   end process main_proc;
 end architecture rtl;
+ 
