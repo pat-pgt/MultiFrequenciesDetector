@@ -11,11 +11,11 @@ use IEEE.STD_LOGIC_1164.all,
 --! @brief Pre-filter 
 --!
 --! This computes the prefilter
---! to remove high frequencies with a minimum of resources.\n
---! They are first order infinite impulse response filters
---! using 1/2**N as a coefficient.\n
+--!   to remove high frequencies with a minimum of resources.\n
+--! There are first order infinite impulse response filters
+--!   using 1/2**N as a coefficient.\n
 --! Since the final filtering is very low (against the sampling rate),
---! a down-sampling follows.\n
+--!   a down-sampling follows.\n
 --! That reduces the final filtering resources because
 --! * the low pass frequency is closer than the sampling rate,
 --!   that reduces the requested number of bits of the operands.
@@ -26,7 +26,8 @@ use IEEE.STD_LOGIC_1164.all,
 --! * To validate the shifts "detection" and execution *
 --! ****************************************************
 package PreFilter_package is
-
+--! In most of the ASIC generators, the RAM data size is what one wants.
+--! For the FPGA the standard libraries are, in general, 1, 2, 4, 8, 16. 
   constant ram_data_size : positive := 16;
 
 --! @brief Data structure for the 2**N division in the IIR pre-filter
@@ -174,6 +175,22 @@ package PreFilter_package is
       SV_cos_out : out reg_type
       );
   end component Prefilter_Storage;
+  --! @brief Prefilter delay line
+  --!
+  --! The Prefilter subtraction, and, in some case, the prefilter shift
+  --! Introduces a latency.
+  --! This component takes the state value, delays it, and provide it for the addition
+  component Prefilter_Delay is
+    generic(
+      latency : positive );
+    port (
+      CLK           : in  std_logic;
+      RST           : in  std_logic;
+      reg_sync      : in  std_logic;
+      scz_in        : in  reg_sin_cos_z;
+      scz_out       : out reg_sin_cos_z
+      );
+  end component Prefilter_Delay;
 --! @brief Prefilter stage
 --!
 --! This is a pair of sine and cosine calculation
@@ -270,7 +287,7 @@ package PreFilter_package is
   function Meta_data_2_prefilter_coeff_real(constant cutoff_ratio : real) return real;
 
 
-  constant CLK_cycles_per_sample : positive := ((reg_size + 1) * N_notes * N_octaves);
+  constant CLK_cycles_per_sample : positive := ((reg_size / arithm_size + 1) * N_notes * N_octaves);
 
 
 --  function Prefilter_cnv_metadata_2_shifts(signal metadata_in : meta_data_t; constant ratiofrom_cuttoff : real)

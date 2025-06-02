@@ -429,6 +429,91 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
   work.InterModule_formats.all,
+--  work.Meta_data_package.all,
+  work.Prefilter_package.all;
+
+entity Prefilter_Delay is
+    generic(
+      latency : positive );
+    port (
+      CLK           : in  std_logic;
+      RST           : in  std_logic;
+      reg_sync      : in  std_logic;
+      scz_in        : in  reg_sin_cos_z;
+      scz_out       : out reg_sin_cos_z
+      );
+end entity Prefilter_Delay;
+
+architecture arch of Prefilter_Delay is
+  signal state_var_delay_s : reg_type_list(latency downto 1);
+  signal state_var_delay_c : reg_type_list(latency downto 1);
+begin
+  scz_out.the_sin <= state_var_delay_s( state_var_delay_s'high );
+  scz_out.the_cos <= state_var_delay_c( state_var_delay_c'high );
+  
+  main_proc : process (CLK) is
+  begin
+    CLK_IF : if rising_edge(CLK) then
+      REGSYNC_IF : if reg_sync = '0' then
+        -- This is equivalent to write a component to transfer
+        --   without any arithmetics, and to place it under a generate
+        shifts_delay_RAM_s : for ind in 1 to state_var_delay_c'length loop
+          -- Shift all the registers themselves
+          state_var_delay_s(state_var_delay_s'low + ind - 1)(
+            state_var_delay_s(state_var_delay_s'low + ind - 1)'high - arithm_size downto
+            state_var_delay_s(state_var_delay_s'low + ind - 1)'low)  <=
+            state_var_delay_s(state_var_delay_s'low + ind - 1)(
+              state_var_delay_s(state_var_delay_s'low + ind - 1)'high downto
+              state_var_delay_s(state_var_delay_s'low + ind - 1)'low + arithm_size);
+          if ind /= 1 then
+            -- Shift the low of the register N to the high of the register N+1
+            state_var_delay_s(state_var_delay_s'low + ind - 2)(
+              state_var_delay_s(state_var_delay_s'low + ind - 2)'high downto
+              state_var_delay_s(state_var_delay_s'low + ind - 2)'high - arithm_size + 1)  <=
+              state_var_delay_s(state_var_delay_s'low + ind - 1)(
+                state_var_delay_s(state_var_delay_s'low + ind - 1)'low + arithm_size - 1 downto
+                state_var_delay_s(state_var_delay_s'low + ind - 1)'low);
+          else
+            -- Supply the register with the input
+            state_var_delay_s(state_var_delay_s'high)(
+              state_var_delay_s(state_var_delay_s'high)'high downto
+              state_var_delay_s(state_var_delay_s'high)'high - arithm_size + 1)  <=
+              scz_in.the_sin( scz_in.the_sin'low +arithm_size - 1 downto scz_in.the_sin'low );               
+          end if;
+        end loop shifts_delay_RAM_s;
+        shifts_delay_RAM_c : for ind in 1 to state_var_delay_c'length loop
+          -- Shift all the registers themselves
+          state_var_delay_c(state_var_delay_c'low + ind - 1)(
+            state_var_delay_c(state_var_delay_c'low + ind - 1)'high - arithm_size downto
+            state_var_delay_c(state_var_delay_c'low + ind - 1)'low)  <=
+            state_var_delay_c(state_var_delay_c'low + ind - 1)(
+              state_var_delay_c(state_var_delay_c'low + ind - 1)'high downto
+              state_var_delay_c(state_var_delay_c'low + ind - 1)'low + arithm_size);
+          if ind /= 1 then
+            -- Shift the low of the register N to the high of the register N+1
+            state_var_delay_c(state_var_delay_c'low + ind - 2)(
+              state_var_delay_c(state_var_delay_c'low + ind - 2)'high downto
+              state_var_delay_c(state_var_delay_c'low + ind - 2)'high - arithm_size + 1)  <=
+              state_var_delay_c(state_var_delay_c'low + ind - 1)(
+                state_var_delay_c(state_var_delay_c'low + ind - 1)'low + arithm_size - 1 downto
+                state_var_delay_c(state_var_delay_c'low + ind - 1)'low);
+          else
+            -- Supply with the input
+            state_var_delay_c(state_var_delay_c'high)(
+              state_var_delay_c(state_var_delay_c'high)'high downto
+              state_var_delay_c(state_var_delay_c'high)'high - arithm_size + 1)  <=
+              scz_in.the_cos( scz_in.the_cos'low +arithm_size - 1 downto scz_in.the_cos'low );               
+          end if;
+        end loop shifts_delay_RAM_c;
+      end if REGSYNC_IF;
+    end if CLK_IF;
+  end process main_proc;
+end architecture arch;
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.all,
+  ieee.numeric_std.all,
+  work.InterModule_formats.all,
   work.Meta_data_package.all,
   work.Prefilter_package.all;
 --! @brief Prefilter stage
@@ -461,8 +546,7 @@ architecture arch of Prefilter_stage is
   signal meta_data_diff            : meta_data_t;
   -- Is nice for testing with 3 frequencies
   --   separately from the RAM test
-  signal temporary_RAM_S           : reg_type;
-  signal temporary_RAM_C           : reg_type;
+  signal temporary_RAM             : reg_sin_cos_z;
   constant prefilter_diff_latency  : positive := 1;
   constant prefilter_shift_latency : positive := 1;
   constant prefilter_add_latency   : positive := 1;
@@ -471,14 +555,14 @@ architecture arch of Prefilter_stage is
   signal meta_data_delay : meta_data_list_t(prefilter_diff_latency - 1 +
                                             prefilter_shift_latency +
                                             prefilter_add_latency downto 1);
-  signal state_var_delay_s : reg_type_list(prefilter_diff_latency + prefilter_shift_latency downto 1);
-  signal state_var_delay_c : reg_type_list(prefilter_diff_latency + prefilter_shift_latency downto 1);
+  signal scz_delayed               : reg_sin_cos_z;
+  constant prefilter_all_latency : positive := prefilter_diff_latency + prefilter_shift_latency;
 begin
   meta_data_out <= meta_data_delay(meta_data_delay'low);
 
-  assert state_var_delay_s'length > 1 and state_var_delay_c'length > 1
-    report "Internal error, the delay should be at least 2 reg_sync"
-    severity failure;
+--  assert state_var_delay_s'length > 1 and state_var_delay_c'length > 1
+--    report "Internal error, the delay should be at least 2 reg_sync"
+--    severity failure;
 
   
   main_proc : process (CLK) is
@@ -493,54 +577,6 @@ begin
         -- only load
 --        state_var_delay_s(state_var_delay_s'high) <= temporary_RAM_S;
 --        state_var_delay_c(state_var_delay_c'high) <= temporary_RAM_C;
-      else
-        -- This is equivalent to write a component to transfer
-        --   without any arithmetics, and to place it under a generate
-        shifts_delay_RAM_s : for ind in 1 to state_var_delay_s'length loop
-          -- Shift the register itself
-          state_var_delay_s(state_var_delay_s'low + ind - 1)(
-            state_var_delay_s(state_var_delay_s'low + ind - 1)'high - arithm_size downto
-            state_var_delay_s(state_var_delay_s'low + ind - 1)'low)  <=
-            state_var_delay_s(state_var_delay_s'low + ind - 1)(
-              state_var_delay_s(state_var_delay_s'low + ind - 1)'high downto
-              state_var_delay_s(state_var_delay_s'low + ind - 1)'low + arithm_size);
-          -- And pass the arithm_size low to the high of the next register
-          if ind /= 1 then
-            state_var_delay_s(state_var_delay_s'low + ind - 2)(
-              state_var_delay_s(state_var_delay_s'low + ind - 2)'high downto
-              state_var_delay_s(state_var_delay_s'low + ind - 2)'high - arithm_size + 1)  <=
-              state_var_delay_s(state_var_delay_s'low + ind - 1)(
-                state_var_delay_s(state_var_delay_s'low + ind - 1)'low + arithm_size - 1 downto
-                state_var_delay_s(state_var_delay_s'low + ind - 1)'low);
-          else
-            state_var_delay_s(state_var_delay_s'high)(
-              state_var_delay_s(state_var_delay_s'high)'high downto
-              state_var_delay_s(state_var_delay_s'high)'high - arithm_size + 1)  <=
-              temporary_RAM_S( temporary_RAM_S'low +arithm_size - 1 downto temporary_RAM_S'low );               
-          end if;
-        end loop shifts_delay_RAM_s;
-        shifts_delay_RAM_c : for ind in 1 to state_var_delay_c'length loop
-          -- Shift the register itself
-          state_var_delay_c(state_var_delay_c'low + ind - 1)(
-            state_var_delay_c(state_var_delay_c'low + ind - 1)'high - arithm_size downto
-            state_var_delay_c(state_var_delay_c'low + ind - 1)'low)  <=
-            state_var_delay_c(state_var_delay_c'low + ind - 1)(
-              state_var_delay_c(state_var_delay_c'low + ind - 1)'high downto
-              state_var_delay_c(state_var_delay_c'low + ind - 1)'low + arithm_size);
-          if ind /= 1 then
-            state_var_delay_c(state_var_delay_c'low + ind - 2)(
-              state_var_delay_c(state_var_delay_c'low + ind - 2)'high downto
-              state_var_delay_c(state_var_delay_c'low + ind - 2)'high - arithm_size + 1)  <=
-              state_var_delay_c(state_var_delay_c'low + ind - 1)(
-                state_var_delay_c(state_var_delay_c'low + ind - 1)'low + arithm_size - 1 downto
-                state_var_delay_c(state_var_delay_c'low + ind - 1)'low);
-          else
-            state_var_delay_c(state_var_delay_c'high)(
-              state_var_delay_c(state_var_delay_c'high)'high downto
-              state_var_delay_c(state_var_delay_c'high)'high - arithm_size + 1)  <=
-              temporary_RAM_C( temporary_RAM_C'low +arithm_size - 1 downto temporary_RAM_C'low );               
-          end if;
-        end loop shifts_delay_RAM_c;
       end if REGSYNC_IF;
     end if CLK_if;
   end process main_proc;
@@ -555,8 +591,7 @@ begin
   --! This is to verify the filter itself without the RAM
   --! The number of notes and octaves should restrict to 3 data.
   force_RAM_3_values : if debug_level = 1 generate
-    temporary_RAM_S <= scz_out.the_sin;
-    temporary_RAM_C <= scz_out.the_cos;
+    temporary_RAM <= scz_out;
   end generate force_RAM_3_values;
 
 --! The highest debug level
@@ -565,15 +600,26 @@ begin
   --!   some right shifts
   --! There are no restriction on the number of notes nor octves
   force_RAM_to_0 : if debug_level = 2 generate
-    temporary_RAM_S <= (others => '0');
-    temporary_RAM_C <= (others => '0');
+    temporary_RAM.the_sin <= (others => '0');
+    temporary_RAM.the_cos <= (others => '0');
   end generate force_RAM_to_0;
+
+  delay_IIR : Prefilter_Delay generic map (
+    latency => prefilter_all_latency
+    )
+    port map (
+      CLK           => CLK,
+      RST           => RST,
+      reg_sync      => reg_sync,
+      scz_in        => temporary_RAM,
+      scz_out       => scz_delayed
+    );
   
   sine_IIR_diff : Prefilter_IIR_stage_diff port map(
     CLK           => CLK,
     RST           => RST,
     reg_sync      => reg_sync,
-    state_var_in  => temporary_RAM_S,
+    state_var_in  => temporary_RAM.the_sin,
     data_out      => sin_diff_shift,
     data_input_in => scz_in.the_sin);
 
@@ -589,7 +635,7 @@ begin
     CLK                => CLK,
     RST                => RST,
     reg_sync           => reg_sync,
-    state_var_in       => state_var_delay_s(state_var_delay_s'low),
+    state_var_in       => scz_delayed.the_sin,
     data_in            => sin_shift_add,
     state_var_data_out => scz_out.the_sin);
 
@@ -597,7 +643,7 @@ begin
     CLK           => CLK,
     RST           => RST,
     reg_sync      => reg_sync,
-    state_var_in  => temporary_RAM_C,
+    state_var_in  => temporary_RAM.the_cos,
     data_out      => cos_diff_shift,
     data_input_in => scz_in.the_cos);
 
@@ -613,7 +659,7 @@ begin
     CLK                => CLK,
     RST                => RST,
     reg_sync           => reg_sync,
-    state_var_in       => state_var_delay_c(state_var_delay_c'low),
+    state_var_in       => scz_delayed.the_cos,
     data_in            => cos_shift_add,
     state_var_data_out => scz_out.the_cos);
 
