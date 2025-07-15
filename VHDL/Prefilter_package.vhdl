@@ -86,7 +86,7 @@ package PreFilter_package is
 
 --! @brief Pre-filter IIR compute the diff
 --!
---! This component computes the diff beween
+--! This component computes the diff between
 --!   the input and the state variable.\n
 --! Even with data lost by the shift,
 --!   It is slightly better and
@@ -104,14 +104,23 @@ package PreFilter_package is
       data_out         : out reg_type
       );
   end component Prefilter_IIR_stage_diff;
---! @brief Pre-filter IIR compute the shifts
+--! @brief Pre-filter IIR compute the shifts, OBSOLETE, see details
+--!
+--! The project was (wrongly) designed to shift dynamically from 0 to reg_size.\n
+--! The target is many channels in a limited number of octave.
+--! Since it is a prefilter, the shifts are limited.\n
+--! For arithm_size equal to 1 and a number of octave equal to 10,
+--!   That make a shitch among 10 bits.\n
+--! However, this piece of code remain a part of the project
+--!   TO BE FINISHED in case the new implementation is tricky.
+--! The cases are a large product number of octaves per arithm_size.\n\n
 --!
 --! This component computes the shift
 --!   to divide by 2**N.\n
 --! It may need, in the future a configure statement
 --!   to switch different architectures
 --!   for different groups of configuration.
---!   See in the entity documentation.\n
+--!   See in the bundle entity documentation.\n
 --! For more information about the calculation,
 --!   see Prefilter_IIR_stage_dummy.
   component Prefilter_IIR_stage_shift is
@@ -124,7 +133,16 @@ package PreFilter_package is
       data_out         : out reg_type
       );
   end component Prefilter_IIR_stage_shift;
---! @brief Pre-filter IIR compute the add
+--! @brief Pre-filter IIR compute the add, OBSOLETE, see details
+--!
+--! The project was (wrongly) designed to shift dynamically from 0 to reg_size.\n
+--! The target is many channels in a limited number of octave.
+--! Since it is a prefilter, the shifts are limited.\n
+--! For arithm_size equal to 1 and a number of octave equal to 10,
+--!   That make a shitch among 10 bits.\n
+--! However, this piece of code remain a part of the project
+--!   TO BE FINISHED in case the new implementation is tricky.
+--! The cases are a large product number of octaves per arithm_size.\n\n
 --!
 --! This component computes the final addition.\n
 --! The result is the output and the new state variable
@@ -136,14 +154,51 @@ package PreFilter_package is
       CLK                : in  std_logic;
       RST                : in  std_logic;
       reg_sync           : in  std_logic;
-      -- This signal has to be delayed
-      -- the latency of the diff and the shift
+      -- This signal has to be delayed by 2 (reg_size + 1)
+      -- for the latency of the diff and the shift
       state_var_in       : in  reg_type;
       data_in            : in  reg_type;
       state_var_data_out : out reg_type
       );
   end component Prefilter_IIR_stage_add;
 
+--! @brief Pre-filter IIR compute the shifts and the final addition
+--!
+--! This component is intended for a low number of octaves
+--!   and/or a low number of bit processed at a time.
+--! In such case, for a 8 octaves set and a 1 arithmetic size,
+--!   it requires a 8 to 1 switch.
+--! For more, the shifts has to be split in 2 (or more).
+--! An entity is going to make a limited number of shifts.
+--! This entity should be used as the final shifts (and additions).
+--! See in the bundle entity documentation.\n
+--! By definition of the pre-filter, the cut off frequency
+--!   should be at least a certain value.
+--! According to the frequencies (sample rate, shift etc...),
+--!   there is a note 
+--! This part is similar to the shifts of the Cordic,
+--!   but this time, the N is a variable, not a compile time value.\n\n
+--! The second part computes the final addition.\n
+--! The bundle should provide a delayed old state variable.
+--! It is 1 reg_cycle for a stand alone usage.
+--! Additional shifts entities in use (see above) increases this delay.  
+--! The result is the output and the new state variable
+--!   to be stored into the RAM.\n
+--! For more information about the calculation,
+--!   see Prefilter_IIR_stage_dummy.
+  component Prefilter_IIR_stage_shift_and_add is
+    port (
+      CLK                : in  std_logic;
+      RST                : in  std_logic;
+      reg_sync           : in  std_logic;
+      shifts_calc        : in  shifts_IIR_data;
+      -- This signal has to be delayed by 1 (reg_size + 1)
+      -- for the latency of the diff and shift
+      state_var_in       : in  reg_type;
+      data_diffed_in     : in  reg_type;
+      state_var_data_out : out reg_type
+      );
+  end component Prefilter_IIR_stage_shift_and_add;
 
 --! @brief Pre-filter state variable storage
 --!
