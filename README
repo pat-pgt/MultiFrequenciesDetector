@@ -2,6 +2,8 @@ Multi audio frequencies detector
 
 It is intended to build on every (enough large) FPGA and ASICs as he design is highly parametric. No multiplication nor division library is required.
 
+The test and verification are included in the project. It look like wheel re-invention. However, it does not require any verification tool. They are in the *.test.vhl files and some FPGA based are planned to speed up the run. By this way, verifying the verification tools is easy.
+
 For easy validation, especially the carries propagation, the additions (and subtractions) are proceed N bits at a time. Some shift registers handle the full length. However, there is no test planned for now with N greater than 1.
 
 The Cordic algorithm is split into stages that proceed only one angle/arc-tangeant. That improves the sample rate, but increases the latency. 
