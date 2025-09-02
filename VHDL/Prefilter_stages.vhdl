@@ -40,7 +40,7 @@ use IEEE.STD_LOGIC_1164.all,
   work.Prefilter_package.all;
 --! @brief Pre-filter IIR compute_diff
 --!
---! It works by the same way as the other cordic stages.\n
+--! It works by the same way as the other Cordic stages.\n
 --! It takes its data from the shift register of the previous stages:
 --!   * the filter input
 --!   * the state variable storage
@@ -175,7 +175,7 @@ begin
         else
           data_shift(data_shift'high - arithm_size downto data_shift'low) <=
             data_shift(data_shift'high downto data_shift'low + arithm_size);
-          -- There is no high fill u}p as the load is done in parrallel mode
+          -- There is no high fill up as the load is done in parallel mode
           -- For debug
           data_shift(data_shift'high downto data_shift'high - arithm_size + 1) <= (others => '-');
           data_out(data_out'high - arithm_size downto data_out'low ) <=
@@ -201,7 +201,7 @@ use IEEE.STD_LOGIC_1164.all,
 
 --! @brief Pre-filter IIR compute_add
 --!
---! It works by the same way as the other cordic stages.\n
+--! It works by the same way as the other Cordic stages.\n
 --! It takes its data from the shift register of the previous stages:
 --! * the shifter
 --! * the delayed state variable storage
@@ -456,7 +456,7 @@ begin
     CLK_IF : if rising_edge(CLK) then
       REGSYNC_IF : if reg_sync = '0' then
         -- This is equivalent to write a component to transfer
-        --   without any arithmetics, and to place it under a generate
+        --   without any arithmetic's, and to place it under a generate
         shifts_delay_RAM_s : for ind in 1 to state_var_delay_c'length loop
           -- Shift all the registers themselves
           state_var_delay_s(state_var_delay_s'low + ind - 1)(
@@ -569,7 +569,7 @@ begin
   begin
     CLK_IF : if rising_edge(CLK) then
       REGSYNC_IF : if reg_sync = '1' then
-        -- The metadata is transfered using parallel mode
+        -- The metadata is transferred using parallel mode
         meta_data_delay(meta_data_delay'high - 1 downto meta_data_delay'low) <=
           meta_data_delay(meta_data_delay'high downto meta_data_delay'low + 1);
         meta_data_delay(meta_data_delay'high)     <= meta_data_diff;
@@ -582,12 +582,12 @@ begin
   end process main_proc;
 
   --! The full service mode
-  --! There are no restriction on the number of notes nor octves
+  --! There are no restriction on the number of notes nor octaves
   --normal_RAM_mode : if debug_level = 0 generate
   assert debug_level /= 0 report "Sorry not yet implemented" severity failure;
   --end generate normal_RAM_mode;
 
-  --! The RAM is replaced by a loopback
+  --! The RAM is replaced by a loop-back
   --! This is to verify the filter itself without the RAM
   --! The number of notes and octaves should restrict to 3 data.
   force_RAM_3_values : if debug_level = 1 generate
@@ -598,7 +598,7 @@ begin
   --! The output of the RAM is forced to 0
   --!   in order to check the input goes to the output with
   --!   some right shifts
-  --! There are no restriction on the number of notes nor octves
+  --! There are no restriction on the number of notes nor octaves
   force_RAM_to_0 : if debug_level = 2 generate
     temporary_RAM.the_sin <= (others => '0');
     temporary_RAM.the_cos <= (others => '0');
