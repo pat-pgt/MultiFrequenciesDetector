@@ -16,7 +16,6 @@ use IEEE.STD_LOGIC_1164.all,
 --! For this case, it is required the angle is already in the -PI/2 +PI/2 zone
 entity Cordic_IntermStage is
   generic (
-    debug_mode   : boolean := false;
     Z_not_Y_to_0 : boolean;
     shifts_calc  : integer range 1 to reg_size - 2
     );
@@ -52,7 +51,7 @@ architecture rtl of Cordic_IntermStage is
   signal debug_catch_Z_sync      : reg_type;
   signal debug_flipflop                         : std_logic := '0';
   signal debug_flipflop_2                       : std_logic := '0';
-  constant angle_add_or_subtract                  : reg_type  := arctg_2_angle_reg(shifts_calc,debug_mode);
+  constant angle_add_or_subtract                  : reg_type  := arctg_2_angle_reg(shifts_calc);
   signal CCW_not_CW                             : std_logic;
   signal X2_plus_Y2 : std_logic_vector( 31 downto 0 );
 begin
@@ -68,7 +67,7 @@ begin
     severity failure;
   -- Some code has to be written for the case the arithm_size is not 1
   -- For now, this set a restriction, using this code.
-  assert shifts_calc mod arithm_size = 0 report "This is not uyet implemented" severity error;
+  assert shifts_calc mod arithm_size = 0 report "This is not yet implemented" severity error;
   
   scz_out <= scz_out_s;
 
@@ -95,19 +94,8 @@ begin
             -- If Y is negative, the vector should spin CCW
             CCW_not_CW <= scz_in.the_sin(scz_in.the_sin'high);
           end if;
-          -- Forge the values in order to check using a wave viewer
-          -- or an automated system
-          debug_flipflop <= not debug_flipflop;
-          if debug_mode and debug_flipflop = '1' then
-            sign_X <= '-';
-            sign_Y <= '-';
-          elsif debug_mode and debug_flipflop = '0' then
-            sign_X <= 'W';
-            sign_Y <= 'W';
-          else
-            sign_X <= scz_in.the_cos(scz_in.the_cos'high);
-            sign_Y <= scz_in.the_sin(scz_in.the_sin'high);
-          end if;
+          sign_X <= scz_in.the_cos(scz_in.the_cos'high);
+          sign_Y <= scz_in.the_sin(scz_in.the_sin'high);
           meta_data_out         <= meta_data_in;
           remaining_shift_count <= std_logic_vector(to_unsigned(reg_size - shifts_calc, remaining_shift_count'length));
           Z_shifts_count        <= (others => '0');
@@ -242,31 +230,12 @@ begin
           scz_out_s.angle_z(scz_out_s.angle_z'high - arithm_size downto scz_out_s.angle_z'low) <=
             scz_out_s.angle_z(scz_out_s.angle_z'high downto scz_out_s.angle_z'low + arithm_size);
           -- step two: populate with the debug or the result
-          if debug_mode then
-            debug_flipflop_2 <= not debug_flipflop_2;
-            debug_case(1)    := debug_flipflop;
-            debug_case(0)    := debug_flipflop_2;
-            case debug_case is
-              when "00"   => out_debug_filling := (others => '1');
-              when "01"   => out_debug_filling := (others => 'H');
-              when "10"   => out_debug_filling := (others => '0');
-              when "11"   => out_debug_filling := (others => 'L');
-              when others => null;
-            end case;
-            scz_out_s.the_cos(scz_out_s.the_cos'high downto scz_out_s.the_cos'high - arithm_size + 1) <=
-              out_debug_filling;
-            scz_out_s.the_sin(scz_out_s.the_sin'high downto scz_out_s.the_sin'high - arithm_size + 1) <=
-              out_debug_filling;
-            scz_out_s.angle_z(scz_out_s.angle_z'high downto scz_out_s.angle_z'high - arithm_size + 1) <=
-              out_debug_filling;
-          else
-            scz_out_s.the_cos(scz_out_s.the_cos'high downto scz_out_s.the_cos'high - arithm_size + 1) <=
-              result_X(result_X'high - 1 downto result_X'low);
-            scz_out_s.the_sin(scz_out_s.the_sin'high downto scz_out_s.the_sin'high - arithm_size + 1) <=
-              result_Y(result_Y'high - 1 downto result_Y'low);
-            scz_out_s.angle_z(scz_out_s.angle_z'high downto scz_out_s.angle_z'high - arithm_size + 1) <=
-              result_Z(result_Z'high - 1 downto result_Z'low);
-          end if;
+          scz_out_s.the_cos(scz_out_s.the_cos'high downto scz_out_s.the_cos'high - arithm_size + 1) <=
+            result_X(result_X'high - 1 downto result_X'low);
+          scz_out_s.the_sin(scz_out_s.the_sin'high downto scz_out_s.the_sin'high - arithm_size + 1) <=
+            result_Y(result_Y'high - 1 downto result_Y'low);
+          scz_out_s.angle_z(scz_out_s.angle_z'high downto scz_out_s.angle_z'high - arithm_size + 1) <=
+            result_Z(result_Z'high - 1 downto result_Z'low);
           is_first <= '0';
         end if REGSYNC_IF;
       else

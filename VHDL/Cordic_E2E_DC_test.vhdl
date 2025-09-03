@@ -128,7 +128,6 @@ begin
       scz           => scz_1);
 
   cordic_bundle_instanc : Cordic_Bundle_Z_to_0 generic map (
-    debug_mode          => false,
     stages_nbre         => 12,
     metadata_catch_list => metadata_catch_list,
     stages_catch_list   => stages_catch_list
@@ -163,7 +162,6 @@ begin
       scz_out       => scz_3);
 
   cordic_bundle_2_instanc : Cordic_Bundle_Y_to_0 generic map (
-    debug_mode          => false,
     stages_nbre         => 20,
     metadata_catch_list => metadata_catch_list,
     stages_catch_list   => stages_catch_list

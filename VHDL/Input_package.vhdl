@@ -72,7 +72,7 @@ package Input_modules is
 
   function angle_constants_populate_reg(constant debug_mode : boolean) return angle_list_per_note_t;
 
-  function arctg_2_angle_reg(constant shift_bits : natural; constant debug_mode : boolean) return reg_type;
+  function arctg_2_angle_reg(constant shift_bits : natural) return reg_type;
 
   
 end package Input_modules;
@@ -129,7 +129,7 @@ package body Input_modules is
     return the_return;
   end function angle_constants_populate_reg;
 
-  function arctg_2_angle_reg(constant shift_bits : natural; constant debug_mode : boolean) return reg_type is
+  function arctg_2_angle_reg(constant shift_bits : natural) return reg_type is
     variable temp_r     : real;
     variable temp_i     : integer;
     variable the_return : reg_type;
@@ -138,9 +138,9 @@ package body Input_modules is
     temp_i     := integer(round(temp_r * real(2 ** reg_type'length)));
     the_return := std_logic_vector(to_unsigned(temp_i, reg_type'length));
 
-    assert not debug_mode report "Angle " & real'image(temp_r) & " =int=> " &
-      natural'image(temp_i) & " pour " & integer'image(shift_bits)
-      severity note;
+    --assert not debug_mode report "Angle " & real'image(temp_r) & " =int=> " &
+    --  natural'image(temp_i) & " pour " & integer'image(shift_bits)
+    --  severity note;
 
     return the_return;
   end function arctg_2_angle_reg;

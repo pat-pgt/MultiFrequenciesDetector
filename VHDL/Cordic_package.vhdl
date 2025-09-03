@@ -24,9 +24,6 @@ package Cordic_package is
 --! is the arc-tan 0.5 that means 26.56 degrees.\n
 --! The latency of one stage has to be considered.
   component Cordic_FirstStage_Z_to_0 is
-    generic (
-      debug_mode : boolean := false
-      );
     port (
       CLK              : in  std_logic;
       RST              : in  std_logic;
@@ -61,7 +58,6 @@ package Cordic_package is
 --! For this case, it is required the angle is already in the -PI/2 +PI/2 zone
   component Cordic_IntermStage is
     generic (
-      debug_mode   : boolean := false;
       Z_not_Y_to_0 : boolean;
       shifts_calc  : integer range 1 to reg_size - 2
       );
@@ -98,7 +94,6 @@ package Cordic_package is
 
   component Cordic_Bundle_Z_to_0 is
     generic (
-      debug_mode          : boolean               := false;
       stages_nbre         : integer range 1 to 25 := 20;
       metadata_catch_list : meta_data_list_t;
       stages_catch_list   : cordic_stages_num_list
@@ -126,9 +121,6 @@ package Cordic_package is
 --! X, Y and Z are provided in the stages links format.\n
 --! The latency of two stages has to be considered.
   component Cordic_FirstStage_Y_to_0 is
-    generic (
-      debug_mode : boolean := false
-      );
     port (
       CLK           : in  std_logic;
       RST           : in  std_logic;
@@ -146,7 +138,6 @@ package Cordic_package is
 
   component Cordic_Bundle_Y_to_0 is
     generic (
-      debug_mode          : boolean               := false;
       stages_nbre         : integer range 1 to 25 := 20;
       metadata_catch_list : meta_data_list_t;
       stages_catch_list   : cordic_stages_num_list

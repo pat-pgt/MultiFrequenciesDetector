@@ -75,7 +75,6 @@ begin
   gene_interm : for ind in 1 to stages_nbre generate
     interm_stage_instanc : Cordic_IntermStage generic map
       (
-        debug_mode   => debug_mode,
         Z_not_Y_to_0 => true,
         shifts_calc  => ind
         )
@@ -178,7 +177,6 @@ begin
   gene_interm : for ind in 1 to stages_nbre generate
     interm_stage_instanc : Cordic_IntermStage generic map
       (
-        debug_mode   => debug_mode,
         Z_not_Y_to_0 => false,
         shifts_calc  => ind
         )

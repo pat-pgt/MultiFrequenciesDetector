@@ -41,9 +41,6 @@ use IEEE.STD_LOGIC_1164.all,
 --! as it relays on the the three high bits.
 --! Three stages are replaced by on stage.
 entity Cordic_FirstStage_Z_to_0 is
-  generic (
-    debug_mode : boolean := false
-    );
   port (
     CLK              : in  std_logic;
     RST              : in  std_logic;
@@ -303,9 +300,6 @@ use IEEE.STD_LOGIC_1164.all,
 --! Since the resources for that purpose are large,
 --! it is better to increase the register size. 
 entity Cordic_FirstStage_Y_to_0 is
-  generic (
-    debug_mode : boolean := false
-    );
   port (
     CLK           : in  std_logic;
     RST           : in  std_logic;
