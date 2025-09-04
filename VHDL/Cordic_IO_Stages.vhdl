@@ -93,14 +93,20 @@ begin
   
   scz.the_cos <= shift_reg_x;
   scz.the_sin <= shift_reg_y;
-  scz.angle_z <= shift_reg_z;
+  scz.angle_z(scz.angle_z'high - 1 downto scz.angle_z'low) <=
+    shift_reg_z(shift_reg_z'high - 1 downto shift_reg_z'low);
 
+  -- This Z bit is in transparent mode, see below
+  scz.angle_z(scz.angle_z'high) <= angle_z(angle_z'high - 2);
+
+      reg_sync_out <= reg_sync_in;
+
+  
   main_proc : process(CLK)
     variable temp_reg_X, temp_reg_Y : reg_type;
     variable high_bits_Z            : std_logic_vector(2 downto 0);
   begin
     CLK_IF : if rising_edge(CLK) then
-      reg_sync_out <= reg_sync_in;
       REGSYNC_IF : if reg_sync_in = '1' then
         -- Sync, parallel load the input registers
         --
@@ -132,8 +138,24 @@ begin
         -- That introduces an a very small error.
         -- To minimize it, the size of the registers can be raised
         -- X and Y
+        
+        -- Case 1: bit high - 2 is 0.
+        -- Z is in [ 0 PI/4 ] or [ PI/2 3PI/4 ] or[ PI 5PI/4 ] or[ 3PI/2 7PI/4 ],
+        --   that means after one of the 4 axles.
+        -- X and Y are spun by N time PI/2 accordingly.
+        -- The two high bits are cleared, in order to set Z in [ 0 PI/4 ].
+        --
+        -- Case 2: bit high - 2 is 1
+        -- Z is in [ PI/4 PI/2 ] or [ 3PI/4 PI ] or[ 5PI/4 3PI/2 ] or[ 7PI/4 2PI ],
+        --   that means before one of the 4 axles.
+        -- X and Y are spun by N time PI/2 accordingly.
+        -- The two high bits are set, in order to set Z in [ 7PI/4 2PI ].
+        --
+        -- Since data is spun only by PI/4 multiples,
+        --   the Z low bits are copied as them.
+
         QUADRANT_PI : case high_bits_Z is
-          when "000" | "111" =>         -- nothing to be done
+          when "111" | "000" =>         -- nothing to be done
             shift_reg_x <= temp_reg_x;
             shift_reg_y <= temp_reg_y;
           when "001" | "010" =>         -- spin by PI/2
@@ -148,18 +170,9 @@ begin
           when others => null;
         end case QUADRANT_PI;
 
-        -- Case 1: bit high - 2 is 0.
-        -- Regardless the PI/2 quadrant, X and Z was transformed,
-        -- then bits high and high - 1 has to be cleared.
-        -- Case 2: bit high - 2 is 1
-        -- Getting the symmetry from PI/2 means
-        -- 010 00..00 - 001 ab..cd -> 000 NaNb..NcNd + 1
-        -- Getting the opposite means
-        -- 111 ab..cd - 1 + 1
-        -- Then the bit high - 2 has be be copied into high and high - 1,
-        -- nothing else.
         shift_reg_z(shift_reg_z'high - 3 downto shift_reg_z'low)  <= angle_z(angle_z'high - 3 downto angle_z'low);
-        shift_reg_z(shift_reg_z'high downto shift_reg_z'high - 2) <= (others => angle_z(angle_z'high - 2));
+        -- bit high - 1 is not set here because it works in transparent mode
+        shift_reg_z(shift_reg_z'high downto shift_reg_z'high - 2) <= ( others => angle_z(angle_z'high - 2));
         -- ... and transfer the MD
         meta_data_out                                             <= meta_data_in;
       else
@@ -168,6 +181,7 @@ begin
           shift_reg_x(shift_reg_x'high downto shift_reg_x'low + arithm_size);
         shift_reg_y(shift_reg_y'high - arithm_size downto shift_reg_y'low) <=
           shift_reg_y(shift_reg_y'high downto shift_reg_y'low + arithm_size);
+        -- Z is a little bit special
         shift_reg_z(shift_reg_z'high - arithm_size downto shift_reg_z'low) <=
           shift_reg_z(shift_reg_z'high downto shift_reg_z'low + arithm_size);
       end if REGSYNC_IF;

@@ -75,6 +75,7 @@ begin
     variable angle_temp    : std_logic_vector(2 * reg_size - 1 downto 0);
     variable full_sync_v : std_logic;
   begin
+    -- May be outdated
     -- For each note:
     -- * step 1: add a constant to the cumulative angle
     -- ** get it from the RAM
@@ -90,9 +91,7 @@ begin
         ARITHM_C : if unsigned(arithm_counter) = to_unsigned(reg_size / arithm_size, arithm_counter'length) then
           arithm_counter   <= (others => '0');
           reg_sync         <= '1';
-          angle_z          <= angle_octave(angle_octave'high downto angle_octave'high + 1 - angle_z'length);
-          meta_data.note   <= delay_note_calc;
-          meta_data.octave <= octave_counter;
+          -- Update the note and octave counters
           -- Octave counter runs from 0 to N - 1
           OCTAVE_C : if unsigned(octave_counter) = to_unsigned(N_octaves - 1, octave_counter'length) then
             octave_counter <= (others => '0');
@@ -105,7 +104,7 @@ begin
             else
               note_counter <= std_logic_vector(unsigned(note_counter) + 1);
             end if;
-            -- TEMPORARY
+            -- TEMPORARY, a serial calc should be implement'ed as well
             angle_temp := angle_storage(to_integer(unsigned(note_counter)));
             angle_step <= freq_list(to_integer(unsigned(note_counter)));
             angle_temp := std_logic_vector(unsigned(angle_temp) +
@@ -123,7 +122,12 @@ begin
             angle_octave(angle_octave'low) <= angle_octave(angle_octave'high);
           end if OCTAVE_C;
         else
-          reg_sync       <= '0';
+          if reg_sync = '1' then
+            angle_z          <= angle_octave(angle_octave'high downto angle_octave'high + 1 - angle_z'length);
+            meta_data.note   <= delay_note_calc;
+            meta_data.octave <= octave_counter;
+            reg_sync <= '0';
+          end if;
           arithm_counter <= std_logic_vector(unsigned(arithm_counter) + 1);
         end if ARITHM_C;
         full_sync <= full_sync_v;

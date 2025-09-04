@@ -102,7 +102,7 @@ package body Input_modules is
   function arctg_2_angle_real(constant shift_bits : natural) return real is
     variable the_atg_r : real;
   begin
-    the_atg_r := arctan(1.0, real(2 ** shift_bits));
+    the_atg_r := arctan(1.0 / real(2 ** shift_bits));
     -- normalize the angle to: min = 0, max = 2.pi - epsilon
     the_atg_r := the_atg_r / (2.0 * math_pi);
     -- "convert" into bin

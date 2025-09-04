@@ -166,6 +166,7 @@ begin
                              scz_in.the_sin'low + arithm_size * shifts_calc );
           end if;
           -- Extract the constant to be added to or subtracted from Z
+          -- A selector is used, rather than a shift register
           op_C_Z(op_C_Z'high - 1 downto op_C_Z'low) :=
             angle_add_or_subtract(
               angle_add_or_subtract'low + (to_integer(unsigned (Z_shifts_count)) + arithm_size) - 1 downto
@@ -199,6 +200,7 @@ begin
             end if;
             result_Z := std_logic_vector(unsigned(op_N_Z) + ( inverter_mask xor unsigned(op_C_Z) ) + unsigned(carry_in_vector_Z));
           else
+            -- CW
             if is_first = '1' then
               carry_in_vector_X(carry_in_vector_X'low) := '0';
               carry_in_vector_Y(carry_in_vector_Y'low) := '1';

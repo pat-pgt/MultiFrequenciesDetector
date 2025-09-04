@@ -30,13 +30,13 @@ entity Cordic_bundle_test_Z_to_0_Y_to_0 is
   generic (
     input_x             : std_logic_vector(30 downto 0)  := "0001000000000000000000000000000";
     input_y             : std_logic_vector(30 downto 0)  := (others => '0');
-    metadata_catch_list : meta_data_list_t(11 to 14)     := (
-      11                                                            => octave_note_to_meta_data(octave => 0, note => 0),
-      12                                                            => octave_note_to_meta_data(octave => 3, note => 2),
-      13                                                            => octave_note_to_meta_data(octave => 6, note => 4),
-      14                                                            => octave_all_notes_to_meta_data(octave => 4)
-      );
-    stages_catch_list   : cordic_stages_num_list(3 to 7) := (1, 2, 6, 10, 17)
+    metadata_catch_list : meta_data_list_t(15 to 14)   ; --  := (
+--      11                                                            => octave_note_to_meta_data(octave => 0, note => 0),
+--      12                                                            => octave_note_to_meta_data(octave => 3, note => 2),
+--      13                                                            => octave_note_to_meta_data(octave => 6, note => 4),
+--      14                                                            => octave_all_notes_to_meta_data(octave => 4)
+--      );
+    stages_catch_list   : cordic_stages_num_list(13 to 7) -- := (1, 2, 6, 10, 17)
     );
 end entity Cordic_bundle_test_Z_to_0_Y_to_0;
 
@@ -68,7 +68,17 @@ architecture rtl of Cordic_bundle_test_Z_to_0_Y_to_0 is
   signal out_Y_2_0_X2                            : real;
   
   signal report_cordic_bundle_1, report_cordic_bundle_2 : std_logic := '0';
-  
+
+  signal angle_add_or_subtract0                  : reg_type  := arctg_2_angle_reg(0);
+  signal angle_add_or_subtract1                  : reg_type  := arctg_2_angle_reg(1);
+  signal angle_add_or_subtract2                  : reg_type  := arctg_2_angle_reg(2);
+  signal angle_add_or_subtract0R                 : real      := arctg_2_angle_real(0);
+  signal angle_add_or_subtract1R                 : real      := arctg_2_angle_real(1);
+  signal angle_add_or_subtract2R                 : real      := arctg_2_angle_real(2);
+  signal angle_add_or_subtractRRR0 : real := arctan(real(0));
+  signal angle_add_or_subtractRRR1 : real := arctan(real(1));
+  signal angle_add_or_subtractRRR2 : real := arctan(real(0.5));
+  signal angle_add_or_subtractRRR3 : real := arctan(real(0.25));
 begin
   
   main_proc : process
@@ -139,8 +149,22 @@ begin
       input_y       => input_y,
       scz           => scz_1);
 
+    --cordic_fourth_stage_z_2_0_instanc : Cordic_IntermStage
+    --  generic map
+    --  (
+    --    Z_not_Y_to_0 => true,
+    --    shifts_calc => 3 )
+    --  port map (
+    --    CLK           => CLK,
+    --    RST           => RST(RST'low),
+    --    reg_sync      => reg_sync_interm,
+    --    meta_data_in  => meta_data_2,
+    --    meta_data_out => open,
+    --    scz_in        => scz_1,
+    --    scz_out       => open );
+    
   cordic_bundle_Z_2_0_instanc : Cordic_Bundle_Z_to_0 generic map (
-    stages_nbre         => 15,
+    stages_nbre         => 18,
     metadata_catch_list => metadata_catch_list,
     stages_catch_list   => stages_catch_list
     )
