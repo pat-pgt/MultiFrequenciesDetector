@@ -186,81 +186,89 @@ use IEEE.STD_LOGIC_1164.all,
   work.Meta_data_package.all,
   work.Cordic_package.all;
 
---! @brief Cordic Z to 0 last stage
+--! @brief Cordic last stage for test
 --!
---! Performs some sanity checks on Z.
---! No process is needed on X and Y as
---! the prefilter uses the serial data.\n
---! The checks on Z are for the tests.
---! They can, however, be synthesised
---! as some tests can be done using
---! FPGA (with specific input and
---! output file).
-entity Cordic_LastStage_Z_to_0 is
-  port (
-    CLK              : in  std_logic;
-    RST              : in  std_logic;
-    reg_sync         : in  std_logic;
-    scz_in           : in  reg_sin_cos_z;
-    Z_error_exponent : out std_logic_vector(5 downto 0)
+--! 
+entity Cordic_LastStage_4_test is
+  generic (
+    Z_not_Y_2_0    : boolean
     );
-end entity Cordic_LastStage_Z_to_0;
+  port (
+    CLK            : in  std_logic;
+    RST            : in  std_logic;
+    reg_sync       : in  std_logic;
+    scz_in         : in  reg_sin_cos_z;
+    X_out          : out reg_type;
+    Y_out          : out reg_type;
+    Z_out          : out reg_type;
+    error_exponent : out std_logic_vector(5 downto 0)
+    );
+end entity Cordic_LastStage_4_test;
 
-architecture rtl of Cordic_LastStage_Z_to_0 is
+architecture rtl of Cordic_LastStage_4_test is
   signal is_negative        : std_logic;
   signal still_ok           : std_logic;
-  signal Z_error_exponent_s : std_logic_vector(5 downto 0);
+  signal error_exponent_s : std_logic_vector(5 downto 0);
   -- we are looking for the first one (positive number )
   -- or the first zero ( negative number )
   -- then we are shifting from LSB to MSB
   -- then we need a separate register;
-  signal angle_working      : std_logic_vector(scz_in.angle_z'range);
+  signal value_working      : std_logic_vector(scz_in.angle_z'range);
 begin
   assert arithm_size = 1 report "It has not yet been tested for arithm_size (" &
     integer'image(arithm_size) & ") other than 1" severity warning;
-  assert 2**Z_error_exponent'length > reg_size
+  assert 2**error_exponent'length > reg_size
     report "Internal error 2 power Z_error_exponent (" &
-    integer'image(Z_error_exponent'length) &
+    integer'image(error_exponent'length) &
     ") should be greater than the register size ("&
     integer'image(reg_size)
     severity failure;
 
 
   main_proc : process(CLK)
-    variable Z_error_exponent_v : unsigned(Z_error_exponent'range);
+    variable error_exponent_v : unsigned(error_exponent'range);
   begin
     CLK_IF : if rising_edge(CLK) then
       REGSYNC_IF : if reg_sync = '1' then
-        -- load others=>1 into the counter
-        is_negative        <= scz_in.angle_z(scz_in.angle_z'high);
+        if Z_not_Y_2_0 then
+          is_negative        <= scz_in.angle_z(scz_in.angle_z'high);
+          value_working      <= scz_in.angle_z;
+        else
+          is_negative        <= scz_in.the_sin(scz_in.the_sin'high);
+          value_working      <= scz_in.the_sin;
+        end if;
         still_ok           <= '1';
-        Z_error_exponent_s <= (others => '1');
-        angle_working      <= scz_in.angle_z;
-        Z_error_exponent   <= Z_error_exponent_s;
+        -- load others=>1 into the counter
+        error_exponent_s <= (others => '1');
+        error_exponent   <= error_exponent_s;
+        -- Take a photo of the registers
+        X_out <= scz_in.the_cos;
+        Y_out <= scz_in.the_sin;
+        Z_out <= scz_in.angle_z;
       else
         -- decrease the counter as long as the bits are
         -- the same as the sign bit
         if still_ok = '1' then
-          Z_error_exponent_v := unsigned(Z_error_exponent_s);
+          error_exponent_v := unsigned(error_exponent_s);
           for ind in 1 to arithm_size loop
-            if angle_working(angle_working'high - ind + 1) /= is_negative then
+            if value_working(value_working'high - ind + 1) /= is_negative then
               --  If not, the counter freezes until the next reg_sync
               still_ok <= '0';
               exit;
             else
-              Z_error_exponent_v := Z_error_exponent_v - 1;
+              error_exponent_v := error_exponent_v - 1;
             end if;
           end loop;
-          Z_error_exponent_s <= std_logic_vector(Z_error_exponent_v);
+          error_exponent_s <= std_logic_vector(error_exponent_v);
         end if;
 
 
-        angle_working(angle_working'high downto angle_working'low + arithm_size) <=
-          angle_working(angle_working'high - arithm_size downto angle_working'low);
+        value_working(value_working'high downto value_working'low + arithm_size) <=
+          value_working(value_working'high - arithm_size downto value_working'low);
         -- If the FPGA is a couple a gates too short, comment this line out
         -- The error that would have been reported is even lower
         -- than the rounding errors
-        angle_working(angle_working'low + arithm_size - 1 downto angle_working'low) <=
+        value_working(value_working'low + arithm_size - 1 downto value_working'low) <=
           (others => is_negative);
       end if REGSYNC_IF;
     end if CLK_IF;
