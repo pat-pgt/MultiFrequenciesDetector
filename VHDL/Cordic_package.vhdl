@@ -46,7 +46,7 @@ package Cordic_package is
       --!   as Cordic slightly increases the gain (see the Python simulation)
       input_x, input_y :     std_logic_vector;
       --! Output of X, Y and Z.
-      scz              : out reg_sin_cos_z
+      scz_out          : out reg_sin_cos_z
       );
   end component Cordic_FirstStage_Z_to_0;
 --! @brief Cordic intermediary stages

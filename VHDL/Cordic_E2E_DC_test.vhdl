@@ -147,7 +147,7 @@ begin
       meta_data_out => meta_data_2,
       input_x       => input_x,
       input_y       => input_y,
-      scz           => scz_1);
+      scz_out           => scz_1);
 
     --cordic_fourth_stage_z_2_0_instanc : Cordic_IntermStage
     --  generic map
@@ -164,7 +164,7 @@ begin
     --    scz_out       => open );
     
   cordic_bundle_Z_2_0_instanc : Cordic_Bundle_Z_to_0 generic map (
-    stages_nbre         => 18,
+    stages_nbre         => 16,
     metadata_catch_list => metadata_catch_list,
     stages_catch_list   => stages_catch_list
     )

@@ -73,7 +73,7 @@ begin
     interm_stage_instanc : Cordic_IntermStage generic map
       (
         Z_not_Y_to_0 => true,
-        shifts_calc  => ind
+        shifts_calc  => ind + 1
         )
       port map
       (

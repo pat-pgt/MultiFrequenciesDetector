@@ -1,6 +1,7 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
+  ieee.math_real.all,
   work.InterModule_formats.all,
   work.MultiFreqDetect_package.all,
   work.Meta_data_package.all,
@@ -47,8 +48,8 @@ architecture rtl of Cordic_IntermStage is
   signal remaining_shift_count                  : std_logic_vector(5 downto 0);
   signal is_first                               : std_logic;
   signal Z_shifts_count                         : std_logic_vector(5 downto 0);
-  signal debug_catch_X_sync, debug_catch_Y_sync : reg_type;
-  signal debug_catch_Z_sync      : reg_type;
+  signal debug_catch_X2_plus_Y2                 : real;
+  signal debug_catch_X_sync,debug_catch_Y_sync  : reg_type;
   signal debug_flipflop                         : std_logic := '0';
   signal debug_flipflop_2                       : std_logic := '0';
   constant angle_add_or_subtract                  : reg_type  := arctg_2_angle_reg(shifts_calc);
@@ -100,11 +101,11 @@ begin
           remaining_shift_count <= std_logic_vector(to_unsigned(reg_size - shifts_calc, remaining_shift_count'length));
           Z_shifts_count        <= (others => '0');
           is_first              <= '1';
-          if true then
+          if shifts_calc < 4 then
             --
-            debug_catch_X_sync <= scz_out_s.the_cos;
-            debug_catch_Y_sync <= scz_out_s.the_sin;
-            debug_catch_Z_sync <= scz_out_s.angle_z;
+            debug_catch_X2_plus_Y2 <= real(to_integer(signed(scz_in.the_cos)))**2 + real(to_integer(signed(scz_in.the_sin)))**2;
+            debug_catch_X_sync <= scz_in.the_cos;
+            debug_catch_Y_sync <= scz_in.the_sin;
             -- This should become dynamic to not overflow,
             -- to respect the bounds as well, if the reg_size is small (<16)
             -- Be careful, this is the data of the input,

@@ -63,14 +63,14 @@ entity Cordic_FirstStage_Z_to_0 is
     --!   as Cordic slightly increases the gain (see the Python simulation)
     input_x, input_y :     std_logic_vector;
     --! Output of X, Y and Z.
-    scz              : out reg_sin_cos_z
+    scz_out              : out reg_sin_cos_z
     );
 end entity Cordic_FirstStage_Z_to_0;
 
 
 architecture rtl of Cordic_FirstStage_Z_to_0 is
-  signal shift_reg_x, shift_reg_y : reg_type;
-  signal shift_reg_z              : reg_type;
+  signal scz_local : reg_sin_cos_z;
+  signal z_3_high_bits : std_logic_vector(2 downto 0);
 begin
   assert input_x'length > 3 report "The size of input_x (" & integer'image(input_x'length) &
     ") should be at least 4" severity failure;
@@ -84,23 +84,8 @@ begin
   assert (reg_size - 3) mod arithm_size = 0 report " the register size (" & integer'image(arithm_size) &
     ") minus 3 should be a multiple of the arithmetic size (" & integer'image(arithm_size) & ")" severity failure;
 
-  -- This implementation looks like horrible for the routing
-  -- as both X and Y can take theirs entries or the other one while
-  -- inverting or not (separately)
-  -- In fact, it is implemented for the tests only
-  -- during the synthesis, only X in used. Y is set to others => 0
-  -- Then the switch is input X, not input, 0 or last state (nice for LUT-4 FPGA
-  
-  scz.the_cos <= shift_reg_x;
-  scz.the_sin <= shift_reg_y;
-  scz.angle_z(scz.angle_z'high - 1 downto scz.angle_z'low) <=
-    shift_reg_z(shift_reg_z'high - 1 downto shift_reg_z'low);
 
-  -- This Z bit is in transparent mode, see below
-  scz.angle_z(scz.angle_z'high) <= angle_z(angle_z'high - 2);
-
-      reg_sync_out <= reg_sync_in;
-
+  reg_sync_out <= reg_sync_in;
   
   main_proc : process(CLK)
     variable temp_reg_X, temp_reg_Y : reg_type;
@@ -112,9 +97,10 @@ begin
         --
         -- Load the registers X and Y, while formatting
         -- Duplicate the high bit, in order to divide by 2
-        temp_reg_x(temp_reg_x'high)                                                     := input_x(input_x'high);
-        temp_reg_x(temp_reg_x'high - 1 downto temp_reg_x'high - 1 - input_x'length + 1) := input_x;
-        if temp_reg_x'length > (input_x'length + 1) then
+        scz_local.the_cos(scz_local.the_cos'high) <= input_x(input_x'high);
+        scz_local.the_cos(scz_local.the_cos'high - 1 downto
+                          scz_local.the_cos'high - 1 - input_x'length + 1) <= input_x;
+        if scz_local.the_cos'length > (input_x'length + 1) then
           -- If input_x is short, duplicate the high bits,
           --   in order to keep the rail to rail
 -- for loop
@@ -122,23 +108,42 @@ begin
           assert false report "TODO" severity failure;
         end if;
         -- Duplicate the high bit, in order to divide by 2
-        temp_reg_y(temp_reg_y'high)                                                     := input_y(input_y'high);
-        temp_reg_y(temp_reg_y'high - 1 downto temp_reg_y'high - 1 - input_y'length + 1) := input_y;
-        if temp_reg_y'length > (input_y'length + 1) then
+        scz_local.the_sin(scz_local.the_sin'high) <= input_x(input_x'high);
+        scz_local.the_sin(scz_local.the_sin'high - 1 downto
+                          scz_local.the_sin'high - 1 - input_x'length + 1) <= input_x;
+        if scz_local.the_sin'length > (input_x'length + 1) then
           -- If input_x is short, duplicate the high bits,
           --   in order to keep the rail to rail
 -- for loop
 -- end loop
           assert false report "TODO" severity failure;
         end if;
-        high_bits_Z := angle_z(angle_z'high downto angle_z'high -2);
+
+        scz_local.angle_z(scz_local.angle_z'high - 3 downto scz_local.angle_z'low) <=
+          angle_z(angle_z'high - 3 downto angle_z'low);
+        scz_local.angle_z(scz_local.angle_z'high downto scz_local.angle_z'high - 2 ) <=
+          (others => angle_z(angle_z'high - 2 ));
+        z_3_high_bits <= angle_z(angle_z'high downto angle_z'high -2);
+
+        -- Perhaps this is updated soon if a full negation is implemented
         -- The mathematics says to negate a number, using the 2' complement,
         -- the bits should be inverted and 1 (0..01) should be added.
         -- The addition is not performed for resources and latency reasons.
         -- That introduces an a very small error.
         -- To minimize it, the size of the registers can be raised
         -- X and Y
-        
+
+      else
+        -- Run the shifts on the inputs by the arithmetic size
+        scz_local.the_cos(scz_local.the_cos'high - arithm_size downto scz_local.the_cos'low) <=
+          scz_local.the_cos(scz_local.the_cos'high downto scz_local.the_cos'low + arithm_size);
+        scz_local.the_sin(scz_local.the_sin'high - arithm_size downto scz_local.the_sin'low) <=
+          scz_local.the_sin(scz_local.the_sin'high downto scz_local.the_sin'low + arithm_size);
+        scz_local.angle_z(scz_local.angle_z'high - arithm_size downto scz_local.angle_z'low) <=
+          scz_local.angle_z(scz_local.angle_z'high downto scz_local.angle_z'low + arithm_size);
+
+        -- Move the inputs to the out scz according the placements of the vectors
+        --
         -- Case 1: bit high - 2 is 0.
         -- Z is in [ 0 PI/4 ] or [ PI/2 3PI/4 ] or[ PI 5PI/4 ] or[ 3PI/2 7PI/4 ],
         --   that means after one of the 4 axles.
@@ -153,37 +158,42 @@ begin
         --
         -- Since data is spun only by PI/4 multiples,
         --   the Z low bits are copied as them.
-
-        QUADRANT_PI : case high_bits_Z is
+        QUADRANT_PI : case z_3_high_bits is
           when "111" | "000" =>         -- nothing to be done
-            shift_reg_x <= temp_reg_x;
-            shift_reg_y <= temp_reg_y;
+            scz_out.the_cos(scz_out.the_cos'high downto scz_out.the_cos'high - arithm_size + 1) <=
+              scz_local.the_cos(scz_local.the_cos'low + arithm_size - 1 downto scz_local.the_cos'low );
+            scz_out.the_sin(scz_out.the_sin'high downto scz_out.the_sin'high - arithm_size + 1) <=
+              scz_local.the_sin(scz_local.the_sin'low + arithm_size - 1 downto scz_local.the_sin'low );
           when "001" | "010" =>         -- spin by PI/2
-            shift_reg_x <= not temp_reg_y;
-            shift_reg_y <= temp_reg_x;
+         --   shift_reg_x <= not temp_reg_y;
+         --   shift_reg_y <= temp_reg_x;
+            scz_out.the_cos(scz_out.the_cos'high downto scz_out.the_cos'high - arithm_size + 1) <= not
+              scz_local.the_sin(scz_local.the_sin'low + arithm_size - 1 downto scz_local.the_sin'low );
+            scz_out.the_sin(scz_out.the_sin'high downto scz_out.the_sin'high - arithm_size + 1) <=
+              scz_local.the_cos(scz_local.the_cos'low + arithm_size - 1 downto scz_local.the_cos'low );
           when "011" | "100" =>         -- spin by PI
-            shift_reg_x <= not temp_reg_x;
-            shift_reg_y <= not temp_reg_y;
+            scz_out.the_cos(scz_out.the_cos'high downto scz_out.the_cos'high - arithm_size + 1) <= not
+              scz_local.the_cos(scz_local.the_cos'low + arithm_size - 1 downto scz_local.the_cos'low );
+            scz_out.the_sin(scz_out.the_sin'high downto scz_out.the_sin'high - arithm_size + 1) <= not
+              scz_local.the_sin(scz_local.the_sin'low + arithm_size - 1 downto scz_local.the_sin'low );
           when "101" | "110" =>         -- spin by 3.PI/2
-            shift_reg_x <= temp_reg_y;
-            shift_reg_y <= not temp_reg_x;
+          --  shift_reg_x <= temp_reg_y;
+          --  shift_reg_y <= not temp_reg_x;
+            scz_out.the_cos(scz_out.the_cos'high downto scz_out.the_cos'high - arithm_size + 1) <=
+              scz_local.the_sin(scz_local.the_sin'low + arithm_size - 1 downto scz_local.the_sin'low );
+            scz_out.the_sin(scz_out.the_sin'high downto scz_out.the_sin'high - arithm_size + 1) <= not
+              scz_local.the_cos(scz_local.the_cos'low + arithm_size - 1 downto scz_local.the_cos'low );
           when others => null;
         end case QUADRANT_PI;
 
-        shift_reg_z(shift_reg_z'high - 3 downto shift_reg_z'low)  <= angle_z(angle_z'high - 3 downto angle_z'low);
-        -- bit high - 1 is not set here because it works in transparent mode
-        shift_reg_z(shift_reg_z'high downto shift_reg_z'high - 2) <= ( others => angle_z(angle_z'high - 2));
-        -- ... and transfer the MD
-        meta_data_out                                             <= meta_data_in;
-      else
+
         -- Run the shifts by the arithmetic size
-        shift_reg_x(shift_reg_x'high - arithm_size downto shift_reg_x'low) <=
-          shift_reg_x(shift_reg_x'high downto shift_reg_x'low + arithm_size);
-        shift_reg_y(shift_reg_y'high - arithm_size downto shift_reg_y'low) <=
-          shift_reg_y(shift_reg_y'high downto shift_reg_y'low + arithm_size);
-        -- Z is a little bit special
-        shift_reg_z(shift_reg_z'high - arithm_size downto shift_reg_z'low) <=
-          shift_reg_z(shift_reg_z'high downto shift_reg_z'low + arithm_size);
+        scz_out.the_cos(scz_out.the_cos'high - arithm_size downto scz_out.the_cos'low) <=
+          scz_out.the_cos(scz_out.the_cos'high downto scz_out.the_cos'low + arithm_size);
+        scz_out.the_sin(scz_out.the_sin'high - arithm_size downto scz_out.the_sin'low) <=
+          scz_out.the_sin(scz_out.the_sin'high downto scz_out.the_sin'low + arithm_size);
+        scz_out.angle_z(scz_out.angle_z'high - arithm_size downto scz_out.angle_z'low) <=
+          scz_out.angle_z(scz_out.angle_z'high downto scz_out.angle_z'low + arithm_size);
       end if REGSYNC_IF;
 
     end if CLK_IF;
