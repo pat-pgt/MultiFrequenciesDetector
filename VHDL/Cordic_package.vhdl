@@ -4,25 +4,40 @@ use IEEE.STD_LOGIC_1164.all,
   work.Meta_data_package.all,
   work.MultiFreqDetect_package.all;
 
+--! @brief Package of all the relevant Cordic transform
+--!
+--! It includes:
+--! * the unity stage
+--! * the bundle of stages
+--! * the interface with the outside world and the first stage
+--! * the interface with the outside world and the last stage.\n
+--! TODO Put the text below somewhere' else in the general documentation.
+--! Normally, the negation of a 2'nd complement is to invert and to add 1
+--! omitting the 1 addition makes a small rounding error.
+--! It is sometimes better to increase the register size,
+--!   rather than to have to make an additional addition. 
+--! and to consider this error in the validation process.
 
 package Cordic_package is
 
 --! @brief Cordic Z to 0 first stage
 --!
 --! Perform a pre-processing and format the data
---! in order to run the stages.
+--! in order to run the stages.\n
 --! X is provided as a signed data, using a vector
---! of a length between 4 bits and the register size minus 2.
---! The data is left justified to left and the low bits
---! are computed to get a rail to rail input.\n
---! Y is computed in the same way than X.
---! It is used only for tests while providing a PI/2 shifted
---! input.\n
+--!   of a length between 4 bits and the register size minus 1
+--!   minus 1 with our choices.\n
+--! The data is left justified and if the input has a low length,
+--!   the low bits are barrel shifted from the high to get a rail to rail input.\n
+--! Y is exposed as an input in order to perform some tests.
+--! The results should be the same as for X, but rotated CCW by PI/2.\n
 --! Z is provided as an unsigned vector 0 to 2.PI - epsilon.\n
---! The output is data in the format of the stages links.
---! The first vector spin to be executed
+--! The output is data in the reg_sin_cos_z format.\n
+--! The first vector spin to be executed after this input preprocess
 --! is the arc-tan 0.5 that means 26.56 degrees.\n
 --! The latency of one stage has to be considered.
+--! It would have been 3 with the preprocessing.\n
+--! See in the entity for the reasons of the choices.
   component Cordic_FirstStage_Z_to_0 is
     port (
       CLK              : in  std_logic;
@@ -51,7 +66,7 @@ package Cordic_package is
   end component Cordic_FirstStage_Z_to_0;
 --! @brief Cordic intermediary stages
 --!
---! This computes one cordic vector spin with its angle (Z) update\n
+--! This computes one Cordic vector spin with its angle (Z) update\n
 --! It is common for both\n
 --! * To multiply a value by an angle vector, the angle should converged to 0\n
 --! * To convert rectangular coordinates to polar, The Y should convergent to 0.
@@ -75,7 +90,7 @@ package Cordic_package is
 --! @brief Cordic last stage for test
 --!
 --! This converts the serial format of X, Y and Z
---!   to parrallel and check.\n
+--!   to parallel and check.\n
 --! This gets the exponent of the value that
 --!   should converge to 0.
   component Cordic_LastStage_4_test is
@@ -118,7 +133,7 @@ package Cordic_package is
     generic (
       stages_nbre         : integer range 1 to 25 := 20;
       metadata_catch_list : meta_data_list_t;
-      stages_catch_list   : cordic_stages_num_list
+      stages_catch_list   : Cordic_stages_num_list
       );
     port (
       CLK           : in  std_logic;
@@ -140,9 +155,16 @@ package Cordic_package is
 --! @brief Cordic Y to 0 first stage
 --!
 --! Perform a pre-processing and format the data
---! in order to run the stages.
---! X, Y and Z are provided in the stages links format.\n
+--!   in order to run the stages.\n
+--! X and Y are both provided as a signed data, using a vector
+--!   of a length reg_size.\n
+--! Z is not provided as the algorithm started with Z=0.\n
+--! The output is data in the reg_sin_cos_z format.\n
+--! The first vector spin to be executed after this input preprocess
+--! is the arc-tan 0.5 that means 26.56 degrees.\n
 --! The latency of two stages has to be considered.
+--! It would have been 3 with the preprocessing.\n
+--! See in the entity for the reasons of the choices.
   component Cordic_FirstStage_Y_to_0 is
     port (
       CLK           : in  std_logic;
@@ -161,9 +183,10 @@ package Cordic_package is
 
   component Cordic_Bundle_Y_to_0 is
     generic (
-      stages_nbre         : integer range 1 to 25 := 20;
+      -- Related to the X>Y or Y>X limited precision. TODO Doc
+      stages_nbre         : integer range 4 to 25 := 20;
       metadata_catch_list : meta_data_list_t;
-      stages_catch_list   : cordic_stages_num_list
+      stages_catch_list   : Cordic_stages_num_list
       );
     port (
       CLK           : in  std_logic;
@@ -181,7 +204,7 @@ package Cordic_package is
       report_out    : out std_logic);
   end component Cordic_Bundle_Y_to_0;
 
-  --! @brief Monitor one cordic stage
+  --! @brief Monitor one Cordic stage
   --!
   --! This component is called for the stage num_stage
   --! According with a list of meta-data.\n

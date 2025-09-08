@@ -9,37 +9,23 @@ use IEEE.STD_LOGIC_1164.all,
 --! @brief Cordic Z to 0 first stage
 --!
 --! Perform a pre-processing and format the data
---! in order to run the stages.
+--!   in order to run the following stages.\n
 --! X is provided as a signed data, using a vector
---! of a length between 4 bits and the register size minus 2.
---! The data is left justified to left and the low bits
---! are computed to get a rail to rail input.\n
---! Y is computed in the same way than X.
---! It is used only for tests while providing a PI/2 shifted
---! input.\n
---! Z is provided as an unsigned vector 0 to 2.PI - epsilon.
---! Z is converted into a signed vector PI to -PI.
---! In fact PI/2 to PI and -PI to -PI/2 are never raised.\n
---! Rules applies in this order
---! to spin the vector while subtracting the angle from Z
---! PI to 2.PI: the high bit of Z is cleared, X=-X and Y=-Y\n 
---! PI/2 to PI: the high - 1 bit of Z is cleared, X=-Y and Y=X
---! For the PI/4 to PI/2 zone,
---! the vector has spun by PI/2, the (remaining) angle
---! is taken from the symmetry against PI/2 and negated
---! Then the Z is transmitted while filling up the 3 high bits
---! using the high - 2 bit of the input Z.
+--!   of a length between 4 bits and the register size minus 1
+--!   minus 1 in our case.\n
 --! This preprocessing has two advantages:\n
 --! * reduce the Cordic stages
---! * keep some dynamic. The algorithm introduces a cosine constant.
+--! * keep some dynamic, as the algorithm introduces a cosine constant.
 --! 1/cos(arc-tan( 2 )) = 1/cos( 63.43 ) = 2.236
 --! 1/cos(arc-tan( 1 )) = 1/cos( 45 ) = 1.414
 --! 1/cos(arc-tan( 0.5 )) = 1/cos( 26.56 ) = 1.118.
---! With the preprosessing, the numbers does not grow a lot.
---! Only one (left) additional bit is needed, no bit is wasted.\n
---! For the Z to 0, everything is predictable (at the sync pulse).
---! as it relays on the the three high bits.
---! Three stages are replaced by on stage.
+--! With the preprosessing, the numbers does not grow a lot.\n
+--! Additional information is in the Python utility Cordic_values_grow.py\n
+--! It is not more or less resources consuming to start
+--!   the following stages at 1 or 0.5. It helps the second set (Y to 0)
+--! Then the choice is 0.5.
+--! For this set (Z to 0) a 2 division of the input is enough
+--! as the output (of the set) increses by less than 17%.
 entity Cordic_FirstStage_Z_to_0 is
   port (
     CLK              : in  std_logic;
@@ -57,7 +43,6 @@ entity Cordic_FirstStage_Z_to_0 is
     meta_data_in     : in  meta_data_t;
     meta_data_out    : out meta_data_t;
     --! signed input vector
-    --! The size should be at least 4 to keep the trigonometric properties\n
     --! The size should be not more than the reg_size size minus 1,
     --!   in order to divide by 2 the input
     --!   as Cordic slightly increases the gain (see the Python simulation)
@@ -67,7 +52,21 @@ entity Cordic_FirstStage_Z_to_0 is
     );
 end entity Cordic_FirstStage_Z_to_0;
 
-
+--! @brief preprocess with the choices
+--!
+--! Rules applies in this order
+--! to spin the vector while subtracting the angle from Z
+--! PI to 2.PI: the high bit of Z is cleared, X=-X and Y=-Y\n 
+--! PI/2 to PI: the high - 1 bit of Z is cleared, X=-Y and Y=X
+--! For the PI/4 to PI/2 zone,
+--!  the vector has spun CW by PI/2, the (remaining) angle
+--!  is between -PI/4 and PI/4.\n
+--! That makes 8 zones of PI/4 each, that generates 3 PI/2 possible rotations.
+--! There is no risk the angle does not converge to 0
+--!   as if the following stages computes all CW or all CCW,
+--!   the rotation is bigger than PI/4.
+--! The Z is transmitted while filling up the 3 high bits
+--! using the high - 2 bit of the input Z.
 architecture rtl of Cordic_FirstStage_Z_to_0 is
   signal scz_local : reg_sin_cos_z;
   signal z_3_high_bits : std_logic_vector(2 downto 0);
@@ -311,26 +310,27 @@ use IEEE.STD_LOGIC_1164.all,
 --! @brief Cordic Y to 0 first stage
 --!
 --! Perform a pre-processing and format the data
---! in order to run the stages.
---! X, Y and Z are provided
---! This preprocessing has two advantages:\n
---! * reduce the Cordic stages
---! * keep some dynamic. The algorithm introduces a cosine constant.
---! 1/cos(arc-tan( 2 )) = 1/cos( 63.43 ) = 2.236
---! 1/cos(arc-tan( 1 )) = 1/cos( 45 ) = 1.414
---! 1/cos(arc-tan( 0.5 )) = 1/cos( 26.56 ) = 1.118.
---! With the preprosessing, the numbers does not grow a lot.
---! The Y to 0 is supposed to be used after the Z to 0.
---! The total cumulative cos product is about 1.17.
---! Applying a second time cordic stages, that makes 1.3689 ( < 2 )\n
---! The signs of X and Y are predictable (at the syn pulse).
---! The greater-than needs a stage run.
---! The toggle needs a stage run after the compare completed.\n
---! Three Cordic stages are replaced by two preprocess stages.\n
---! Normaly, the negation of a 2'nd complement is to invert and to add 1
---! omitting the 1 addition makes a small rounding error
---! Since the resources for that purpose are large,
---! it is better to increase the register size. 
+--!   in order to run the stages.\n
+--! X and Y are both provided as a signed data, using a vector
+--!   of a length reg_size.\n
+--! The advantages of a preprocessing is explained
+--!   in the Cordic_FirstStage_Z_2_0 entity documentation.\n
+--! Additional information is in the Python utility Cordic_values_grow.py\n
+--! Due to the choices of the first set of Cordic stages,
+--!   the start at tan=1 would have been logic.
+--! The grow from an input is about 92%. For an input at 0.5,
+--!   the output does not overflow.
+--! However:
+--! * The verification tool is more tricky.
+--!   The maximum input of many groups of stages should fit with the previous group.
+--!   Then, there is a step verifying the verification "tool".
+--! * There is a potential overflow.
+--!   supplying the first stage with 1.1644 with an input at 0.5 is Ok.
+--!   The required level is not more than 1.3333.
+--!   The output is 1.6468.
+--!   The input of the next stage should not be more 1.5999..99
+--! * That can provide an amplitude margin
+--!   in case the filters modules require it (that needs to re-validate).
 entity Cordic_FirstStage_Y_to_0 is
   port (
     CLK           : in  std_logic;
@@ -346,6 +346,12 @@ entity Cordic_FirstStage_Y_to_0 is
     scz_out       : out reg_sin_cos_z
     );
 end entity Cordic_FirstStage_Y_to_0;
+
+--! @brief preprocess with the choices
+--!
+--! This contains 2 components.
+--! * A serial check to classify in one of the 8 PI/4 slices.
+--! * A serial compute to set X and Y in the slice to set an initial value of Z.\n
 
 architecture rtl of Cordic_FirstStage_Y_to_0 is
   --! Since, it is the first stage, z does not come from the scz structure

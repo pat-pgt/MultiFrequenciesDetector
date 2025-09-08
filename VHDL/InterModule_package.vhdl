@@ -17,11 +17,13 @@ package InterModule_formats is
   --! Please note, not all values are supported by components
   --! such the filtering
   constant arithm_size      : integer range 1 to 24   := 1;
-  --! @brief Number of bits of the vectors in the cordic algo
+  --! @brief Number of bits of the vectors in the Cordic algorithm
   --!
-  --! The angle internal calculation uses twice\n
+  --! For more precision, some components, such as the angle_gene,
+  --!   use twice this size for internal calculation\n
   --! reg_size should be a multiple of arithm_size
   --! and not equal to it
+  --! reg_size should be at least 4 to keep the trigonometry's properties.
   constant reg_size         : integer range 16 to 255 := 32;
   --! @brief Exponent size
   --!
@@ -38,7 +40,7 @@ package InterModule_formats is
   -- This part contains privates definitions
   -- It should not be modified
   
-  --! @brief Type of the cordic X, Y and Z
+  --! @brief Type of the Cordic X, Y and Z
   --!
   --! For the Cordic algorithm, X and Y should be the same type.
   --! It is relevant to also keep Z in the same scale as X and Y.\n
@@ -53,14 +55,17 @@ package InterModule_formats is
   --! or small groups by small groups
   --! Metadata and quadrant are passed in parallel mode.
   type reg_sin_cos_z is record
-    --! LSB comes first.
-    --! For this version, the size is 1 as arithm_size is 1
+    --! X is a signed vector
+    --! Since it is not a float, some care should be taken to avoid any overflow
+    --! For that purpose, the general input should consider some 2 divisions
     the_sin : reg_type;
-    --! LSB comes first.
-    --! For this version, the size is 1 as arithm_size is 1
+    --! Y is a sign vector
+    --! Since it is not a float, some care should be taken to avoid any overflow
+    --! The general input, in normal mode, should always set this vector with 0's
     the_cos : reg_type;
-    --! LSB comes first.
-    --! For this version, the size is 1 as arithm_size is 1
+    --! Z is an unsigned vector 0 included to 2.PI excluded.
+    --! Since the angles are modulo 2.PI,
+    --! all the arithmetic operations can be done regardless possible overflows
     angle_z : reg_type;
   end record reg_sin_cos_z;
 
