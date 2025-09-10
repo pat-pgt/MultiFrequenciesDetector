@@ -25,7 +25,7 @@ use IEEE.STD_LOGIC_1164.all,
 --!   the following stages at 1 or 0.5. It helps the second set (Y to 0)
 --! Then the choice is 0.5.
 --! For this set (Z to 0) a 2 division of the input is enough
---! as the output (of the set) increses by less than 17%.
+--! as the output (of the set) increases by less than 17%.
 entity Cordic_FirstStage_Z_to_0 is
   port (
     CLK              : in  std_logic;
@@ -118,10 +118,14 @@ begin
           assert false report "TODO" severity failure;
         end if;
 
+        -- Value Z is set during the reg_sync
+        -- It is not exposed outside.
+        -- The relevant bit is stored separately
         scz_local.angle_z(scz_local.angle_z'high - 3 downto scz_local.angle_z'low) <=
           angle_z(angle_z'high - 3 downto angle_z'low);
         scz_local.angle_z(scz_local.angle_z'high downto scz_local.angle_z'high - 2 ) <=
           (others => angle_z(angle_z'high - 2 ));
+        
         z_3_high_bits <= angle_z(angle_z'high downto angle_z'high -2);
 
         -- Perhaps this is updated soon if a full negation is implemented
@@ -349,158 +353,187 @@ end entity Cordic_FirstStage_Y_to_0;
 
 --! @brief preprocess with the choices
 --!
---! This contains 2 components.
---! * A serial check to classify in one of the 8 PI/4 slices.
---! * A serial compute to set X and Y in the slice to set an initial value of Z.\n
-
+--! The first stage check sequentially which one is greater than.
+--! It copies X and Y to the scz_12 as them.
+--! The sign of X and Y are only used to run the compare.\n
+--! The second stage set X and Y to the scz_out from X or -X and Y or -Y.\n
+--! The compare is done on the high-1 bits, using unsigned.
+--! This data is passed to the second stage.
+--! During the reg_sync,
+--! the second stage checks the sign of X, the sign of Y and the greater than.\n
+--! TODO specific VERIFICATION
+--! There are some approximations, due to the computation of negation of the numbers.
+--! The bits are toggled but not +1 addition is performed.
+--! The X<Y may be slightly incorrect. However, in the utility Cordic_values_grow.py
+--!   there is a simulation of all the Cordic stages spinning CW or CCW.
+--! A vector at an angle of slightly more than PI/4 can converge to 0,
+--!   without the stage PI/4 tan=1.\n
+--! This should be verified for low number of bits and/or high arithm_size and/or
+--!   low amplitude signals.
+--! It does not generate any overflow but only some low level noise.
 architecture rtl of Cordic_FirstStage_Y_to_0 is
-  --! Since, it is the first stage, z does not come from the scz structure
-  signal shift_reg_z          : reg_type;
-  --! As other stages, data about the action, that are stable between syncs
-  signal xy1_are_neg          : std_logic_vector(1 downto 0);
-  --! Incremental X Y compare result
-  signal y_gt_x_loop          : std_logic;
-  --! Result of the X Y compare for the stage 2
-  signal y_gt_x_2             : std_logic;
+  --! Data latched for the way to compare X and Y and for the second stage
+  signal xy_in_is_neg         : std_logic_vector(1 downto 0);
+  --! Action computed for the second stage
+  signal quadrant_to_rotate   : std_logic_vector(1 downto 0);
+  --! Incremental X Y compare result, if, at one level, X = Y, this carry is used
+  signal y_gt_x               : std_logic;
   --! Intermediary latch to forward the meta data after 2 syncs, rather than 1
-  signal meta_data_out_1_in_2 : meta_data_t;
+  signal meta_data_12 : meta_data_t;
   --! Stage 1 is between scz_in and scz_12. Stage 2 is between scz_12 and scz_out
   signal scz_12               : reg_sin_cos_z;
-  --! For the old VHDL versions and or compilers
-  signal scz_out_s            : reg_sin_cos_z;
-  --! Z "offset" in stage 2
-  signal z_add_stage_2        : reg_type;
-  signal carry_Z              : std_logic;
+  --! Some Debug variables, subject to be removed
   signal debug_catch_X_sync, debug_catch_Y_sync : reg_type;
   signal debug_catch_Z_sync      : reg_type;
+  signal debug_catch_rot_sync : std_logic_vector(1 downto 0);
 begin
 
   assert (reg_size - 3) mod arithm_size = 0 report " the register size (" & integer'image(arithm_size) &
     ") minus 3 should be a multiple of the arithmetic size (" & integer'image(arithm_size) & ")" severity failure;
 
-  scz_out <= scz_out_s;
 
-  main_proc : process(CLK)
-    variable temp_reg_X, temp_reg_Y : reg_type;
-    variable high_bits_Z            : std_logic_vector(2 downto 0);
-    variable result_X, result_Y     : std_logic_vector(arithm_size - 1 downto 0);
-    variable result_Z_1               : std_logic_vector(arithm_size - 1 downto 0);
-    variable result_Z_2               : std_logic_vector(arithm_size downto 0);
-    variable y_gt_x_var             : std_logic;
-    variable op_N_Z, op_C_Z         : std_logic_vector(arithm_size downto 0);
-    variable carry_in_vector_Z      : std_logic_vector(arithm_size downto 0);
+  proc_first_stage : process(CLK)
   begin
     CLK_IF : if rising_edge(CLK) then
       REGSYNC_IF : if reg_sync = '1' then
         -- Stages 1 and 2 are handled here together
         -- 1 Y, 0 X
-        xy1_are_neg(0)                    <= scz_in.the_cos(scz_in.the_cos'high);
-        xy1_are_neg(1)                    <= scz_in.the_sin(scz_in.the_sin'high);
-        shift_reg_z(shift_reg_z'high)     <= scz_in.the_sin(scz_in.the_sin'high);
-        shift_reg_z(shift_reg_z'high - 1) <= scz_in.the_cos(scz_in.the_cos'high) xor
-                                             scz_in.the_sin(scz_in.the_sin'high);
-        y_gt_x_2                                                        <= y_gt_x_loop;
-        -- probabely never used, set to 0 in case the numbers are absolutely equal
-        y_gt_x_loop                                                     <= '0';
-        -- An intermediary latch of the meta data
-        meta_data_out_1_in_2                                            <= meta_data_in;
-        meta_data_out                                                   <= meta_data_out_1_in_2;
-        -- Set the angle stage 2 to add
-        z_add_stage_2(z_add_stage_2'high downto z_add_stage_2'high - 1) <= (others => y_gt_x_loop);
-        z_add_stage_2(z_add_stage_2'high - 2 downto z_add_stage_2'low)  <= (others => '0');
-
-        carry_Z <= '0';
+        xy_in_is_neg(1)                    <= scz_in.the_cos(scz_in.the_cos'high);
+        xy_in_is_neg(0)                    <= scz_in.the_sin(scz_in.the_sin'high);
         
-        debug_catch_X_sync <= scz_12.the_cos;
-        debug_catch_Y_sync <= scz_12.the_sin;
-        debug_catch_Z_sync <= scz_12.angle_z;
+        y_gt_x <= 'X';
+        -- If the values are equal, the angle is PI/4 modulo PI/2
+        meta_data_12 <= meta_data_in;
       else
-        -- Run the first stage
-        -- It copies the data according with the signs
-        xy1_quadrant : case xy1_are_neg is
+        -- Check which one has the greater absolute value
+        greater_by_quadrant : case xy_in_is_neg is
           when "00" =>
-            result_X := scz_in.the_cos(scz_in.the_cos'low + arithm_size - 1 downto scz_in.the_cos'low);
-            result_Y := scz_in.the_sin(scz_in.the_sin'low + arithm_size - 1 downto scz_in.the_sin'low);
+            if unsigned( scz_in.the_cos(scz_in.the_cos'low + arithm_size - 1 downto scz_in.the_cos'low)) >
+              unsigned( scz_in.the_sin(scz_in.the_sin'low + arithm_size - 1 downto scz_in.the_sin'low)) then
+              y_gt_x <= '0';
+            elsif unsigned( scz_in.the_sin(scz_in.the_sin'low + arithm_size - 1 downto scz_in.the_sin'low)) >
+              unsigned( scz_in.the_cos(scz_in.the_cos'low + arithm_size - 1 downto scz_in.the_cos'low)) then
+              y_gt_x <= '1';
+              -- else keep y_gt_x
+            end if;
           when "01" =>
-            result_X := scz_in.the_sin(scz_in.the_sin'low + arithm_size - 1 downto scz_in.the_sin'low);
-            result_Y := not scz_in.the_cos(scz_in.the_cos'low + arithm_size - 1 downto scz_in.the_cos'low);
+            if unsigned( scz_in.the_cos(scz_in.the_cos'low + arithm_size - 1 downto scz_in.the_cos'low)) >
+              unsigned( not scz_in.the_sin(scz_in.the_sin'low + arithm_size - 1 downto scz_in.the_sin'low)) then
+              y_gt_x <= '0';
+            elsif unsigned( not scz_in.the_sin(scz_in.the_sin'low + arithm_size - 1 downto scz_in.the_sin'low)) >
+              unsigned( scz_in.the_cos(scz_in.the_cos'low + arithm_size - 1 downto scz_in.the_cos'low)) then
+              y_gt_x <= '1';
+              -- else keep y_gt_x
+            end if;
           when "10" =>
-            result_X := not scz_in.the_cos(scz_in.the_cos'low + arithm_size - 1 downto scz_in.the_cos'low);
-            result_Y := not scz_in.the_sin(scz_in.the_sin'low + arithm_size - 1 downto scz_in.the_sin'low);
+            if unsigned(not scz_in.the_cos(scz_in.the_cos'low + arithm_size - 1 downto scz_in.the_cos'low)) >
+              unsigned(scz_in.the_sin(scz_in.the_sin'low + arithm_size - 1 downto scz_in.the_sin'low)) then
+              y_gt_x <= '0';
+            elsif unsigned( scz_in.the_sin(scz_in.the_sin'low + arithm_size - 1 downto scz_in.the_sin'low)) >
+              unsigned( not scz_in.the_cos(scz_in.the_cos'low + arithm_size - 1 downto scz_in.the_cos'low)) then
+              y_gt_x <= '1';
+              -- else keep y_gt_x
+            end if;
           when "11" =>
-            result_X := not scz_in.the_sin(scz_in.the_sin'low + arithm_size - 1 downto scz_in.the_sin'low);
-            result_Y := scz_in.the_cos(scz_in.the_cos'low + arithm_size - 1 downto scz_in.the_cos'low);
-          when others => null;
-        end case xy1_quadrant;
-        -- populate the greate than
-        -- The comparaisons are done from low to high
-        -- if X or Y is greater, force the signal, otherwise left is as it
-        y_gt_x_var := y_gt_x_loop;
-        for ind in 1 to arithm_size loop
-          if result_X(ind - 1) = '1' and result_Y(ind - 1) = '0' then
-            y_gt_x_var := '0';
-          elsif result_X(ind - 1) = '0' and result_Y(ind - 1) = '1' then
-            y_gt_x_var := '1';
-          end if;
-        end loop;
-        y_gt_x_loop <= y_gt_x_var;
-        -- Z does not rely on shifts of a previous stage, do it now
-        shift_reg_z(shift_reg_z'high - arithm_size downto shift_reg_z'low) <=
-          shift_reg_z(shift_reg_z'high downto shift_reg_z'low + arithm_size);
-        shift_reg_z(shift_reg_z'low + arithm_size - 1 downto shift_reg_z'low)            <= (others => '0');
-        -- place the result into the signals
-        scz_12.the_cos(scz_12.the_cos'high downto scz_12.the_cos'high - arithm_size + 1) <= result_X;
-        scz_12.the_sin(scz_12.the_sin'high downto scz_12.the_sin'high - arithm_size + 1) <= result_Y;
-        -- Z is easy, nothing to do.
-        scz_12.angle_z(scz_12.angle_z'high downto scz_12.angle_z'high - arithm_size + 1) <= 
-          shift_reg_z(shift_reg_z'low + arithm_size - 1 downto shift_reg_z'low);
-        --shift the rest of the registers
+            if unsigned( not scz_in.the_cos(scz_in.the_cos'low + arithm_size - 1 downto scz_in.the_cos'low)) >
+              unsigned( not scz_in.the_sin(scz_in.the_sin'low + arithm_size - 1 downto scz_in.the_sin'low)) then
+              y_gt_x <= '0';
+            elsif unsigned( not scz_in.the_sin(scz_in.the_sin'low + arithm_size - 1 downto scz_in.the_sin'low)) >
+              unsigned( not scz_in.the_cos(scz_in.the_cos'low + arithm_size - 1 downto scz_in.the_cos'low)) then
+              y_gt_x <= '1';
+              -- else keep y_gt_x
+            end if;
+            when others => NULL;
+        end case greater_by_quadrant;
+        --shift the scz_in into scz_12 (no Z)
+        scz_12.the_cos(scz_12.the_cos'high downto scz_12.the_cos'high - arithm_size + 1) <=
+          scz_in.the_cos(scz_in.the_cos'low + arithm_size - 1 downto scz_in.the_cos'low);
+        scz_12.the_sin(scz_12.the_sin'high downto scz_12.the_sin'high - arithm_size + 1) <=
+          scz_in.the_sin(scz_in.the_sin'low + arithm_size - 1 downto scz_in.the_sin'low);        
+        --shift the rest of the registers (no Z)
         scz_12.the_cos(scz_12.the_cos'high - arithm_size downto scz_12.the_cos'low) <=
           scz_12.the_cos(scz_12.the_cos'high downto scz_12.the_cos'low + arithm_size);
         scz_12.the_sin(scz_12.the_sin'high - arithm_size downto scz_12.the_sin'low) <=
           scz_12.the_sin(scz_12.the_sin'high downto scz_12.the_sin'low + arithm_size);
-        scz_12.angle_z(scz_12.angle_z'high - arithm_size downto scz_12.angle_z'low) <=
-          scz_12.angle_z(scz_12.angle_z'high downto scz_12.angle_z'low + arithm_size);
-        --
-        -- Run the second stage
-        --
-        -- prepare the Z calculatiuon
-        carry_in_vector_Z(carry_in_vector_Z'high downto carry_in_vector_Z'low + 1) := (others => '0');
-        carry_in_vector_Z(carry_in_vector_Z'low)                                   := carry_Z;
-        op_N_Z(op_N_Z'high)                                                        := '0';
-        op_C_Z(op_C_Z'high)                                                        := '0';
-        op_N_Z(op_N_Z'high - 1 downto op_N_Z'low) :=
-          scz_12.angle_z(scz_12.angle_z'low + arithm_size - 1 downto scz_12.angle_z'low);
-        op_C_Z(op_C_Z'high - 1 downto op_C_Z'low) :=
-          z_add_stage_2(z_add_stage_2'low + arithm_size - 1 downto z_add_stage_2'low);
-        --- ... nd make its shift
-        z_add_stage_2(z_add_stage_2'high - arithm_size downto z_add_stage_2'low) <=
-          z_add_stage_2(z_add_stage_2'high downto z_add_stage_2'low + arithm_size );
-        -- Do it
-        result_Z_2 := std_logic_vector(unsigned(op_N_Z) + unsigned(op_C_Z) + unsigned(carry_in_vector_Z));
-        carry_Z <= result_Z_2(result_Z_2'high);
-
-
-        if y_gt_x_2 = '0' then
-          result_X := scz_in.the_cos(scz_in.the_cos'low + arithm_size - 1 downto scz_in.the_cos'low);
-          result_Y := scz_in.the_sin(scz_in.the_sin'low + arithm_size - 1 downto scz_in.the_sin'low);
-        else
-          result_X := scz_in.the_sin(scz_in.the_sin'low + arithm_size - 1 downto scz_in.the_sin'low);
-          result_Y := not scz_in.the_cos(scz_in.the_cos'low + arithm_size - 1 downto scz_in.the_cos'low);
-        end if;
-        -- place the result into the signals
-        scz_out_s.the_cos(scz_out_s.the_cos'high downto scz_out_s.the_cos'high - arithm_size + 1) <= result_X;
-        scz_out_s.the_sin(scz_out_s.the_sin'high downto scz_out_s.the_sin'high - arithm_size + 1) <= result_Y;
-        scz_out_s.angle_z(scz_out_s.angle_z'high downto scz_out_s.angle_z'high - arithm_size + 1) <=
-          result_Z_2( result_Z_2'high - 1 downto result_Z_2'low );
-        --shift the rest of the registers
-        scz_out_s.the_cos(scz_out_s.the_cos'high - arithm_size downto scz_out_s.the_cos'low) <=
-          scz_out_s.the_cos(scz_out_s.the_cos'high downto scz_out_s.the_cos'low + arithm_size);
-        scz_out_s.the_sin(scz_out_s.the_sin'high - arithm_size downto scz_out_s.the_sin'low) <=
-          scz_out_s.the_sin(scz_out_s.the_sin'high downto scz_out_s.the_sin'low + arithm_size);
-        scz_out_s.angle_z(scz_out_s.angle_z'high - arithm_size downto scz_out_s.angle_z'low) <=
-          scz_out_s.angle_z(scz_out_s.angle_z'high downto scz_out_s.angle_z'low + arithm_size);
       end if REGSYNC_IF;
     end if CLK_IF;
-  end process main_proc;
+  end process proc_first_stage;
+
+  
+  proc_second_stage : process(CLK)
+    variable xy_in_is_neg_y_gt_x_v : std_logic_vector(2 downto 0);
+    variable quadrant_to_rotate_v : std_logic_vector( 1 downto 0 );
+  begin
+    CLK_IF : if rising_edge(CLK) then
+      REGSYNC_IF : if reg_sync = '1' then
+        meta_data_out                                                      <= meta_data_12;
+
+        xy_in_is_neg_y_gt_x_v(0) := y_gt_x;
+        xy_in_is_neg_y_gt_x_v(2 downto 1) := xy_in_is_neg;
+        case xy_in_is_neg_y_gt_x_v is
+          when "000" =>
+            quadrant_to_rotate_v := "00";
+          when "001" =>
+            quadrant_to_rotate_v := "01";
+          when "101" =>
+            quadrant_to_rotate_v := "01";
+          when "100" =>
+            quadrant_to_rotate_v := "10";
+          when "110" =>
+            quadrant_to_rotate_v := "10";
+          when "111" =>
+            quadrant_to_rotate_v := "11";
+          when "011" =>
+            quadrant_to_rotate_v := "11";
+          when "010" =>
+            quadrant_to_rotate_v := "00";
+            when others =>
+        end case;
+        
+        quadrant_to_rotate <= quadrant_to_rotate_v;
+
+        -- Value Z is set during the reg_sync
+        -- The next stage depend on Y only, not Z
+        scz_out.angle_z( scz_out.angle_z'high downto scz_out.angle_z'high - 1 ) <= quadrant_to_rotate_v;
+        scz_out.angle_z( scz_out.angle_z'high - 2 downto scz_out.angle_z'low ) <= ( others => '0' );
+
+        debug_catch_X_sync <= scz_out.the_cos;
+        debug_catch_Y_sync <= scz_out.the_sin;
+        debug_catch_Z_sync <= scz_out.angle_z;
+        debug_catch_rot_sync <= quadrant_to_rotate_v;
+      else
+        xy1_quadrant : case quadrant_to_rotate is
+          when "00" =>
+            scz_out.the_cos(scz_out.the_cos'high downto scz_out.the_cos'high - arithm_size + 1) <=
+              scz_12.the_cos(scz_12.the_cos'low + arithm_size - 1 downto scz_12.the_cos'low);
+            scz_out.the_sin(scz_out.the_sin'high downto scz_out.the_sin'high - arithm_size + 1) <=
+              scz_12.the_sin(scz_12.the_sin'low + arithm_size - 1 downto scz_12.the_sin'low);
+          when "01" =>
+            scz_out.the_cos(scz_out.the_cos'high downto scz_out.the_cos'high - arithm_size + 1) <=
+              scz_12.the_sin(scz_12.the_sin'low + arithm_size - 1 downto scz_12.the_sin'low);
+            scz_out.the_sin(scz_out.the_sin'high downto scz_out.the_sin'high - arithm_size + 1) <=
+              not scz_12.the_cos(scz_12.the_cos'low + arithm_size - 1 downto scz_12.the_cos'low);
+          when "10" =>
+            scz_out.the_cos(scz_out.the_cos'high downto scz_out.the_cos'high - arithm_size + 1) <=
+              not scz_12.the_cos(scz_12.the_cos'low + arithm_size - 1 downto scz_12.the_cos'low);
+            scz_out.the_sin(scz_out.the_sin'high downto scz_out.the_sin'high - arithm_size + 1) <=
+              not scz_12.the_sin(scz_12.the_sin'low + arithm_size - 1 downto scz_12.the_sin'low);
+          when "11" =>
+            scz_out.the_cos(scz_out.the_cos'high downto scz_out.the_cos'high - arithm_size + 1) <=
+              not scz_12.the_sin(scz_12.the_sin'low + arithm_size - 1 downto scz_12.the_sin'low);
+            scz_out.the_sin(scz_out.the_sin'high downto scz_out.the_sin'high - arithm_size + 1) <=
+              scz_12.the_cos(scz_12.the_cos'low + arithm_size - 1 downto scz_12.the_cos'low);
+          when others => null;
+        end case xy1_quadrant;
+        --shift the rest of the registers
+        scz_out.the_cos(scz_out.the_cos'high - arithm_size downto scz_out.the_cos'low) <=
+          scz_out.the_cos(scz_out.the_cos'high downto scz_out.the_cos'low + arithm_size);
+        scz_out.the_sin(scz_out.the_sin'high - arithm_size downto scz_out.the_sin'low) <=
+          scz_out.the_sin(scz_out.the_sin'high downto scz_out.the_sin'low + arithm_size);
+        scz_out.angle_z(scz_out.angle_z'high - arithm_size downto scz_out.angle_z'low) <=
+          scz_out.angle_z(scz_out.angle_z'high downto scz_out.angle_z'low + arithm_size);
+      end if REGSYNC_IF;
+    end if CLK_IF;
+  end process proc_second_stage;
+
 end architecture rtl;
