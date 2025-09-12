@@ -18,7 +18,7 @@ use IEEE.STD_LOGIC_1164.all,
 entity Cordic_IntermStage is
   generic (
     Z_not_Y_to_0 : boolean;
-    shifts_calc  : integer range 1 to reg_size - 2
+    shifts_calc  : integer range 1 to reg_size - 4
     );
   port (
     CLK           : in  std_logic;
@@ -242,6 +242,7 @@ begin
           is_first <= '0';
         end if REGSYNC_IF;
       else
+        Z_shifts_count <= (others => '0');
         remaining_shift_count <= (others => '0');
       end if RST_IF;
     end if CLK_IF;

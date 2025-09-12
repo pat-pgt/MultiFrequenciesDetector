@@ -74,7 +74,11 @@ package Cordic_package is
   component Cordic_IntermStage is
     generic (
       Z_not_Y_to_0 : boolean;
-      shifts_calc  : integer range 1 to reg_size - 2
+      --! X and Y shifts.\n
+      --! With the preprocessing, it is a non-sense to start before 1
+      --! With the high limit to rs - 4, the last shifted number
+      --!   contains 3 bits with a sign.
+      shifts_calc  : integer range 1 to reg_size - 4
       );
     port (
       CLK           : in  std_logic;
@@ -131,7 +135,8 @@ package Cordic_package is
 
   component Cordic_Bundle_Z_to_0 is
     generic (
-      stages_nbre         : integer range 1 to 25 := 20;
+      --! Number of stages with shifts from 1 to nbre_stages
+      stages_nbre         : integer range 3 to reg_size - 4 := 20;
       metadata_catch_list : meta_data_list_t;
       stages_catch_list   : Cordic_stages_num_list
       );
@@ -183,8 +188,9 @@ package Cordic_package is
 
   component Cordic_Bundle_Y_to_0 is
     generic (
+      --! Number of stages with shifts from 1 to nbre_stages
       -- Related to the X>Y or Y>X limited precision. TODO Doc
-      stages_nbre         : integer range 4 to 25 := 20;
+      stages_nbre         : integer range 3 to reg_size - 4 := 20;
       metadata_catch_list : meta_data_list_t;
       stages_catch_list   : Cordic_stages_num_list
       );

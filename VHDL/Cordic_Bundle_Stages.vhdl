@@ -9,7 +9,7 @@ use IEEE.STD_LOGIC_1164.all,
 entity Cordic_Bundle_Z_to_0 is
   generic (
     debug_mode          : boolean               := false;
-    stages_nbre         : integer range 2 to 25 := 20;
+    stages_nbre         : integer range 2 to reg_size - 4 := 20;
     metadata_catch_list : meta_data_list_t;
     stages_catch_list   : cordic_stages_num_list
     );
@@ -73,7 +73,7 @@ begin
     interm_stage_instanc : Cordic_IntermStage generic map
       (
         Z_not_Y_to_0 => true,
-        shifts_calc  => ind + 1
+        shifts_calc  => ind
         )
       port map
       (
@@ -114,7 +114,7 @@ use IEEE.STD_LOGIC_1164.all,
 entity Cordic_Bundle_Y_to_0 is
   generic (
     debug_mode          : boolean               := false;
-    stages_nbre         : integer range 2 to 25 := 20;
+    stages_nbre         : integer range 2 to reg_size - 4 := 20;
     metadata_catch_list : meta_data_list_t;
     stages_catch_list   : cordic_stages_num_list
     );
