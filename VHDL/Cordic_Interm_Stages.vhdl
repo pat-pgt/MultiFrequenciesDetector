@@ -168,10 +168,21 @@ begin
           end if;
           -- Extract the constant to be added to or subtracted from Z
           -- A selector is used, rather than a shift register
-          op_C_Z(op_C_Z'high - 1 downto op_C_Z'low) :=
-            angle_add_or_subtract(
-              angle_add_or_subtract'low + (to_integer(unsigned (Z_shifts_count)) + arithm_size) - 1 downto
-              angle_add_or_subtract'low + to_integer(unsigned (Z_shifts_count))); 
+          if (angle_add_or_subtract'low + (to_integer(unsigned (Z_shifts_count)) + arithm_size) - 1) <= angle_add_or_subtract'high then
+            op_C_Z(op_C_Z'high - 1 downto op_C_Z'low) :=
+              angle_add_or_subtract(
+                angle_add_or_subtract'low + (to_integer(unsigned (Z_shifts_count)) + arithm_size) - 1 downto
+                angle_add_or_subtract'low + to_integer(unsigned (Z_shifts_count)));
+          else
+            -- The electronics should always know what to do.
+            -- Then the low bit/gourp of bits is duplicated in case the shifts
+            -- are grater than the Z constant.
+            -- This should not occur in run mode. It may occur at the end of a reset
+            op_C_Z(op_C_Z'high - 1 downto op_C_Z'low) :=
+              angle_add_or_subtract(
+                angle_add_or_subtract'high downto
+                angle_add_or_subtract'high - arithm_size + 1 );
+          end if;
           Z_shifts_count                                                             <= std_logic_vector(unsigned(Z_shifts_count) + arithm_size);
           -- Prepare the carry in with a padding in order to add properly
           -- operands of the same size
