@@ -135,11 +135,17 @@ begin
         for ind in angle_storage'range loop
           angle_storage(ind) <= (others => '0');
         end loop;
-        angle_octave   <= (others => '0');
-        arithm_counter <= (others => '0');
-        octave_counter <= (others => '0');
-        note_counter   <= (others => '0');
-        full_sync      <= '0';
+        delay_note_calc <= (others => '0');
+        delay_note_mem  <= (others => '0');
+        angle_z         <= (others => '0');
+        angle_octave    <= (others => '0');
+        angle_note      <= (others => '0');
+        angle_step      <= (others => '0');
+        arithm_counter  <= (others => '0');
+        octave_counter  <= (others => '0');
+        note_counter    <= (others => '0');
+        reg_sync        <= '0';
+        full_sync       <= '0';
       end if RST_IF;
     end if CLK_IF;
   end process count_proc;

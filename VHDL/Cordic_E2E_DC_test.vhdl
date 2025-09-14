@@ -28,9 +28,11 @@ use IEEE.STD_LOGIC_1164.all,
 
 entity Cordic_bundle_test_Z_to_0_Y_to_0 is
   generic (
-    input_x             : std_logic_vector(30 downto 0)  := "0001000000000000000000000000000";
+    input_x             : std_logic_vector(30 downto 0)  := "1000000000000000000000000000000";
     input_y             : std_logic_vector(30 downto 0)  := (others => '0');
     metadata_catch_list : meta_data_list_t(15 to 14)   ; --  := (
+    nbre_Z_2_0_stages   : integer range 4 to reg_size := 11;
+    nbre_Y_2_0_stages   : integer range 4 to reg_size := 14;
 --      11                                                            => octave_note_to_meta_data(octave => 0, note => 0),
 --      12                                                            => octave_note_to_meta_data(octave => 3, note => 2),
 --      13                                                            => octave_note_to_meta_data(octave => 6, note => 4),
@@ -43,7 +45,9 @@ end entity Cordic_bundle_test_Z_to_0_Y_to_0;
 
 architecture rtl of Cordic_bundle_test_Z_to_0_Y_to_0 is
   signal CLK                                     : std_logic                     := '0';
-  signal RST                                     : std_logic_vector(10 downto 0) := (others => '1');
+  signal RST                                     : std_logic_vector(2*reg_size downto 0) := (others => '1');
+  signal RST_monitor_Z_2_0                       : natural := nbre_Z_2_0_stages + 5;
+  signal RST_monitor_Y_2_0                       : natural := nbre_Y_2_0_stages + 5;
   signal main_counter                            : unsigned(3 downto 0)          := (others => '0');
   signal reg_sync_ag, reg_sync_interm, full_sync : std_logic;
   signal angle_z                                 : reg_type;
@@ -54,11 +58,11 @@ architecture rtl of Cordic_bundle_test_Z_to_0_Y_to_0 is
   signal meta_data_5                             : meta_data_t;
   signal meta_data_6                             : meta_data_t;
   signal scz_1, scz_2, scz_3                     : reg_sin_cos_z;
-  signal X_out_Z_2_0                             : reg_type;
-  signal Y_out_Z_2_0                             : reg_type;
+  signal X_out_Z_2_0                             : reg_type :=( others => '0' );
+  signal Y_out_Z_2_0                             : reg_type :=( others => '0' );
   signal Z_out_Z_2_0                             : reg_type;
   signal Z_Z_2_0_expon_out                       : std_logic_vector(5 downto 0);
-  signal X_out_Y_2_0                             : reg_type;
+  signal X_out_Y_2_0                             : reg_type :=( others => '0' );
   signal Y_out_Y_2_0                             : reg_type;
   signal Z_out_Y_2_0                             : reg_type;
   signal Y_Y_2_0_expon_out                       : std_logic_vector(5 downto 0);
@@ -69,16 +73,6 @@ architecture rtl of Cordic_bundle_test_Z_to_0_Y_to_0 is
   
   signal report_cordic_bundle_1, report_cordic_bundle_2 : std_logic := '0';
 
-  signal angle_add_or_subtract0                  : reg_type  := arctg_2_angle_reg(0);
-  signal angle_add_or_subtract1                  : reg_type  := arctg_2_angle_reg(1);
-  signal angle_add_or_subtract2                  : reg_type  := arctg_2_angle_reg(2);
-  signal angle_add_or_subtract0R                 : real      := arctg_2_angle_real(0);
-  signal angle_add_or_subtract1R                 : real      := arctg_2_angle_real(1);
-  signal angle_add_or_subtract2R                 : real      := arctg_2_angle_real(2);
-  signal angle_add_or_subtractRRR0 : real := arctan(real(0));
-  signal angle_add_or_subtractRRR1 : real := arctan(real(1));
-  signal angle_add_or_subtractRRR2 : real := arctan(real(0.5));
-  signal angle_add_or_subtractRRR3 : real := arctan(real(0.25));
 begin
   
   main_proc : process
@@ -114,13 +108,32 @@ begin
     end if COUNT_IF;
   end process main_proc;
 
-  module_X_Y_Z_2_0 : process( X_out_Z_2_0, Y_out_Z_2_0, X_out_Y_2_0 )
-    begin
+  RST_monitor_proc : process(reg_sync_ag)
+  begin
+    CLK_IF : if rising_edge(reg_sync_ag) then
+      if RST_monitor_Z_2_0 > 0 then
+        RST_monitor_Z_2_0 <= RST_monitor_Z_2_0 - 1;
+      elsif RST_monitor_Y_2_0 > 0 then
+        RST_monitor_Y_2_0 <= RST_monitor_Y_2_0 - 1;
+      end if;
+    end if CLK_IF;
+  end process RST_monitor_proc;
+
+  module_Z_2_0 : process(X_out_Z_2_0, Y_out_Z_2_0, RST_monitor_Z_2_0)
+  begin
+    if RST_monitor_Z_2_0 = 0 then
       out_Z_2_0_X2_plus_Y2 <= (
         real(to_integer(signed(X_out_Z_2_0)))**2+real(to_integer(signed(Y_out_Z_2_0)))**2) /
-                            input_X2_plus_Y2;
-      out_Y_2_0_X2 <= real(to_integer(signed( X_out_Y_2_0 )))**2 / input_X2_plus_Y2;
-    end process module_X_Y_Z_2_0;
+                              input_X2_plus_Y2;
+    end if;
+  end process module_Z_2_0;
+
+  module_Y_2_0 : process(X_out_Y_2_0, RST_monitor_Y_2_0)
+  begin
+    if RST_monitor_Y_2_0 = 0  then
+      out_Y_2_0_X2 <= real(to_integer(signed(X_out_Y_2_0)))**2 / input_X2_plus_Y2;
+    end if;
+  end process module_Y_2_0;
   
   angle_gene_instanc : AngleGene
     generic map
@@ -164,7 +177,7 @@ begin
     --    scz_out       => open );
     
   cordic_bundle_Z_2_0_instanc : Cordic_Bundle_Z_to_0 generic map (
-    stages_nbre         => 16,
+    stages_nbre         => nbre_Z_2_0_stages,
     metadata_catch_list => metadata_catch_list,
     stages_catch_list   => stages_catch_list
     )
@@ -199,7 +212,7 @@ begin
       scz_out       => scz_3);
 
   cordic_bundle_Y_2_0_instanc : Cordic_Bundle_Y_to_0 generic map (
-    stages_nbre         => 25,
+    stages_nbre         => nbre_Y_2_0_stages,
     metadata_catch_list => metadata_catch_list,
     stages_catch_list   => stages_catch_list
     )

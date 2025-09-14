@@ -101,7 +101,7 @@ begin
           remaining_shift_count <= std_logic_vector(to_unsigned(reg_size - shifts_calc, remaining_shift_count'length));
           Z_shifts_count        <= (others => '0');
           is_first              <= '1';
-          if shifts_calc < 4 then
+          if shifts_calc < 4 and false then
             --
             debug_catch_X2_plus_Y2 <= real(to_integer(signed(scz_in.the_cos)))**2 + real(to_integer(signed(scz_in.the_sin)))**2;
             debug_catch_X_sync <= scz_in.the_cos;
