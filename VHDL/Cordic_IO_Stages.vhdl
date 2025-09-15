@@ -107,10 +107,10 @@ begin
           assert false report "TODO" severity failure;
         end if;
         -- Duplicate the high bit, in order to divide by 2
-        scz_local.the_sin(scz_local.the_sin'high) <= input_x(input_x'high);
+        scz_local.the_sin(scz_local.the_sin'high) <= input_y(input_y'high);
         scz_local.the_sin(scz_local.the_sin'high - 1 downto
-                          scz_local.the_sin'high - 1 - input_x'length + 1) <= input_x;
-        if scz_local.the_sin'length > (input_x'length + 1) then
+                          scz_local.the_sin'high - 1 - input_y'length + 1) <= input_y;
+        if scz_local.the_sin'length > (input_y'length + 1) then
           -- If input_x is short, duplicate the high bits,
           --   in order to keep the rail to rail
 -- for loop

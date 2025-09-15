@@ -50,6 +50,7 @@ architecture rtl of Cordic_IntermStage is
   signal Z_shifts_count                         : std_logic_vector(5 downto 0);
   signal debug_catch_X2_plus_Y2                 : real;
   signal debug_catch_X_sync,debug_catch_Y_sync  : reg_type;
+  signal debug_catch_Z_sync                     : reg_type;
   signal debug_flipflop                         : std_logic := '0';
   signal debug_flipflop_2                       : std_logic := '0';
   constant angle_add_or_subtract                  : reg_type  := arctg_2_angle_reg(shifts_calc);
@@ -106,6 +107,7 @@ begin
             debug_catch_X2_plus_Y2 <= real(to_integer(signed(scz_in.the_cos)))**2 + real(to_integer(signed(scz_in.the_sin)))**2;
             debug_catch_X_sync <= scz_in.the_cos;
             debug_catch_Y_sync <= scz_in.the_sin;
+            debug_catch_Z_sync <= scz_in.angle_z;
             -- This should become dynamic to not overflow,
             -- to respect the bounds as well, if the reg_size is small (<16)
             -- Be careful, this is the data of the input,

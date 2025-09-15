@@ -40,6 +40,7 @@ simul_Cordic : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages.vhdl $(SCR
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)AnglesGene.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)DataMonitor.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_Monitor.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_E2E_DC_bundle.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_E2E_DC_test.vhdl
 	$(GHDL_PROG) -e $(VFLAGS) Cordic_bundle_test_Z_to_0_Y_to_0
 	$(GHDL_PROG) -r $(VFLAGS) Cordic_bundle_test_Z_to_0_Y_to_0 --vcd=$(WAVDESTDIR)Cordic.wav 2>&1 | tee $(DESTDIR)Cordic.out.txt

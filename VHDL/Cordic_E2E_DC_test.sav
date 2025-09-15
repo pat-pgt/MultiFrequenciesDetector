@@ -1,0 +1,39 @@
+[*]
+[*] GTKWave Analyzer v3.3.111 (w)1999-2020 BSI
+[*] Mon Sep 15 12:04:54 2025
+[*]
+[dumpfile_mtime] "Mon Sep 15 12:00:54 2025"
+[dumpfile_size] 461929261
+[timestart] 382622000000
+[size] 3507 726
+[pos] -1 -1
+*-29.603689 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] cordic_bundle_test_z_to_0_y_to_0.
+[sst_width] 255
+[signals_width] 238
+[sst_expanded] 1
+[sst_vpaned_height] 196
+@28
+cordic_bundle_test_z_to_0_y_to_0.out_z_2_0_x2_plus_y2_000
+cordic_bundle_test_z_to_0_y_to_0.out_z_2_0_x2_plus_y2_090
+cordic_bundle_test_z_to_0_y_to_0.out_z_2_0_x2_plus_y2_180
+cordic_bundle_test_z_to_0_y_to_0.out_z_2_0_x2_plus_y2_240
+cordic_bundle_test_z_to_0_y_to_0.out_y_2_0_x2_000
+cordic_bundle_test_z_to_0_y_to_0.out_y_2_0_x2_090
+cordic_bundle_test_z_to_0_y_to_0.out_y_2_0_x2_180
+cordic_bundle_test_z_to_0_y_to_0.out_y_2_0_x2_240
+@22
+cordic_bundle_test_z_to_0_y_to_0.y_y_2_0_expon_out_000[5:0]
+cordic_bundle_test_z_to_0_y_to_0.y_y_2_0_expon_out_090[5:0]
+cordic_bundle_test_z_to_0_y_to_0.y_y_2_0_expon_out_180[5:0]
+cordic_bundle_test_z_to_0_y_to_0.y_y_2_0_expon_out_240[5:0]
+cordic_bundle_test_z_to_0_y_to_0.z_out_y_2_0_000[31:0]
+cordic_bundle_test_z_to_0_y_to_0.z_out_y_2_0_090[31:0]
+cordic_bundle_test_z_to_0_y_to_0.z_out_y_2_0_180[31:0]
+cordic_bundle_test_z_to_0_y_to_0.z_out_y_2_0_240[31:0]
+cordic_bundle_test_z_to_0_y_to_0.z_z_2_0_expon_out_000[5:0]
+cordic_bundle_test_z_to_0_y_to_0.z_z_2_0_expon_out_090[5:0]
+cordic_bundle_test_z_to_0_y_to_0.z_z_2_0_expon_out_180[5:0]
+cordic_bundle_test_z_to_0_y_to_0.z_z_2_0_expon_out_240[5:0]
+[pattern_trace] 1
+[pattern_trace] 0
