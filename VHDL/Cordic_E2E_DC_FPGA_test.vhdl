@@ -4,6 +4,7 @@ use IEEE.STD_LOGIC_1164.all,
   ieee.math_real.all,
   work.InterModule_formats.reg_type,
   work.InterModule_formats.reg_size,
+  work.Meta_data_package.meta_data_t,
   work.Meta_data_package.meta_data_list_t,
   work.MultiFreqDetect_package.cordic_stages_num_list,
   work.Cordic_E2E_DC_Bundle_pac.Cordic_E2E_DC_Bundle;
@@ -17,7 +18,7 @@ use IEEE.STD_LOGIC_1164.all,
 entity Cordic_E2E_DC_FPGA_test is
   generic (
     nbre_Z_2_0_stages   : integer range 4 to reg_size             := 18;
-    nbre_Y_2_0_stages   : integer range 4 to reg_size             := 23;
+    nbre_Y_2_0_stages   : integer range 4 to reg_size             := 18;
     metadata_catch_list : meta_data_list_t(15 to 14);
     stages_catch_list   : cordic_stages_num_list(13 to 7)  -- := (1, 2, 6, 10, 17)
     );
@@ -30,10 +31,12 @@ entity Cordic_E2E_DC_FPGA_test is
     monitor_Y_2_0_ready : out std_logic;
     X_Z_2_0             : out std_logic_vector( 11 downto 0 ); 
     Y_Z_2_0             : out std_logic_vector( 11 downto 0 ); 
-    Z_Z_2_0             : out std_logic_vector( 11 downto 0 ); 
+    Z_Z_2_0             : out std_logic_vector( 7 downto 0 ); 
     X_Y_2_0             : out std_logic_vector( 11 downto 0 ); 
-    Y_Y_2_0             : out std_logic_vector( 11 downto 0 ); 
-    Z_Y_2_0             : out std_logic_vector( 11 downto 0 )
+    Y_Y_2_0             : out std_logic_vector( 7 downto 0 ); 
+    Z_Y_2_0             : out std_logic_vector( 11 downto 0 );
+    metadata_note       : out std_logic_vector( 3 downto 0 );
+    metadata_octave     : out std_logic_vector( 2 downto 0 )  
     );
 end entity ;
 
@@ -43,15 +46,15 @@ architecture rtl of Cordic_E2E_DC_FPGA_test is
   signal reg_sync            : std_logic;
   signal casted_X            : std_logic_vector( reg_size - 2 downto 0 );
   signal casted_Y            : std_logic_vector( reg_size - 2 downto 0 );
-  signal RST_monitor_Z_2_0 : natural                               := nbre_Z_2_0_stages + 5;
-  signal RST_monitor_Y_2_0 : natural                               := nbre_Y_2_0_stages + 5;
-  signal main_counter        : unsigned(4 downto 0)                  := (others => '0');
+  signal RST_monitor_Z_2_0   : natural                               := nbre_Z_2_0_stages + 5;
+  signal RST_monitor_Y_2_0   : natural                               := nbre_Y_2_0_stages + 5;
   signal X_out_Z_2_0         : reg_type;
   signal Y_out_Z_2_0         : reg_type;
   signal Z_out_Z_2_0         : reg_type;
   signal X_out_Y_2_0         : reg_type;
   signal Y_out_Y_2_0         : reg_type;
   signal Z_out_Y_2_0         : reg_type;
+  signal meta_data_out       : meta_data_t;
   
   signal report_cordic_bundle : std_logic := '0';
 
@@ -63,6 +66,9 @@ begin
   Y_Y_2_0 <= X_out_Y_2_0(Y_out_Y_2_0'high downto Y_out_Y_2_0'high - Y_Y_2_0'length + 1 );
   Z_Y_2_0 <= X_out_Y_2_0(Z_out_Y_2_0'high downto Z_out_Y_2_0'high - Z_Y_2_0'length + 1 );
 
+  metadata_note <= meta_data_out.note;
+  metadata_octave <= meta_data_out.octave;
+  
   casting_X : process( input_X ) is
     variable ind_in : integer;
     begin
@@ -91,7 +97,7 @@ begin
         end if;
       end loop;
     end process casting_Y;
-  
+
   RST_monitor_proc : process(CLK)
   begin
     CLK_IF : if rising_edge(CLK) then
@@ -100,18 +106,20 @@ begin
           if RST_monitor_Z_2_0 > 0 then
             RST_monitor_Z_2_0 <= RST_monitor_Z_2_0 - 1;
           elsif RST_monitor_Y_2_0 > 0 then
+            monitor_Z_2_0_ready <= '1';
             RST_monitor_Y_2_0 <= RST_monitor_Y_2_0 - 1;
+          else
+            monitor_Y_2_0_ready <= '1';
           end if;
         end if;
       else
         monitor_Y_2_0_ready <= '0';
-        monitor_Y_2_0_ready <= '0';
+        monitor_Z_2_0_ready <= '0';
         RST_monitor_Z_2_0 <= nbre_Z_2_0_stages + 5;
         RST_monitor_Y_2_0 <= nbre_Y_2_0_stages + 5;
       end if;
     end if CLK_IF;
   end process RST_monitor_proc;
-
 
   Cordic_E2E_DC_Bundle_instanc : Cordic_E2E_DC_Bundle
     generic map(
@@ -135,7 +143,8 @@ begin
       Y_out_Y_2_0            => Y_out_Y_2_0,
       Z_out_Y_2_0            => Z_out_Y_2_0,
       Y_Y_2_0_expon_out      => open,
-      report_cordic_bundle_1 => report_cordic_bundle
+      report_cordic_bundle_1 => report_cordic_bundle,
+      meta_data_out          => meta_data_out
       );
 
 

@@ -6,6 +6,7 @@ use IEEE.STD_LOGIC_1164.all,
   work.InterModule_formats.reg_type,
   work.InterModule_formats.reg_size,
 
+  work.Meta_data_package.meta_data_t,
   work.Meta_data_package.meta_data_list_t,
   
   work.MultiFreqDetect_package.cordic_stages_num_list;
@@ -40,7 +41,8 @@ package Cordic_E2E_DC_Bundle_pac is
       Y_out_Y_2_0            : out reg_type;
       Z_out_Y_2_0            : out reg_type;
       Y_Y_2_0_expon_out      : out std_logic_vector(5 downto 0);
-      report_cordic_bundle_1 : in  std_logic
+      report_cordic_bundle_1 : in  std_logic;
+      meta_data_out          : out meta_data_t
       );
   end component Cordic_E2E_DC_Bundle;
 
@@ -86,7 +88,8 @@ entity Cordic_E2E_DC_Bundle is
     Y_out_Y_2_0            : out reg_type;
     Z_out_Y_2_0            : out reg_type;
     Y_Y_2_0_expon_out      : out std_logic_vector(5 downto 0);
-    report_cordic_bundle_1 : in  std_logic
+    report_cordic_bundle_1 : in  std_logic;
+    meta_data_out          : out meta_data_t
     );
 end entity Cordic_E2E_DC_Bundle;
 
@@ -99,7 +102,6 @@ architecture arch of Cordic_E2E_DC_Bundle is
   signal meta_data_3            : meta_data_t;
   signal meta_data_4            : meta_data_t;
   signal meta_data_5            : meta_data_t;
-  signal meta_data_6            : meta_data_t;
   signal scz_1, scz_2, scz_3    : reg_sin_cos_z;
   signal report_cordic_bundle_2 : std_logic := '0';
 begin
@@ -178,7 +180,7 @@ begin
       reg_sync      => reg_sync_interm,
       full_sync     => full_sync,
       meta_data_in  => meta_data_5,
-      meta_data_out => meta_data_6,
+      meta_data_out => meta_data_out,
       scz_in        => scz_3,
       X_out         => X_out_Y_2_0,
       Y_out         => Y_out_Y_2_0,

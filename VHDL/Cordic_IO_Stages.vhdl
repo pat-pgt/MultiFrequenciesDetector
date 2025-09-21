@@ -92,6 +92,7 @@ begin
   begin
     CLK_IF : if rising_edge(CLK) then
       REGSYNC_IF : if reg_sync_in = '1' then
+        meta_data_out <= meta_data_in;
         -- Sync, parallel load the input registers
         --
         -- Load the registers X and Y, while formatting
