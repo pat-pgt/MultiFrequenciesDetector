@@ -60,10 +60,10 @@ for start_val in range(0, 2):
             print("{:.16f}".format(1.0/(cumul_cos*max_1)) + '\t',end='')
             print ( "{:.16f}".format(1.0/(cumul_cos*max_05)))
         
-print("-------------------------")
+print("-------------------------------------------------------")
 print("Maximum values to prevent overflow in the Cordic stages")
 print("and their grow from 0.5")
-print("-------------------------")
+print("-------------------------------------------------------")
 print("N\tMax input\t\tMax input\t\tGain prev. set")
 print("\ttheory\t\t\tcomputed\t\twith input=0.5")
 #A worst case is used, taking 0.5 rather than 0.499..99
@@ -88,14 +88,3 @@ max_coridc_stage_val = 0
 for ind in range(4, reg_size, 16):
     max_coridc_stage_val += 15 / 2 ** ind
 print ( "N=3\t" + "{:.16f}".format(1.0/(1.0+1.0/16.0)) + '\t' + str(max_coridc_stage_val)+'\t'+str(max_coridc_stage_val/0.5))
-print("-------------------------")
-print("What happened if all the rotations are CW or CCW")
-print("-------------------------")
-print("N\tcumul angle\t\t... in degrees\t\t... its cosine\t\t... its sine")
-cumul_angle = 0
-for ind in range(1, 30):
-    cumul_angle += math.atan( 1.0 / float(2**ind))
-    print( str(ind) + '\t' + str( cumul_angle ) + '\t' + str( cumul_angle * 360.0 / ( 2.0 * math.pi )) + '\t',end="")
-    print( str( math.cos(cumul_angle )) + '\t' + str( math.sin(cumul_angle)))
-    if cumul_angle > (9.0 * math.pi / 32.0):
-        break
