@@ -5,7 +5,7 @@ use IEEE.STD_LOGIC_1164.all,
   work.InterModule_formats.all,
   work.Cordic_package.Cordic_IntermStage;
 
---! @brief Test one cordic X, Y and Z stage
+--! @brief Test one Cordic X, Y and Z stage
 --!
 --! Test one Cordic elementary calculation,
 --!   for Z to 0 or Y to 0.\n

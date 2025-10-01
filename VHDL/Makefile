@@ -46,15 +46,15 @@ simul_Cordic : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages.vhdl $(SCR
 	@echo "$$ version 1.1" > $(BUILDDIR)GHDL_wave_opt_toplevel
 	@echo "/Cordic_bundle_test_Z_to_0_Y_to_0/*" >> $(BUILDDIR)GHDL_wave_opt_toplevel
 	@echo "/Cordic_bundle_test_Z_to_0_Y_to_0/cordic_e2e_dc_bundle_instanc_000/*" >> $(BUILDDIR)GHDL_wave_opt_toplevel
-	@echo "/Cordic_bundle_test_Z_to_0_Y_to_0/cordic_e2e_dc_bundle_instanc_090/*" >> $(BUILDDIR)GHDL_wave_opt_toplevel
-	@echo "/Cordic_bundle_test_Z_to_0_Y_to_0/cordic_e2e_dc_bundle_instanc_180/*" >> $(BUILDDIR)GHDL_wave_opt_toplevel
-	@echo "/Cordic_bundle_test_Z_to_0_Y_to_0/cordic_e2e_dc_bundle_instanc_240/*" >> $(BUILDDIR)GHDL_wave_opt_toplevel
+	@echo "/Cordic_bundle_test_Z_to_0_Y_to_0/three_other_angles/cordic_e2e_dc_bundle_instanc_090/*" >> $(BUILDDIR)GHDL_wave_opt_toplevel
+	@echo "/Cordic_bundle_test_Z_to_0_Y_to_0/three_other_angles/cordic_e2e_dc_bundle_instanc_180/*" >> $(BUILDDIR)GHDL_wave_opt_toplevel
+	@echo "/Cordic_bundle_test_Z_to_0_Y_to_0/three_other_angles/cordic_e2e_dc_bundle_instanc_240/*" >> $(BUILDDIR)GHDL_wave_opt_toplevel
 	@echo "/Cordic_bundle_test_Z_to_0_Y_to_0/cordic_e2e_dc_bundle_instanc_000/angle_gene_instanc/*" >> $(BUILDDIR)GHDL_wave_opt_toplevel
 	@echo "/Cordic_bundle_test_Z_to_0_Y_to_0/cordic_e2e_dc_bundle_instanc_000/cordic_first_stage_Z_2_0_instanc/*" >> $(BUILDDIR)GHDL_wave_opt_toplevel
 	@echo "/Cordic_bundle_test_Z_to_0_Y_to_0/cordic_e2e_dc_bundle_instanc_000/cordic_bundle_Z_2_0_instanc/*" >> $(BUILDDIR)GHDL_wave_opt_toplevel	
 	@echo "/Cordic_bundle_test_Z_to_0_Y_to_0/cordic_e2e_dc_bundle_instanc_000/cordic_first_stage_Y_2_0_instanc/*" >> $(BUILDDIR)GHDL_wave_opt_toplevel
 	@echo "/Cordic_bundle_test_Z_to_0_Y_to_0/cordic_e2e_dc_bundle_instanc_000/cordic_bundle_Y_2_0_instanc/*" >> $(BUILDDIR)GHDL_wave_opt_toplevel
-	$(GHDL_PROG) -r $(VFLAGS) Cordic_bundle_test_Z_to_0_Y_to_0 --vcd=$(WAVDESTDIR)Cordic.wav --read-wave-opt=$(BUILDDIR)GHDL_wave_opt_toplevel 2>&1 | tee $(DESTDIR)Cordic.out.txt
+	$(GHDL_PROG) -r $(VFLAGS) Cordic_bundle_test_Z_to_0_Y_to_0 -gnbre_Y_2_0_stages=8 -gnbre_Z_2_0_stages=12 -gwith_4_angles_test=true -gwith_angles_vs_MD=false --vcd=$(WAVDESTDIR)Cordic.wav --read-wave-opt=$(BUILDDIR)GHDL_wave_opt_toplevel 2>&1 | tee $(DESTDIR)Cordic.out.txt
 	echo "The wav file is NOT an audio file, it can be opened, for instance, using gtk-wave" > $(WAVDESTDIR)README.important
 
 simul_Prefilter_Storage : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages.vhdl $(SCRDIR)Cordic_Interm_Stages.vhdl $(SCRDIR)Cordic_Bundle_Stages.vhdl $(SCRDIR)DataMonitor.vhdl
@@ -98,7 +98,7 @@ synth_Cordic	: $(BUILDDIR)packages_compiled
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_Bundle_Stages.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SRCDIR)Cordic_E2E_DC_FPGA_test.vhdl
 	mkdir -p $(SYNTHDESTDIR)
-	$(YOSYS_PROG) -m ghdl -p '$(GHDL_PROG) $(VFLAGS) Cordic_E2E_DC_FPGA_test; synth_ice40 -json $(SYNTHDESTDIR)Cordic.ice40.json' 2>&1 |tee $(SYNTHDESTDIR)Cordic.synth.out.txt
+	$(YOSYS_PROG) -m ghdl -p '$(GHDL_PROG) $(VFLAGS) -gnbre_Y_2_0_stages=9 Cordic_E2E_DC_FPGA_test; synth_ice40 -json $(SYNTHDESTDIR)Cordic.ice40.json' 2>&1 |tee $(SYNTHDESTDIR)Cordic.synth.out.txt
 	$(NEXTPNR-ICE40_PROG) --hx4k --package tq144 --freq 30.00 --top Cordic_E2E_DC_FPGA_test --asc $(SYNTHDESTDIR)Cordic.asc --json $(SYNTHDESTDIR)Cordic.ice40.json --placed-svg $(SYNTHDESTDIR)Cordic.placed.svg --routed-svg $(SYNTHDESTDIR)Cordic.routed.svg --report $(SYNTHDESTDIR)Cordic.report.json 2>&1 |tee $(SYNTHDESTDIR)Cordic.P_and_R.out.txt
 	$(ICEPACK) $(SYNTHDESTDIR)Cordic.asc $(SYNTHDESTDIR)Cordic.bin 2>&1 |tee $(SYNTHDESTDIR)Cordic.pack.out.txt
 
