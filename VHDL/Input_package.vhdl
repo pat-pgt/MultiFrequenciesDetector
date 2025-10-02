@@ -93,7 +93,7 @@ package body Input_modules is
 
     else
       for ind_note in temp'range loop
-        temp( ind_note ) := 2.0 ** ( real( ind_note )/ 12.0 ) / 512.0;
+        temp( ind_note ) := 2.0 ** ( real( ind_note )/ real(N_notes) ) / 512.0;
       end loop;
     end if;
     return temp;

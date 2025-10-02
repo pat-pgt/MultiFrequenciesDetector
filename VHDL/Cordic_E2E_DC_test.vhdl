@@ -6,6 +6,7 @@ use IEEE.STD_LOGIC_1164.all,
   work.InterModule_formats.reg_size,
   work.meta_data_package.N_octaves,
   work.meta_data_package.N_notes,
+  work.meta_data_package.meta_data_t,
   work.Meta_data_package.meta_data_list_t,
   work.MultiFreqDetect_package.cordic_stages_num_list,
   work.Cordic_E2E_DC_Bundle_pac.Cordic_E2E_DC_Bundle;
@@ -32,7 +33,7 @@ use IEEE.STD_LOGIC_1164.all,
 --! It checks for each note, each octave that between 2 full_cycles
 --! the delta angle is the same AND fits the metadata.\n
 --! It is done only on the X=<value> Y=0 initial conditions.
---! The metadata is independant from the scz and the angles
+--! The metadata is independent from the scz and the angles
 --!   of the other modules always keep a 90 degrees delta.
 
 
@@ -44,7 +45,7 @@ entity Cordic_bundle_test_Z_to_0_Y_to_0 is
     input_low           : std_logic_vector(reg_size - 2 downto 0) := (others => '0');
     --! -DC value to be tested, should be -value or -value + 1
     input_minhi         : std_logic_vector(reg_size - 2 downto 0) := "1000000000000000000000000000000";
-    --! Activete the 4 angles test, see in the report code.
+    --! Activate the 4 angles test, see in the report code.
     with_4_angles_test  : boolean                                 := true;
     --! Activate the angle against the metadata, only the first one is tested.
     with_angles_vs_MD   : boolean                                 := true;
@@ -112,7 +113,7 @@ architecture rtl of Cordic_bundle_test_Z_to_0_Y_to_0 is
   signal reg_sync              : std_logic;
   signal RST_monitor_Z_2_0     : natural                               := nbre_Z_2_0_stages + 5;
   signal RST_monitor_Y_2_0     : natural                               := nbre_Y_2_0_stages + 5;
-  signal main_counter          : unsigned(3 downto 0)                  := (others => '0');
+  signal main_counter          : unsigned(5 downto 0)                  := (others => '0');
   -- Use the copy paste to allow to view using the VCD format
   -- This project does not yet supports the GHW
   signal X_out_Z_2_0_000       : reg_type;
@@ -154,6 +155,7 @@ architecture rtl of Cordic_bundle_test_Z_to_0_Y_to_0 is
   constant input_minhi2_plus_low2 : real := (
     real(to_integer(signed(input_minhi)))**2+real(to_integer(signed(input_low)))**2);
   constant input_mod_minhi_low    : real := sqrt(input_minhi2_plus_low2);
+  signal out_Z_2_0_XY_angle       : real;
   signal out_Z_2_0_MOD_X_Y_000_NO : real;
   signal out_Y_2_0_X2_000         : real;
   signal out_Z_2_0_MOD_X_Y_090_NO : real;
@@ -182,6 +184,9 @@ architecture rtl of Cordic_bundle_test_Z_to_0_Y_to_0 is
   signal last_angle_per_ON        : last_angle_per_ON_t;
   signal temp_last_angle_size     : natural := 0; 
   signal diff_angle_angle_vs_MD                                                           : unsigned(reg_size - 1 downto 0);
+  signal meta_data_out            : meta_data_t;
+  signal meta_data_note           : unsigned( meta_data_out.note'range );
+  signal meta_data_octave         : unsigned( meta_data_out.octave'range );
 begin
   
   main_proc : process
@@ -217,7 +222,7 @@ begin
           severity note;
       end if;
       report " " severity note;
-      report "Growings of the vectors" severity note;
+      report "Growing of the vectors" severity note;
       report "-----------------------" severity note;
       report "At the end of the Z to 0, the modules should grow by 16.44% for all the outputs at all time" severity note;
       report "The min is: " & real'image(out_Z_2_0_mod_min) & ", the max is: " & real'image(out_Z_2_0_mod_max) severity note;
@@ -228,7 +233,11 @@ begin
       report "-------------------------------------------" severity note;
       assert with_angles_vs_MD report"The angles against the metadata test has not been selected. There is no result" severity note;
       if with_angles_vs_MD then
-        report"Selected and TODO TODO" severity note;
+        report "Selected. For now a verification using a wave viewer has to be done" severity note;
+        report "The vectors spin properly. The difference is slightly constant" severity note;
+        report "HOWEVER, the metadata arrives too early." severity note;
+        report "The bug can be everywhere. " severity note;
+        report "All of that is going to be investigated with the Angle gene clean up" severity note;
       end if;
       report_cordic_bundle <= '1';
       main_counter         <= unsigned(to_signed(-1, main_counter'length));
@@ -259,7 +268,12 @@ begin
       SQRT_X2_Y2_000_normalized := sqrt(real(to_integer(signed(X_out_Z_2_0_000)))**2+real(to_integer(signed(Y_out_Z_2_0_000)))**2) /
                                    input_mod_hi_low;
       out_Z_2_0_MOD_X_Y_000_NO <= SQRT_X2_Y2_000_normalized;
-
+      if real(to_integer(signed(X_out_Z_2_0_000))) /= 0.0 then
+        out_Z_2_0_XY_angle <= round( 1000.0 * 180.0 * arctan( real(to_integer(signed(Y_out_Z_2_0_000))) / real(to_integer(signed(X_out_Z_2_0_000)))) / math_pi ) / 1000.0;
+      else
+        out_Z_2_0_XY_angle <= 999.999;
+      end if;
+  
       is_started := true;
       IF_4_ANGLES_TEST : if with_4_angles_test then
         SQRT_X2_Y2_090_normalized := sqrt(real(to_integer(signed(X_out_Z_2_0_090)))**2+real(to_integer(signed(Y_out_Z_2_0_090)))**2) /
@@ -345,6 +359,8 @@ begin
         last_angle_per_ON( temp_last_angle_size ) <= unsigned( Z_out_Y_2_0_000 );
         IS_ANGLES_VS_MD : if with_angles_vs_md then
           diff_angle_angle_vs_MD <= unsigned( Z_out_Y_2_0_000 ) - last_angle_per_ON( temp_last_angle_size );
+          meta_data_octave <= unsigned( meta_data_out.octave );
+          meta_data_note <= unsigned( meta_data_out.note );
         end if IS_ANGLES_VS_MD;
       end if;
     end if;
@@ -372,6 +388,7 @@ begin
       Y_out_Y_2_0            => Y_out_Y_2_0_000,
       Z_out_Y_2_0            => Z_out_Y_2_0_000,
       Y_Y_2_0_expon_out      => Y_Y_2_0_expon_out_000,
+      meta_data_out          => meta_data_out,
       report_cordic_bundle_1 => report_cordic_bundle
       );
 
@@ -398,6 +415,7 @@ begin
         Y_out_Y_2_0            => Y_out_Y_2_0_090,
         Z_out_Y_2_0            => Z_out_Y_2_0_090,
         Y_Y_2_0_expon_out      => Y_Y_2_0_expon_out_090,
+        meta_data_out          => open,
         report_cordic_bundle_1 => report_cordic_bundle
         );
 
@@ -423,6 +441,7 @@ begin
         Y_out_Y_2_0            => Y_out_Y_2_0_180,
         Z_out_Y_2_0            => Z_out_Y_2_0_180,
         Y_Y_2_0_expon_out      => Y_Y_2_0_expon_out_180,
+        meta_data_out          => open,
         report_cordic_bundle_1 => report_cordic_bundle
         );
 
@@ -448,8 +467,8 @@ begin
         Y_out_Y_2_0            => Y_out_Y_2_0_240,
         Z_out_Y_2_0            => Z_out_Y_2_0_240,
         Y_Y_2_0_expon_out      => Y_Y_2_0_expon_out_240,
-        report_cordic_bundle_1 => report_cordic_bundle,
-        meta_data_out          => open
+        meta_data_out          => open,
+        report_cordic_bundle_1 => report_cordic_bundle
         );
   end generate three_other_angles;
 

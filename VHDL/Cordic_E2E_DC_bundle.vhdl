@@ -17,8 +17,8 @@ package Cordic_E2E_DC_Bundle_pac is
   component Cordic_E2E_DC_Bundle is
     generic (
       metadata_catch_list : meta_data_list_t(15 to 14);      --  := (
-      nbre_Z_2_0_stages   : integer range 4 to reg_size;
-      nbre_Y_2_0_stages   : integer range 4 to reg_size;
+      nbre_Z_2_0_stages   : natural;
+      nbre_Y_2_0_stages   : natural;
 --      11                                                            => octave_note_to_meta_data(octave => 0, note => 0),
 --      12                                                            => octave_note_to_meta_data(octave => 3, note => 2),
 --      13                                                            => octave_note_to_meta_data(octave => 6, note => 4),
@@ -64,8 +64,8 @@ use IEEE.STD_LOGIC_1164.all,
 entity Cordic_E2E_DC_Bundle is
   generic (
     metadata_catch_list : meta_data_list_t(15 to 14);      --  := (
-    nbre_Z_2_0_stages   : integer range 4 to reg_size;
-    nbre_Y_2_0_stages   : integer range 4 to reg_size;
+    nbre_Z_2_0_stages   : natural;
+    nbre_Y_2_0_stages   : natural;
 --      11                                                            => octave_note_to_meta_data(octave => 0, note => 0),
 --      12                                                            => octave_note_to_meta_data(octave => 3, note => 2),
 --      13                                                            => octave_note_to_meta_data(octave => 6, note => 4),

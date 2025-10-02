@@ -189,7 +189,7 @@ begin
               scz_local.the_cos(scz_local.the_cos'low + arithm_size - 1 downto scz_local.the_cos'low );
           when others => null;
         end case QUADRANT_PI;
-        scz_out.angle_z(scz_out.angle_z'high downto scz_out.angle_z'high - arithm_size + 1) <= not
+        scz_out.angle_z(scz_out.angle_z'high downto scz_out.angle_z'high - arithm_size + 1) <=
           scz_local.angle_z(scz_local.angle_z'low + arithm_size - 1 downto scz_local.angle_z'low );
 
         -- Run the shifts by the arithmetic size
