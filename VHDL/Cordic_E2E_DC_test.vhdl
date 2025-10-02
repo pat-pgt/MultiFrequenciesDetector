@@ -50,10 +50,10 @@ entity Cordic_bundle_test_Z_to_0_Y_to_0 is
     with_angles_vs_MD   : boolean                                 := true;
     --! Number of first set of stages,
     --! see in the Tek_and_gene folder for more information.
-    nbre_Z_2_0_stages   : integer range 4 to reg_size             := 18;
+    nbre_Z_2_0_stages   : natural                                 := 18;
     --! Number of second set of stages,
     --! see in the Tek_and_gene folder for more information.
-    nbre_Y_2_0_stages   : integer range 4 to reg_size             := 23;
+    nbre_Y_2_0_stages   : natural                                 := 23;
     metadata_catch_list : meta_data_list_t(15 to 14);      --  := (
 --      11                                                            => octave_note_to_meta_data(octave => 0, note => 0),
 --      12                                                            => octave_note_to_meta_data(octave => 3, note => 2),

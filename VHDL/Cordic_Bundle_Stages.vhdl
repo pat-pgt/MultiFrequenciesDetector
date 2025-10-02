@@ -9,7 +9,7 @@ use IEEE.STD_LOGIC_1164.all,
 entity Cordic_Bundle_Z_to_0 is
   generic (
     debug_mode          : boolean               := false;
-    stages_nbre         : integer range 2 to reg_size - 4 := 20;
+    stages_nbre         : natural := 20;
     metadata_catch_list : meta_data_list_t;
     stages_catch_list   : cordic_stages_num_list
     );
@@ -40,6 +40,13 @@ architecture rtl of Cordic_Bundle_Z_to_0 is
   signal report_catch_chain       : std_logic_vector(stages_catch_list'length downto 0);
 
 begin
+  assert stages_nbre > 2
+    report "Number of Cordic stages Z to 0 set to " & integer'image( stages_nbre ) & " is a non-sense"
+    severity warning;
+  assert ( reg_size - stages_nbre ) > 6
+    report "Number of Cordic stages Z to 0 set to " & integer'image( stages_nbre ) & " is a non-sense"
+    severity warning;
+
   has_catch_debugs : if stages_catch_list'length > 0 and metadata_catch_list'length > 0 generate
     Catch_monitor_stages : for ind in 1 to stages_catch_list'length generate
       debug_catch_in_operation <= '1';
@@ -114,7 +121,7 @@ use IEEE.STD_LOGIC_1164.all,
 entity Cordic_Bundle_Y_to_0 is
   generic (
     debug_mode          : boolean               := false;
-    stages_nbre         : integer range 2 to reg_size - 4 := 20;
+    stages_nbre         : natural := 20;
     metadata_catch_list : meta_data_list_t;
     stages_catch_list   : cordic_stages_num_list
     );
@@ -144,6 +151,13 @@ architecture rtl of Cordic_Bundle_Y_to_0 is
   signal report_catch_chain       : std_logic_vector(stages_catch_list'length downto 0);
 
 begin
+  assert stages_nbre > 2
+    report "Number of Cordic stages Y to 0 set to " & integer'image( stages_nbre ) & " is a non-sense"
+    severity warning;
+  assert ( reg_size - stages_nbre ) > 6
+    report "Number of Cordic stages Y to 0 set to " & integer'image( stages_nbre ) & " is a non-sense"
+    severity warning;
+
   has_catch_debugs : if stages_catch_list'length > 0 and metadata_catch_list'length > 0 generate
     Catch_monitor_stages : for ind in 1 to stages_catch_list'length generate
       debug_catch_in_operation <= '1';

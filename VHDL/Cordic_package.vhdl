@@ -135,8 +135,8 @@ package Cordic_package is
 
   component Cordic_Bundle_Z_to_0 is
     generic (
-      --! Number of stages with shifts from 1 to nbre_stages
-      stages_nbre         : integer range 3 to reg_size - 4 := 20;
+      --! Number of stages with shifts, some warnings applies, see in the code
+      stages_nbre         : natural := 20;
       metadata_catch_list : meta_data_list_t;
       stages_catch_list   : Cordic_stages_num_list
       );
@@ -188,9 +188,9 @@ package Cordic_package is
 
   component Cordic_Bundle_Y_to_0 is
     generic (
-      --! Number of stages with shifts from 1 to nbre_stages
+      --! Number of stages with shifts, some warnings applies, see in the code
       -- Related to the X>Y or Y>X limited precision. TODO Doc
-      stages_nbre         : integer range 3 to reg_size - 4 := 20;
+      stages_nbre         : natural := 20;
       metadata_catch_list : meta_data_list_t;
       stages_catch_list   : Cordic_stages_num_list
       );
