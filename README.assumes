@@ -1,0 +1,37 @@
+This document describes the assumes of this project. For applications that does not fit, a work around may be suggested. In the other cases, the are other projects more optimized.
+
+The goal is to balance the usage of the resources.
+
+* The data is always integers.
+For many reasons, it has been decided to increase the number of bit but not to use floating. The implementation is more easy and more easy to test. It would have used more resources. It would have need a higher master clock.
+
+* Some float might be introduced in the future.
+A management of shorter mantissa and an exponent are going to be implemented.
+It is included in each Cordic stage to make a little shift or not and to decrease the exponent. Only the second set of Cordic (Y to 0) are allowed to use it. The exponents are common for the X and the Y and by a 2**N multiple, which is a multiple of 2 power the arithmetic size.
+
+* The arithmetic size is a common constant inside each set of module all the project.
+The propagation delays is the factor that limits the master clock. Then everything is aligned to the worst case.
+
+* The register size should, in general, have one bit more than the input.
+The high endian bit is duplicated (sign numbers) in order to divide the value by 2 to avoid overflow. For more information, see the README.modules files.
+
+* The arithmetic size is kept to pass the data from a set of modules to another one.
+The first Cordic set (Z to 0) could have seen its precision reduced. However, the low pass needs more low endian bits. Then reducing and enlarging later is not relevant.
+
+* The arithmetic size is slightly low against the register size.
+This project is designed for serial arithmetic.
+
+* The register size is a multiple of the arithmetic size.
+If not, there are unused bits. The resource can not be spared as it is a serial computation.
+The work around is to increase the register size accordingly.
+The second reason is that would have make the test even more complicated.
+
+* The bandwidth of the channels is low against the master sample rate.
+That allow to down sample, then to reduce the "real" filter resources.
+
+* The number of channels per octave is a constant for all the octaves.
+Reason 1: the spinning angle generator computer computes the lower octave, the others are "deduced" from it.
+Reason 2: the down sampling uses a scrambler to produce a lower frequency stream. For the "real" low pass, the space between the samples should be constant.
+
+* All the project fits in one or more FPGA or ASIC of the same technology, or at least the same master clock.
+Otherwise, many things have to be reconsidered.

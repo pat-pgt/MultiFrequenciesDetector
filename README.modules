@@ -3,10 +3,10 @@ Perhaps a future Python project is going to ask all the questions and configure.
 
 
 The modules types are:
-* Cordic stages configured to converge Z to 0, in order to get the X and the Y. The number of stages depends on the accuracy of the cordic.
-* Pre-process of the cordic stage above. It is a one instance only. To avoid irrelevant resources and to allow higher amplitude (see below), some easy rotations are done, and Z is decreased accordingly. The stages start with 0<Z<PI/4. 
-* Cordic stages configured to converge Y to 0 (and X>0), in order to get the amplitude (X) and the phase (Z). The number of stages depends on the accuracy of the cordic.
-* Pre-process of the cordic stage above. It is a one instance only. To avoid irrelevant resources and to allow higher amplitude (see below), some easy rotations are done, and Z is increased accordingly. The stages start with X>sqrt(2)/2 and -sqrt(2)/2<Y<sqrt(2)/2. 
+* Cordic stages configured to converge Z to 0, in order to get the X and the Y. The number of stages depends on the accuracy of the Cordic.
+* Pre-process of the Cordic stage above. It is a one instance only. To avoid irrelevant resources and to allow higher amplitude (see below), some easy rotations are done, and Z is decreased accordingly. The stages start with 0<Z<PI/4. 
+* Cordic stages configured to converge Y to 0 (and X>0), in order to get the amplitude (X) and the phase (Z). The number of stages depends on the accuracy of the Cordic.
+* Pre-process of the Cordic stage above. It is a one instance only. To avoid irrelevant resources and to allow higher amplitude (see below), some easy rotations are done, and Z is increased accordingly. The stages start with X>sqrt(2)/2 and -sqrt(2)/2<Y<sqrt(2)/2. 
 * Pre-filter. They are used to make a gross filtering with a minimum of resources for the down-sampling. It is one or more first order only modules.
 * Strictly speaking, the down-sampling is not configurable. However it relays on the number of notes per octaves, the number of octaves, the sample rate (before) etc...
 * Main filter. It is a one instance only, to make a fine filtering, and with a limited number of cut off frequencies, due to the down-sampling by a 2^octave ratio.
@@ -18,23 +18,24 @@ The interconnection between the modules is the same for all of them. The assembl
 For more information a picture, named overview is in the Documentation folder. The links are draw in green for the run and in red for the test modes.
 The serial data link always uses the little endian.
 
+In the documentation below, there are utilities, in the folder Tek_and_gene, to compute what it is claimed.
 
 The design is based on the 32 bits format, signed, fixed from $11..10 to $01..11. It should work with different number of bits but may not fully (yet) tested.
-The absolute value of the input amplitude should be under some limit. There is no mechanism to detect nor report an overflow.
-The Cordic algorithm needs a multiplication by 1/cos(h) at each iteration. For resources reasons, it is never processed at each stage. It is processed at the end, or never, if relative amplitudes, phase only or detection only are required. With the pre-processes (see above), the amplitude increases by about only 35% (16% for each Cordic). Then the input size can be up to the data size minus one, here 31 bits (30bits + 2'nd complement sign). 
+The absolute value of the input amplitude should be under some limit. There is no mechanism to detect nor report an overflow. However a mask can be formally verified.
+The Cordic algorithm needs a multiplication by 1/cos(h) at each iteration, spinning a vector by h, regardless CW or CCW. For resources reasons, it is never processed at each stage. It is processed at the end, or never, if relative amplitudes, phase only or detection only are required.
+With the pre-processes (see above), the amplitude (Z to 0) increases by about only 16%. The low pass is supposed to have a maximum gain of 1 or may be a little bit more. The second Cordic (Y to 0) increases by 16% as well. The result is a global gain of 35%. Then for a large number of bits (here 32) the input size can be up to the data size minus one. The high bit (signed) is replicated. For a small number of bits, with the rounding, it may work as well but no detailed verification has been done.  
 The number of clock cycles is always the number of blocs to processed plus one. Indeed, most of the calculations need to know if they have to add or subtract before starting. In general, it depends of the sign of the result of the previous module, which is available at the end. The number of blocs is the data size (tested with 32) divided by the arithmetic size (tested with 1). Then the project is tested with 33 clock cycles per value. 
 
 
 The assume, of this project, is the bandwidth of each channel is very low in front of the sampling rate.
 The multiplication by sine and cosine has to be filtered by the width of the channel (for each channel). The signal is going to be down-sampled for 2 reasons: the resources can be share by many channels and it is tricky to low pass filter with a high sample-rate on cut off ratio (high precision numbers). The down-sampling produces an aliasing. It is not always a problem. In our case the main filter is going to cut most of the aliased.
-For instance, the sample-rate is 10KHz, the required cut-off is 100Hz, the pre-filter cut-off of the pre-filter is 150Hz. A down-sampling by 2 needs to get rid of frequencies over 2.5KHz. Frequencies between 2.5KHz and 4900Hz are aliased but cut by the main filter. The only one problem is the frequencies between 4900Hz and 5000Hz. The pre-filter is going to attenuate *only* by 33.8dB these signals.
+For instance, the sample-rate is 10KHz, the required cut-off is 100Hz, the pre-filter cut-off of the pre-filter is 150Hz. A down-sampling by 2 need to get rid of frequencies over 2.5KHz. Frequencies between 2.5KHz and 4900Hz are aliased but cut by the main filter. The only one problem is the frequencies between 4900Hz and 5000Hz. The pre-filter is going to attenuate *only* by 33.8dB these signals.
 
 
 Details 
 * The pre-filter cut-off frequency impacts on the accuracy of the output amplitude. A higher value increases, but is worst for the aliasing. Since the numerical sine and cosine (pre)filters are absolutely identical, there is no impact on the phase output. For convenience, the ratio between the main filter and the pre-filter has to be configured, the code compute the details (in the example above 1.5).
-Some care should be taken. The prefilter should be as simple as possible. Only 1/2**N coefficients are allowed. Each K coefficient covers from note N to note N-1 of the next octave, for all the channels. That means we approximate an exponential to 1. At high frequencies, the result is a little bit inaccurate. For more information, see the Python utility in the Tek_and_gene folder.
 * The number of pre-filter modules impact on the detection of low signals among high amplitude signals. See above, however, this has to be re-calculated against the actual sampling rate and channels widths.
 * The main filter can be omitted. The entire can be built for PoC, until the day the main filter is written. It reduces the resources as no RAM module is required. Isolated signals appears as large Gaussian on the output, rather than "Dirac".
-* The cordic algorithms converge a vector as decreasing oscillations around the destination. A worst case can be calculated. The decrease is fast on the beginning, but becomes more and more slow.
+* The Cordic algorithms converge a vector as decreasing oscillations around the destination. A worst case can be calculated. The decrease is fast on the beginning, but becomes more and more slow.
 ** For the Z to 0, the pseudo random error is equivalent to add a high frequency to the channel frequency. However, the amplitude is low. It is a problem only if there are high amplitude high frequency signals among the input. 
 ** For the Y to 0 stages, a couple of stages plus the pre-process place the vector in the -PI/10 to PI/10. The amplitude is accurate with an error of 5%. It is sufficient to see the phase spinning on a 4 quadrants display.
