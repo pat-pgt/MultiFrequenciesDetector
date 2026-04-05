@@ -25,8 +25,8 @@ entity Cordic_E2E_DC_FPGA_test is
   port (
     CLK                 : in std_logic := '0';
     RST                 : in std_logic;
-    input_X             : std_logic_vector( 7 downto 0); 
-    input_Y             : std_logic_vector( 7 downto 0); 
+    input_X             : in std_logic_vector( 7 downto 0); 
+    input_Y             : in std_logic_vector( 7 downto 0); 
     monitor_Z_2_0_ready : out std_logic;
     monitor_Y_2_0_ready : out std_logic;
     X_Z_2_0             : out std_logic_vector( 11 downto 0 ); 
