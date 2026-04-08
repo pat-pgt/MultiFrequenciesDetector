@@ -27,8 +27,8 @@ entity Cordic_E2E_DC_CXX_test is
     RST                   : in  std_logic;
     full_sync             : out std_logic;
     reg_sync              : out std_logic;
-    input_X               : in  reg_type;
-    input_Y               : in  reg_type;
+    input_X               : in  std_logic_vector( reg_size - 1 - 1 downto 0 );
+    input_Y               : in  std_logic_vector( reg_size - 1 - 1 downto 0 );
     X_Z_2_0               : out reg_type;
     Y_Z_2_0               : out reg_type;
     Z_Z_2_0               : out reg_type;
@@ -44,8 +44,6 @@ end entity Cordic_E2E_DC_CXX_test;
 
 
 architecture arch of Cordic_E2E_DC_CXX_test is
-  signal casted_X          : std_logic_vector(reg_size - 2 downto 0);
-  signal casted_Y          : std_logic_vector(reg_size - 2 downto 0);
   signal RST_monitor_Z_2_0 : natural := nbre_Z_2_0_stages + 5;
   signal RST_monitor_Y_2_0 : natural := nbre_Y_2_0_stages + 5;
   signal meta_data_out     : meta_data_t;
@@ -68,8 +66,8 @@ begin
     port map(
       CLK                    => CLK,
       RST                    => RST,
-      input_x                => casted_X,
-      input_y                => casted_Y,
+      input_x                => input_X,
+      input_y                => input_Y,
       reg_sync               => reg_sync,
       full_sync              => full_sync,
       X_out_Z_2_0            => X_Z_2_0,

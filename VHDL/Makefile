@@ -2,7 +2,7 @@ NETLIST_PROG?=gnetlist
 EXPORT_PROG?=gaf
 GHDL_PROG=ghdl
 GCC_PROG=g++
-CXXFLAGS?=-std=c++17 -m64
+CXXFLAGS?=-std=c++20 -ffast-math -m64
 VFLAGS?=--std=08
 SRCDIR?=
 BUILDDIR?=build/
@@ -92,7 +92,7 @@ $(SYNTHDESTDIR)Cordic_E2E_DC_CXX.cpp : $(BUILDDIR)packages_compiled $(SCRDIR)Cor
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_E2E_DC_CXX_test.vhdl
 	$(YOSYS_PROG) -m ghdl -p '$(GHDL_PROG) $(VFLAGS) Cordic_E2E_DC_CXX_test; write_cxxrtl $(SYNTHDESTDIR)Cordic_E2E_DC_CXX.cpp' 2>&1 |tee $(SYNTHDESTDIR)Cordic.synth.out.txt
 
-$(CXXVERIFDIR)Cordic_E2E_DC_verif : $(SYNTHDESTDIR)Cordic_E2E_DC_CXX.cpp $(CXXVERIFDIR)Cordic_E2E_DC_verif.cpp
+$(CXXVERIFDIR)Cordic_E2E_DC_verif : $(SYNTHDESTDIR)Cordic_E2E_DC_CXX.cpp $(CXXVERIFDIR)Cordic_E2E_DC_verif.cpp $(CXXVERIFDIR)Cordic_E2E_DC_verif.hxx
 	$(GCC_PROG) $(CXXFLAGS) $(CXXVERIFDIR)Cordic_E2E_DC_verif.cpp -o $(CXXVERIFDIR)Cordic_E2E_DC_verif -I$(SYNTHDESTDIR) -I/usr/local/share/yosys/include/backends/cxxrtl/runtime
 
 simul_Prefilter_Storage : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages.vhdl $(SCRDIR)Cordic_Interm_Stages.vhdl $(SCRDIR)Cordic_Bundle_Stages.vhdl $(SCRDIR)DataMonitor.vhdl
