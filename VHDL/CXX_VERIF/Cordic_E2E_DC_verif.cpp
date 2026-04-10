@@ -1,15 +1,33 @@
 #include "Cordic_E2E_DC_verif.hxx"
 
+/* This code work ONLY for 32 bits reg_size.
+ * That means, the input is 31 bits.
+ * For other size, it should be moved from int / long long to bit_wise
+ */
+
+InitialValueData::InitialValueData(const int&X_init,const int&Y_init):
+  X_init(X_init),Y_init(Y_init)
+{
+  // Check if the numbers are 31 bits
+  if ( ( X_init & 0xc0000000 ) == 0x80000000 || ( X_init & 0xc0000000 ) == 0x40000000 )
+	throw length_error("The initial X value is out of range, should be signed 31 bits ");
+  if ( ( Y_init & 0xc0000000 ) == 0x80000000 || ( Y_init & 0xc0000000 ) == 0x40000000 )
+	throw length_error("The initial Y value is out of range, should be signed 31 bits ");
+}
+
 
 template<typename T>stats<T>::stats():
   nbre_points( 0 ),
   the_sum_avg( 0 ),the_sum_stddev( 0 ),the_sum_skew( 0 ),the_sum_kurt( 0 ),
   the_min( numeric_limits<T>::max() ),
   the_max( numeric_limits<T>::min() )
+  // Initialisation of the offset and the normalization:
+  // not default value, 0 or other, crash if it is not done
 {}
 
-template<typename T>stats<T>&stats<T>::operator+=(const T&val)
+template<typename T>stats<T>&stats<T>::operator+=(const T&input_val)
 {
+  T val = input_val - offset;
   nbre_points += 1;
   the_sum_avg += val;
   T val_power_N = val * val;
@@ -28,7 +46,7 @@ template<typename T>stats<T>&stats<T>::operator+=(const T&val)
 template<typename T>stats<T>::operator string()const
 {
   T the_avg( the_sum_avg / nbre_points );
-  T the_stddev = the_sum_stddev / nbre_points - the_avg * the_avg;
+  T the_stddev =  the_sum_stddev / nbre_points - the_avg * the_avg ;
 
   // TODO find the formula to get the kurtosis and the skew
 
@@ -36,53 +54,51 @@ template<typename T>stats<T>::operator string()const
 				nbre_points, the_avg, the_stddev); 
 }
 
-struct SimulDataType
-  {
-	const int X_init;
-	const int Y_init;
-	
-	SimulDataType() = delete;
-	// TODO throw exception if more than 31 bits
-	SimulDataType(const int&X_init,const int&Y_init);
+SimulDataType::SimulDataType(const long double&module_vector,
+							 const unsigned short &Z_2_0_stages,const unsigned short&Y_2_0_stages)
+{
+  unsigned short ind;
+  // Compute how much the vector should grow in module.
+  double Z_2_0_cumul_cos = 1.0;
+  for ( ind = 0; ind < Z_2_0_stages; ind ++ )
+	// The inversion is done at the end for performance reasons
+	Z_2_0_cumul_cos *= cos( atan( 1.0 / (float) pow( 2, ind + 1))); 
+  // The expected module value is the initial module divided by the cosines
+  Z_2_0.check_module_constant.SetOffset( module_vector / Z_2_0_cumul_cos );
+  cout << Z_2_0_stages << '\t' << module_vector << " * " << 1.0 / Z_2_0_cumul_cos << " = " << module_vector / Z_2_0_cumul_cos << '\t';
+  // The expected Z value is 0
+  Z_2_0.check_Z_converges.SetOffset( 0.0 );
 
-	const float GetInitAngle()const;
 
-	struct {
-	  stats<double>check_module_constant;
-	  stats<float>check_Z_converges;
-	}  Z_2_0;
-	struct {
-	  stats<float>check_X_converges;
-	  stats<float>check_Y_converges;
-	}  Y_2_0;
-};
-SimulDataType::SimulDataType(const int&X_init,const int&Y_init):
-  X_init(X_init),Y_init(Y_init)
-{}
-
+  double Y_2_0_cumul_cos = 1.0;
+  for ( ind = 0; ind < Y_2_0_stages; ind ++ )
+	Y_2_0_cumul_cos *= cos( atan( 1.0 / (float)pow( 2, ind + 1 )));
+  // The expected X value is the initial module divided by the cosines of both Z and Y to 0
+  Y_2_0.check_X_converges.SetOffset( module_vector / ( Z_2_0_cumul_cos * Y_2_0_cumul_cos ));
+  cout << ", " << module_vector << " * " << 1.0 / ( Z_2_0_cumul_cos * Y_2_0_cumul_cos ) << " = " << module_vector / ( Z_2_0_cumul_cos * Y_2_0_cumul_cos ) << endl;
+  // The expected Y value is 0
+  Y_2_0.check_Y_converges.SetOffset( 0.0 );
+}
 
 int main()
 {
-  array<SimulDataType,4>theSimulData = { 
-	SimulDataType( 0x3fffffff, 0 ),
-	SimulDataType( 0, 0x3fffffff ),
-	SimulDataType( 0x40000000, 0 ),
-	SimulDataType( 0, 0x40000000 )
+  vector<InitialValueData>theInitialData = { 
+	InitialValueData( 0x3fffffff, 0 ),
+	InitialValueData( 0, 0x3fffffff ),
+	InitialValueData( 0xc0000000, 0 ),
+	InitialValueData( 0, 0xc0000000 )
   };
-
+  vector<SimulDataType>theSimulData;
 
   auto chrono_start = chrono::high_resolution_clock::now();
-  for_each( execution::par,
-			 theSimulData.begin(), theSimulData.end(),
-			 [&](SimulDataType&dat){
-
+  transform( // execution::par,
+			 theInitialData.begin(), theInitialData.end(),
+			 back_inserter(theSimulData),
+			 [&](const InitialValueData&dat) {
+			   
 	  unsigned long long ind;
 
 	  cxxrtl_design::p_Cordic__E2E__DC__CXX__test top;
-
-	  top.p_input__X.set<int>(dat.X_init);
-	  top.p_input__Y.set<int>(dat.Y_init);
-	  cout << dat.X_init << '\t' << dat.Y_init << '\t';  
 
 	  cout << "Resetting the circuits ..." << endl;
 	  cout.flush();
@@ -96,6 +112,14 @@ int main()
 		}
 	  top.p_RST.set<bool>(false);
 
+	  SimulDataType simulData(sqrt((long double)dat.GetModuleSquared()),
+							  top.p_nbre__Z__2__0__stages__out.get<unsigned short>(),
+							  top.p_nbre__Y__2__0__stages__out.get<unsigned short>());
+
+	  top.p_input__X.set<int>(dat.Get_X_init_31());
+	  top.p_input__Y.set<int>(dat.Get_Y_init_31());
+
+	  cout << '(' << dat.Get_X_init_32() << ',' << dat.Get_Y_init_32() << ")\t";  
 
 	  cout << "Running until the reset and the input values propagated to the output ..." << endl;
 	  cout.flush();
@@ -114,7 +138,7 @@ int main()
 					{}
 				  else if ( ind_Y == ((unsigned long)top.p_nbre__Y__2__0__stages__out.get<short>() + 5 ) )
 					{
-					  //					  cout << "Y connverges to " << top.p_Y__Y__2__0.get<int>();
+					  //					  cout << "Y converges to " << top.p_Y__Y__2__0.get<int>();
 					  // cout << "\tat the first valid time " << ind_Y << " after Z" << endl;
 					  ind_Y = numeric_limits<decltype(ind_Y)>::max();
 					}
@@ -143,21 +167,23 @@ int main()
 			int X_Z_2_0 = top.p_X__Z__2__0.get<int>();
 			int Y_Z_2_0 = top.p_Y__Z__2__0.get<int>();
 			int Z_Z_2_0 = top.p_Z__Z__2__0.get<int>();
-			dat.Z_2_0.check_module_constant += (double)(((long long)X_Z_2_0) * ((long long)X_Z_2_0))
-			  + (double)(((long long)Y_Z_2_0) * ((long long)Y_Z_2_0));
-			cout << X_Z_2_0 << '\t' << Y_Z_2_0;
-			dat.Z_2_0.check_Z_converges += (float)Z_Z_2_0;
-			cout << '\t' << Z_Z_2_0;
+			simulData.Z_2_0.check_module_constant += sqrt(
+														  (long double)(((long long)X_Z_2_0) * ((long long)X_Z_2_0)) +
+														  (long double)(((long long)Y_Z_2_0) * ((long long)Y_Z_2_0)));
+			// cout << X_Z_2_0 << '\t' << Y_Z_2_0;
+			simulData.Z_2_0.check_Z_converges += (float)Z_Z_2_0;
+			// cout << '\t' << Z_Z_2_0;
 
 			int X_Y_2_0 = top.p_X__Y__2__0.get<int>();
 			int Y_Y_2_0 = top.p_Y__Y__2__0.get<int>();
 			int Z_Y_2_0 = top.p_Z__Y__2__0.get<int>();
-			dat.Y_2_0.check_X_converges += (float)X_Y_2_0;
-			cout << '\t' << X_Y_2_0;
-			dat.Y_2_0.check_Y_converges += (float)Y_Y_2_0;
-			cout << '\t' << Y_Y_2_0 << endl;
+			simulData.Y_2_0.check_X_converges += (float)X_Y_2_0;
+			// cout << '\t' << X_Y_2_0;
+			simulData.Y_2_0.check_Y_converges += (float)Y_Y_2_0;
+			// cout << '\t' << Y_Y_2_0 << endl;
 		  }
 		}
+	  return simulData;
 	});
 
   auto chrono_end = chrono::high_resolution_clock::now();
@@ -169,7 +195,7 @@ int main()
 			[](SimulDataType&dat){
 			  cout << (string)dat.Z_2_0.check_module_constant << '\t';
 			  cout << (string)dat.Z_2_0.check_Z_converges << '\t';
-			  cout << (string)dat.Y_2_0.check_Y_converges << '\t';
+			  cout << (string)dat.Y_2_0.check_X_converges << '\t';
 			  cout << (string)dat.Y_2_0.check_Y_converges << endl;
 			});
 }
