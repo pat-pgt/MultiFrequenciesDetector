@@ -1,10 +1,16 @@
 #include "Cordic_E2E_DC_verif.hxx"
 
-/* This code work ONLY for 32 bits reg_size.
- * That means, the input is 31 bits.
- * For other size, it should be moved from int / long long to bit_wise
+/** @file Cordic_E2E_DC_verif.hxx
+ * @brief Run a formal verification
+ *
+ * There is no more documentation, for future information, see the .hxx file documentation
  */
 
+/** @brief InitialValueData constructor
+ *
+ * Constructs for reg_size equal to 32
+ * Other sizes are not yet supported, see in the .hxx file
+ */
 InitialValueData::InitialValueData(const int&X_init,const int&Y_init):
   X_init(X_init),Y_init(Y_init)
 {
@@ -15,16 +21,23 @@ InitialValueData::InitialValueData(const int&X_init,const int&Y_init):
 	throw length_error("The initial Y value is out of range, should be signed 31 bits ");
 }
 
-
+/** @brief stats class constructor
+ *
+ * The offset and the normalization are not initialized.
+ * It should be done. Otherwise, the software crashes
+ */
 template<typename T>stats<T>::stats():
   nbre_points( 0 ),
   the_sum_avg( 0 ),the_sum_stddev( 0 ),the_sum_skew( 0 ),the_sum_kurt( 0 ),
   the_min( numeric_limits<T>::max() ),
   the_max( numeric_limits<T>::min() )
-  // Initialisation of the offset and the normalization:
-  // not default value, 0 or other, crash if it is not done
 {}
 
+/** @brief Add a new value for the statistics
+ *
+ * It computes all the powers and the additions
+ * The code such as X * X has been preferred to pow( x, 2 )
+ */
 template<typename T>stats<T>&stats<T>::operator+=(const T&input_val)
 {
   T val = input_val - offset;
@@ -43,12 +56,15 @@ template<typename T>stats<T>&stats<T>::operator+=(const T&input_val)
   return*this;
 }
 
+
 template<typename T>stats<T>::operator string()const
 {
   T the_avg( the_sum_avg / nbre_points );
   T the_stddev =  the_sum_stddev / nbre_points - the_avg * the_avg ;
 
   // TODO find the formula to get the kurtosis and the skew
+
+  // TODO improve the display
 
   return format("Based on {:06} values, avg={:1.3E}, std dev={:E}",
 				nbre_points, the_avg, the_stddev); 
@@ -194,7 +210,7 @@ int main()
 			theSimulData.begin(), theSimulData.end(),
 			[](SimulDataType&dat){
 			  cout << (string)dat.Z_2_0.check_module_constant << '\t';
-			  cout << (string)dat.Z_2_0.check_Z_converges << '\t';
+			  cout << (string)dat.Z_2_0.check_Z_converges << endl;
 			  cout << (string)dat.Y_2_0.check_X_converges << '\t';
 			  cout << (string)dat.Y_2_0.check_Y_converges << endl;
 			});
