@@ -60,14 +60,14 @@ template<typename T>stats<T>&stats<T>::operator+=(const T&input_val)
 template<typename T>stats<T>::operator string()const
 {
   T the_avg( the_sum_avg / nbre_points );
-  T the_stddev =  the_sum_stddev / nbre_points - the_avg * the_avg ;
+  T the_stddev =  sqrt( the_sum_stddev / nbre_points - the_avg * the_avg ) ;
 
   // TODO find the formula to get the kurtosis and the skew
 
   // TODO improve the display
 
-  return format("Based on {:06} values, avg={:1.3E}, std dev={:E}",
-				nbre_points, the_avg, the_stddev); 
+  return format("{: E}, {: 1.3E}, {: E}, {:E}",
+				the_min, the_avg, the_max, the_stddev); 
 }
 
 SimulDataType::SimulDataType(const long double&module_vector,
@@ -95,6 +95,20 @@ SimulDataType::SimulDataType(const long double&module_vector,
   // The expected Y value is 0
   Y_2_0.check_Y_converges.SetOffset( 0.0 );
 }
+
+
+optional<unsigned int> SimulDataType::GetAndCheck_nbre_points()const
+{
+  unsigned int nbre_points = (unsigned int)Z_2_0.check_module_constant;
+  if ( (unsigned int)Z_2_0.check_Z_converges != nbre_points )
+	return nullopt;
+  if ( (unsigned int)Y_2_0.check_X_converges != nbre_points )
+	return nullopt;
+  if ( (unsigned int)Y_2_0.check_Y_converges != nbre_points )
+	return nullopt;
+  return nbre_points;
+}
+
 
 int main()
 {
@@ -127,6 +141,9 @@ int main()
 		  top.step();
 		}
 	  top.p_RST.set<bool>(false);
+
+	  if ( dat.GetRegSize() != top.p_reg__size__4__verif.get<unsigned char>() )
+		throw length_error("The C++ and the VHDL registers size mismatch");
 
 	  SimulDataType simulData(sqrt((long double)dat.GetModuleSquared()),
 							  top.p_nbre__Z__2__0__stages__out.get<unsigned short>(),
@@ -206,12 +223,34 @@ int main()
   auto chrono_duration = chrono::duration_cast<chrono::milliseconds>(chrono_end-chrono_start);
   cout << "Duration: " << chrono_duration.count() << " mS" << endl;
   
+  cout << "Checking the Z to 0 first set of stages" << endl;
+  cout << "Number       X,Y module to the grown input module                                Z to 0 " << endl; 
+  cout << "of points         min average max standard dev                        min average max standard dev " << endl;
   for_each( execution::seq,
 			theSimulData.begin(), theSimulData.end(),
 			[](SimulDataType&dat){
-			  cout << (string)dat.Z_2_0.check_module_constant << '\t';
-			  cout << (string)dat.Z_2_0.check_Z_converges << endl;
-			  cout << (string)dat.Y_2_0.check_X_converges << '\t';
-			  cout << (string)dat.Y_2_0.check_Y_converges << endl;
+			  if ( dat.GetAndCheck_nbre_points() )
+				{
+				  cout << format("{:06}", *dat.GetAndCheck_nbre_points()) << ",\t";
+				  cout << (string)dat.Z_2_0.check_module_constant << '\t';
+				  cout << (string)dat.Z_2_0.check_Z_converges << endl;
+				}
+			  else
+				cout << "Problem: the number of points is not the same for all the tests" << endl;
+			});
+  cout << "Checking the Y to 0 second set of stages" << endl;
+  cout << "Number       X to the grown input module                                         Y to 0"<< endl;
+  cout << "of points         min average max standard dev                        min average max standard dev " << endl;
+  for_each( execution::seq,
+			theSimulData.begin(), theSimulData.end(),
+			[](SimulDataType&dat){
+			  if ( dat.GetAndCheck_nbre_points() )
+				{
+				  cout << format("{:06}", *dat.GetAndCheck_nbre_points()) << ",\t";
+				  cout << (string)dat.Y_2_0.check_X_converges << '\t';
+				  cout << (string)dat.Y_2_0.check_Y_converges << endl;
+				}
+			  else
+				cout << "Problem: the number of points is not the same for all the tests" << endl;
 			});
 }

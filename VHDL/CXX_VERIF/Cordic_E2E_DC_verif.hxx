@@ -9,6 +9,7 @@
 #include <format>
 #include <cmath>
 #include <stdexcept>
+#include <optional>
 
 using namespace std;
 
@@ -82,6 +83,10 @@ public:
 	long long Y = Y_init;
 	return X * X + Y * Y;
   }
+  /** @brief Get size to compare with the VHDL
+   *
+   */
+  const unsigned char GetRegSize()const{ return 32;}
 };
 
 /* @brief Computes the statistics of the results
@@ -92,7 +97,7 @@ public:
 template<typename T>
 class stats
 {
-  int nbre_points;
+  unsigned int nbre_points;
   T the_sum_avg, the_sum_stddev, the_sum_skew, the_sum_kurt;
   T the_min, the_max;
   T normalize, offset;
@@ -112,6 +117,7 @@ public:
 	this -> offset = offset;
   }
   operator string()const;
+  operator unsigned int()const{return nbre_points;}
 };
 
 template<typename T>
@@ -146,4 +152,5 @@ struct SimulDataType
 	SimulDataType()=delete;
 	SimulDataType(const long double&module_vector,
 				  const unsigned short &Z_2_0_stages,const unsigned short&Y_2_0_stages);
+	optional<unsigned int> GetAndCheck_nbre_points()const;
 };

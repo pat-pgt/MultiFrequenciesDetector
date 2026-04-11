@@ -37,6 +37,7 @@ entity Cordic_E2E_DC_CXX_test is
     Z_Y_2_0               : out reg_type;
     nbre_Z_2_0_stages_out : out integer range 4 to reg_size;
     nbre_Y_2_0_stages_out : out integer range 4 to reg_size;
+    reg_size_4_verif      : out integer range 16 to 255;
     metadata_note         : out std_logic_vector(3 downto 0);
     metadata_octave       : out std_logic_vector(2 downto 0)
     );
@@ -54,6 +55,7 @@ begin
     nbre_Z_2_0_stages_out <= nbre_Z_2_0_stages;
     nbre_Y_2_0_stages_out <= nbre_Y_2_0_stages;
 
+    reg_size_4_verif      <= reg_size;
 
   
   Cordic_E2E_DC_Bundle_instanc : Cordic_E2E_DC_Bundle
