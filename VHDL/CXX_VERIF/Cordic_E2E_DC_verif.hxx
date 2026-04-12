@@ -51,8 +51,10 @@ class InitialValueData
 
 public:
   InitialValueData() = delete;
-  InitialValueData(const int&X_init,const int&Y_init);
+  InitialValueData(const int&X_init,const int&Y_init,bool sanity_check = true);
 
+  int value_type()const;
+  long double module_value_type()const;
   /** @brief Get the X value for the VHDL
    *
    * @return the value

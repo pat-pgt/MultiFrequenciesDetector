@@ -11,14 +11,17 @@
  * Constructs for reg_size equal to 32
  * Other sizes are not yet supported, see in the .hxx file
  */
-InitialValueData::InitialValueData(const int&X_init,const int&Y_init):
+InitialValueData::InitialValueData(const int&X_init,const int&Y_init,bool sanity_check):
   X_init(X_init),Y_init(Y_init)
 {
-  // Check if the numbers are 31 bits
-  if ( ( X_init & 0xc0000000 ) == 0x80000000 || ( X_init & 0xc0000000 ) == 0x40000000 )
-	throw length_error("The initial X value is out of range, should be signed 31 bits ");
-  if ( ( Y_init & 0xc0000000 ) == 0x80000000 || ( Y_init & 0xc0000000 ) == 0x40000000 )
-	throw length_error("The initial Y value is out of range, should be signed 31 bits ");
+  if ( sanity_check )
+	{
+	  // Check if the numbers are 31 bits
+	  if ( ( X_init & 0xc0000000 ) == 0x80000000 || ( X_init & 0xc0000000 ) == 0x40000000 )
+		throw length_error("The initial X value is out of range, should be signed 31 bits ");
+	  if ( ( Y_init & 0xc0000000 ) == 0x80000000 || ( Y_init & 0xc0000000 ) == 0x40000000 )
+		throw length_error("The initial Y value is out of range, should be signed 31 bits ");
+	}
 }
 
 /** @brief stats class constructor
@@ -149,8 +152,8 @@ int main()
 							  top.p_nbre__Z__2__0__stages__out.get<unsigned short>(),
 							  top.p_nbre__Y__2__0__stages__out.get<unsigned short>());
 
-	  top.p_input__X.set<int>(dat.Get_X_init_31());
-	  top.p_input__Y.set<int>(dat.Get_Y_init_31());
+	  top.p_input__X.set<decltype(dat.value_type())>(dat.Get_X_init_31());
+	  top.p_input__Y.set<decltype(dat.value_type())>(dat.Get_Y_init_31());
 
 	  cout << '(' << dat.Get_X_init_32() << ',' << dat.Get_Y_init_32() << ")\t";  
 
@@ -171,7 +174,7 @@ int main()
 					{}
 				  else if ( ind_Y == ((unsigned long)top.p_nbre__Y__2__0__stages__out.get<short>() + 5 ) )
 					{
-					  //					  cout << "Y converges to " << top.p_Y__Y__2__0.get<int>();
+					  // cout << "Y converges to " << top.p_Y__Y__2__0.get<decltype(dat::value_type())>();
 					  // cout << "\tat the first valid time " << ind_Y << " after Z" << endl;
 					  ind_Y = numeric_limits<decltype(ind_Y)>::max();
 					}
@@ -180,7 +183,7 @@ int main()
 				}
 			  else if ( ind_Z == ((unsigned long)top.p_nbre__Z__2__0__stages__out.get<short>() + 5 ))
 				{
-				  // cout << "Z converges to " << top.p_Z__Z__2__0.get<int>();
+				  // cout << "Z converges to " << top.p_Z__Z__2__0.get<decltype(dat::value_type())>();
 				  // cout << "\tat the first valid time " << ind_Z << endl;
 				  ind_Z = numeric_limits<decltype(ind_Z)>::max();
 				}
@@ -197,19 +200,19 @@ int main()
 		  top.step();
 		  if ( top.p_reg__sync.get<bool>() == true )
 		  {
-			int X_Z_2_0 = top.p_X__Z__2__0.get<int>();
-			int Y_Z_2_0 = top.p_Y__Z__2__0.get<int>();
-			int Z_Z_2_0 = top.p_Z__Z__2__0.get<int>();
-			simulData.Z_2_0.check_module_constant += sqrt(
-														  (long double)(((long long)X_Z_2_0) * ((long long)X_Z_2_0)) +
-														  (long double)(((long long)Y_Z_2_0) * ((long long)Y_Z_2_0)));
+			decltype(dat.value_type()) X_Z_2_0 = top.p_X__Z__2__0.get<decltype(dat.value_type())>();
+			decltype(dat.value_type()) Y_Z_2_0 = top.p_Y__Z__2__0.get<decltype(dat.value_type())>();
+			decltype(dat.value_type()) Z_Z_2_0 = top.p_Z__Z__2__0.get<decltype(dat.value_type())>();
+			InitialValueData currentPoint( X_Z_2_0, Y_Z_2_0, false);
+			simulData.Z_2_0.check_module_constant +=
+			  sqrt( (decltype(dat.module_value_type()))currentPoint.GetModuleSquared()) ;
 			// cout << X_Z_2_0 << '\t' << Y_Z_2_0;
 			simulData.Z_2_0.check_Z_converges += (float)Z_Z_2_0;
 			// cout << '\t' << Z_Z_2_0;
 
-			int X_Y_2_0 = top.p_X__Y__2__0.get<int>();
-			int Y_Y_2_0 = top.p_Y__Y__2__0.get<int>();
-			int Z_Y_2_0 = top.p_Z__Y__2__0.get<int>();
+			decltype(dat.value_type()) X_Y_2_0 = top.p_X__Y__2__0.get<decltype(dat.value_type())>();
+			decltype(dat.value_type()) Y_Y_2_0 = top.p_Y__Y__2__0.get<decltype(dat.value_type())>();
+			decltype(dat.value_type()) Z_Y_2_0 = top.p_Z__Y__2__0.get<decltype(dat.value_type())>();
 			simulData.Y_2_0.check_X_converges += (float)X_Y_2_0;
 			// cout << '\t' << X_Y_2_0;
 			simulData.Y_2_0.check_Y_converges += (float)Y_Y_2_0;
