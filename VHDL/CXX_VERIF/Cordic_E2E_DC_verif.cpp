@@ -192,7 +192,7 @@ int main()
 			}
 		}
 
-	  for ( ind = 0; ind < 20 * 33 ; ind ++ )
+	  for ( ind = 0; ind < 30 * 33 ; ind ++ )
 		{
 		  top.p_CLK.set<bool>(true);
 		  top.step();
@@ -200,12 +200,19 @@ int main()
 		  top.step();
 		  if ( top.p_reg__sync.get<bool>() == true )
 		  {
+			unsigned char octave = top.p_metadata__octave.get<unsigned char>();
+			unsigned char note = top.p_metadata__note.get<unsigned char>();
+			pair< unsigned char, unsigned char > key_ON = make_pair( octave, note );
+
+
 			decltype(dat.value_type()) X_Z_2_0 = top.p_X__Z__2__0.get<decltype(dat.value_type())>();
 			decltype(dat.value_type()) Y_Z_2_0 = top.p_Y__Z__2__0.get<decltype(dat.value_type())>();
 			decltype(dat.value_type()) Z_Z_2_0 = top.p_Z__Z__2__0.get<decltype(dat.value_type())>();
-			InitialValueData currentPoint( X_Z_2_0, Y_Z_2_0, false);
+			InitialValueData currentPoint_Z_2_0( X_Z_2_0, Y_Z_2_0, false);
 			simulData.Z_2_0.check_module_constant +=
-			  sqrt( (decltype(dat.module_value_type()))currentPoint.GetModuleSquared()) ;
+			  sqrt( (decltype(dat.module_value_type()))currentPoint_Z_2_0.GetModuleSquared()) ;
+			
+
 			// cout << X_Z_2_0 << '\t' << Y_Z_2_0;
 			simulData.Z_2_0.check_Z_converges += (float)Z_Z_2_0;
 			// cout << '\t' << Z_Z_2_0;
@@ -217,6 +224,21 @@ int main()
 			// cout << '\t' << X_Y_2_0;
 			simulData.Y_2_0.check_Y_converges += (float)Y_Y_2_0;
 			// cout << '\t' << Y_Y_2_0 << endl;
+			//			map< pair< unsigned char, unsigned char >,
+			//		 pair<double, stats<double> > >::iterator cspOc_iter;
+			//cspOc_iter = simulData.Y_2_0.check_spin_per_ON_constant.find( key_ON );
+			if ( simulData.Y_2_0.check_spin_per_ON_constant.contains(key_ON) )
+			  {
+				// Found, then process the diff, replace the old value and add the diff in the statistics
+				cout << '.';
+			  }
+			else
+			  {
+				stats<double>theNewStats;
+				simulData.Y_2_0.check_spin_per_ON_constant.insert(make_pair(key_ON,make_pair(0.0,theNewStats)));
+				cout << 'X';
+				// Not found, create the records and initialise the statistics
+			  }
 		  }
 		}
 	  return simulData;
@@ -246,7 +268,7 @@ int main()
   cout << "of points         min average max standard dev                        min average max standard dev " << endl;
   for_each( execution::seq,
 			theSimulData.begin(), theSimulData.end(),
-			[](SimulDataType&dat){
+			[](const SimulDataType&dat){
 			  if ( dat.GetAndCheck_nbre_points() )
 				{
 				  cout << format("{:06}", *dat.GetAndCheck_nbre_points()) << ",\t";
@@ -255,5 +277,14 @@ int main()
 				}
 			  else
 				cout << "Problem: the number of points is not the same for all the tests" << endl;
+			// Now display the octave note specific results
+			for_each( execution::seq,
+					  dat.Y_2_0.check_spin_per_ON_constant.begin(),
+					  dat.Y_2_0.check_spin_per_ON_constant.end(),
+					  [](const auto&ON_iter){
+						cout << "Octave: " << (unsigned short)ON_iter.first.first <<
+						  ", note: " << (unsigned short)ON_iter.first.second;
+						cout << endl;
+					  });
 			});
 }

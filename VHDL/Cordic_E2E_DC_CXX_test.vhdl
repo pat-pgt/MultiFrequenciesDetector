@@ -57,6 +57,8 @@ begin
 
     reg_size_4_verif      <= reg_size;
 
+    metadata_note         <= meta_data_out.note;
+    metadata_octave       <= meta_data_out.octave;
   
   Cordic_E2E_DC_Bundle_instanc : Cordic_E2E_DC_Bundle
     generic map(

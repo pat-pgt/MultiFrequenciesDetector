@@ -85,8 +85,16 @@ public:
 	long long Y = Y_init;
 	return X * X + Y * Y;
   }
+  constexpr long long GetScalarProduct(const InitialValueData&a)const {
+	long long X1 = X_init;
+	long long Y1 = Y_init;
+	long long X2 = a.X_init;
+	long long Y2 = a.Y_init;
+	return X1 * X2 + Y1 * Y2;
+  }
   /** @brief Get size to compare with the VHDL
    *
+   * This function returns the number of BITS.
    */
   const unsigned char GetRegSize()const{ return 32;}
 };
@@ -144,11 +152,15 @@ struct SimulDataType
 
 	struct {
 	  stats<long double>check_module_constant;
+	  map< pair< unsigned char, unsigned char >,
+		   pair<InitialValueData,stats<long double> > > check_scalar_prod_per_ON_constant;
 	  stats<double>check_Z_converges;
 	}  Z_2_0;
 	struct {
 	  stats<double>check_X_converges;
 	  stats<double>check_Y_converges;
+	  map< pair< unsigned char, unsigned char >,
+		   pair<double, stats<double> > > check_spin_per_ON_constant;
 	}  Y_2_0;
 
 	SimulDataType()=delete;
