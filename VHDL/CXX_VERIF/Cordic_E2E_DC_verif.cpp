@@ -172,7 +172,7 @@ int main()
 				{
 				  if ( ind_Y == numeric_limits<decltype(ind_Y)>::max() )
 					{}
-				  else if ( ind_Y == ((unsigned long)top.p_nbre__Y__2__0__stages__out.get<short>() + 5 ) )
+				  else if ( ind_Y == ((unsigned long)top.p_nbre__Y__2__0__stages__out.get<short>() + 7 ) )
 					{
 					  // cout << "Y converges to " << top.p_Y__Y__2__0.get<decltype(dat::value_type())>();
 					  // cout << "\tat the first valid time " << ind_Y << " after Z" << endl;
@@ -181,7 +181,7 @@ int main()
 				  else
 					ind_Y += 1;
 				}
-			  else if ( ind_Z == ((unsigned long)top.p_nbre__Z__2__0__stages__out.get<short>() + 5 ))
+			  else if ( ind_Z == ((unsigned long)top.p_nbre__Z__2__0__stages__out.get<short>() + 6 ))
 				{
 				  // cout << "Z converges to " << top.p_Z__Z__2__0.get<decltype(dat::value_type())>();
 				  // cout << "\tat the first valid time " << ind_Z << endl;
@@ -192,30 +192,65 @@ int main()
 			}
 		}
 
-	  for ( ind = 0; ind < 30 * 33 ; ind ++ )
+	  // TEMP TEMP Looks like there is a shift between the meta data and the data
+	  pair< unsigned char, unsigned char > key_ON_Y_2_0;
+
+	  for ( ind = 0; ind < 96 * 33 ; ind ++ )
 		{
 		  top.p_CLK.set<bool>(true);
 		  top.step();
 		  top.p_CLK.set<bool>(false);
 		  top.step();
+
 		  if ( top.p_reg__sync.get<bool>() == true )
 		  {
-			unsigned char octave = top.p_metadata__octave.get<unsigned char>();
-			unsigned char note = top.p_metadata__note.get<unsigned char>();
-			pair< unsigned char, unsigned char > key_ON = make_pair( octave, note );
+			unsigned char octave_Z_2_0 = top.p_metadata__Z__2__0__octave.get<unsigned char>();
+			unsigned char note_Z_2_0 = top.p_metadata__Z__2__0__note.get<unsigned char>();
+			pair< unsigned char, unsigned char > key_ON_Z_2_0 = make_pair( octave_Z_2_0, note_Z_2_0 );
 
+			//			cout << (unsigned short)octave_Z_2_0 << ',' << (unsigned short)note_Z_2_0 << " \t";
 
+			// Spin the vector
 			decltype(dat.value_type()) X_Z_2_0 = top.p_X__Z__2__0.get<decltype(dat.value_type())>();
 			decltype(dat.value_type()) Y_Z_2_0 = top.p_Y__Z__2__0.get<decltype(dat.value_type())>();
 			decltype(dat.value_type()) Z_Z_2_0 = top.p_Z__Z__2__0.get<decltype(dat.value_type())>();
+
 			InitialValueData currentPoint_Z_2_0( X_Z_2_0, Y_Z_2_0, false);
 			simulData.Z_2_0.check_module_constant +=
-			  sqrt( (decltype(dat.module_value_type()))currentPoint_Z_2_0.GetModuleSquared()) ;
-			
+			  sqrt( (decltype(dat.module_value_type()))currentPoint_Z_2_0.GetModuleSquared()) ;			
 
-			// cout << X_Z_2_0 << '\t' << Y_Z_2_0;
+			// cout << X_Z_2_0 << ',' << Y_Z_2_0 << ':';
 			simulData.Z_2_0.check_Z_converges += (float)Z_Z_2_0;
 			// cout << '\t' << Z_Z_2_0;
+			if ( simulData.Z_2_0.check_scalar_prod_per_ON_constant.contains(key_ON_Z_2_0) )
+			  {
+				// Found, then process the diff, replace the old value and add the diff in the statistics
+				pair<InitialValueData,stats<long double>>&data_info =
+				  simulData.Z_2_0.check_scalar_prod_per_ON_constant.find( key_ON_Z_2_0 )->second;
+				data_info.second += currentPoint_Z_2_0.GetScalarProduct(data_info.first);
+				data_info.first = currentPoint_Z_2_0;
+				cout << 'z';
+			  }
+			else
+			  {
+				// Not found, create the records and initialise the statistics
+				stats<long double>theNewZStats;
+				// Set the value that should be found
+				// TODO
+				simulData.
+				  Z_2_0.
+				  check_scalar_prod_per_ON_constant.
+				  insert(make_pair(key_ON_Z_2_0,make_pair(currentPoint_Z_2_0,theNewZStats)));
+				cout << 'Z';
+			  }
+
+			// Now bring back the vector to the X axis
+			unsigned char octave_Y_2_0 = top.p_metadata__Y__2__0__octave.get<unsigned char>();
+			unsigned char note_Y_2_0 = top.p_metadata__Y__2__0__note.get<unsigned char>();
+			// TEMP TEMP Looks like there is a shift between the meta data and the data
+			pair< unsigned char, unsigned char > key_ON_Y_2_0_next = make_pair( octave_Y_2_0, note_Y_2_0 );
+
+			// cout << (unsigned short)octave_Y_2_0 << ',' << (unsigned short)note_Y_2_0 << " \t";
 
 			decltype(dat.value_type()) X_Y_2_0 = top.p_X__Y__2__0.get<decltype(dat.value_type())>();
 			decltype(dat.value_type()) Y_Y_2_0 = top.p_Y__Y__2__0.get<decltype(dat.value_type())>();
@@ -224,21 +259,29 @@ int main()
 			// cout << '\t' << X_Y_2_0;
 			simulData.Y_2_0.check_Y_converges += (float)Y_Y_2_0;
 			// cout << '\t' << Y_Y_2_0 << endl;
-			//			map< pair< unsigned char, unsigned char >,
-			//		 pair<double, stats<double> > >::iterator cspOc_iter;
-			//cspOc_iter = simulData.Y_2_0.check_spin_per_ON_constant.find( key_ON );
-			if ( simulData.Y_2_0.check_spin_per_ON_constant.contains(key_ON) )
+			if ( simulData.Y_2_0.check_spin_per_ON_constant.contains(key_ON_Y_2_0) )
 			  {
 				// Found, then process the diff, replace the old value and add the diff in the statistics
-				cout << '.';
+				pair<unsigned int, stats<double>>&data_info =
+				  simulData.Y_2_0.check_spin_per_ON_constant.find( key_ON_Y_2_0 )->second;
+				data_info.second += (double)(((unsigned int)Z_Y_2_0) - data_info.first);
+				data_info.first = (unsigned int)Z_Y_2_0;
+				//cout << 'y';
 			  }
 			else
 			  {
-				stats<double>theNewStats;
-				simulData.Y_2_0.check_spin_per_ON_constant.insert(make_pair(key_ON,make_pair(0.0,theNewStats)));
-				cout << 'X';
 				// Not found, create the records and initialise the statistics
+				stats<double>theNewYStats;
+				// Set the value that should be found
+				// TODO
+				simulData.
+				  Y_2_0.
+				  check_spin_per_ON_constant.
+				  insert(make_pair(key_ON_Y_2_0,make_pair((unsigned int)Z_Y_2_0,theNewYStats)));
+				//cout << 'Y';
 			  }
+			// TEMP TEMP Looks like there is a shift between the meta data and the data
+			key_ON_Y_2_0 = key_ON_Y_2_0_next;
 		  }
 		}
 	  return simulData;
@@ -262,6 +305,17 @@ int main()
 				}
 			  else
 				cout << "Problem: the number of points is not the same for all the tests" << endl;
+			// Now display the octave note specific results
+			for_each( execution::seq,
+					  dat.Z_2_0.check_scalar_prod_per_ON_constant.begin(),
+					  dat.Z_2_0.check_scalar_prod_per_ON_constant.end(),
+					  [](const auto&ON_iter){
+						cout << "Octave: " << (unsigned short)ON_iter.first.first <<
+						  ", note: " << (unsigned short)ON_iter.first.second << '\t';
+						cout << (unsigned int)ON_iter.second.second << '\t';
+						cout << (string)ON_iter.second.second;
+						cout << endl;
+					  });
 			});
   cout << "Checking the Y to 0 second set of stages" << endl;
   cout << "Number       X to the grown input module                                         Y to 0"<< endl;
@@ -283,8 +337,14 @@ int main()
 					  dat.Y_2_0.check_spin_per_ON_constant.end(),
 					  [](const auto&ON_iter){
 						cout << "Octave: " << (unsigned short)ON_iter.first.first <<
-						  ", note: " << (unsigned short)ON_iter.first.second;
+						  ", note: " << (unsigned short)ON_iter.first.second << '\t';
+						cout << (unsigned int)ON_iter.second.second << '\t';
+						cout << (string)ON_iter.second.second;
 						cout << endl;
 					  });
 			});
+  unsigned int a = 0xffff0000;
+  unsigned int b = 0x0000ffff;
+  unsigned int c = 0x0002ffff;
+  cout << b - a << "   " << c - b << endl;
 }

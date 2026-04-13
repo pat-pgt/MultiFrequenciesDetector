@@ -388,7 +388,7 @@ begin
       Y_out_Y_2_0            => Y_out_Y_2_0_000,
       Z_out_Y_2_0            => Z_out_Y_2_0_000,
       Y_Y_2_0_expon_out      => Y_Y_2_0_expon_out_000,
-      meta_data_out          => meta_data_out,
+      meta_data_Y_2_0_out    => meta_data_out,
       report_cordic_bundle_1 => report_cordic_bundle
       );
 
@@ -415,7 +415,7 @@ begin
         Y_out_Y_2_0            => Y_out_Y_2_0_090,
         Z_out_Y_2_0            => Z_out_Y_2_0_090,
         Y_Y_2_0_expon_out      => Y_Y_2_0_expon_out_090,
-        meta_data_out          => open,
+        meta_data_Y_2_0_out    => open,
         report_cordic_bundle_1 => report_cordic_bundle
         );
 
@@ -441,7 +441,7 @@ begin
         Y_out_Y_2_0            => Y_out_Y_2_0_180,
         Z_out_Y_2_0            => Z_out_Y_2_0_180,
         Y_Y_2_0_expon_out      => Y_Y_2_0_expon_out_180,
-        meta_data_out          => open,
+        meta_data_Y_2_0_out    => open,
         report_cordic_bundle_1 => report_cordic_bundle
         );
 
@@ -467,7 +467,7 @@ begin
         Y_out_Y_2_0            => Y_out_Y_2_0_240,
         Z_out_Y_2_0            => Z_out_Y_2_0_240,
         Y_Y_2_0_expon_out      => Y_Y_2_0_expon_out_240,
-        meta_data_out          => open,
+        meta_data_Y_2_0_out    => open,
         report_cordic_bundle_1 => report_cordic_bundle
         );
   end generate three_other_angles;

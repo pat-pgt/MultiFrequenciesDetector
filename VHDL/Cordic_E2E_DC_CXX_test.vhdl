@@ -38,8 +38,10 @@ entity Cordic_E2E_DC_CXX_test is
     nbre_Z_2_0_stages_out : out integer range 4 to reg_size;
     nbre_Y_2_0_stages_out : out integer range 4 to reg_size;
     reg_size_4_verif      : out integer range 16 to 255;
-    metadata_note         : out std_logic_vector(3 downto 0);
-    metadata_octave       : out std_logic_vector(2 downto 0)
+    metadata_Z_2_0_note   : out std_logic_vector(3 downto 0);
+    metadata_Z_2_0_octave : out std_logic_vector(2 downto 0);
+    metadata_Y_2_0_note   : out std_logic_vector(3 downto 0);
+    metadata_Y_2_0_octave : out std_logic_vector(2 downto 0)
     );
 end entity Cordic_E2E_DC_CXX_test;
 
@@ -47,7 +49,8 @@ end entity Cordic_E2E_DC_CXX_test;
 architecture arch of Cordic_E2E_DC_CXX_test is
   signal RST_monitor_Z_2_0 : natural := nbre_Z_2_0_stages + 5;
   signal RST_monitor_Y_2_0 : natural := nbre_Y_2_0_stages + 5;
-  signal meta_data_out     : meta_data_t;
+  signal meta_data_Z_2_0_out     : meta_data_t;
+  signal meta_data_Y_2_0_out     : meta_data_t;
 
   signal report_cordic_bundle : std_logic := '0';
 
@@ -57,8 +60,10 @@ begin
 
     reg_size_4_verif      <= reg_size;
 
-    metadata_note         <= meta_data_out.note;
-    metadata_octave       <= meta_data_out.octave;
+    metadata_Z_2_0_note   <= meta_data_Z_2_0_out.note;
+    metadata_Z_2_0_octave <= meta_data_Z_2_0_out.octave;
+    metadata_Y_2_0_note   <= meta_data_Y_2_0_out.note;
+    metadata_Y_2_0_octave <= meta_data_Y_2_0_out.octave;
   
   Cordic_E2E_DC_Bundle_instanc : Cordic_E2E_DC_Bundle
     generic map(
@@ -83,7 +88,8 @@ begin
       Z_out_Y_2_0            => Z_Y_2_0,
       Y_Y_2_0_expon_out      => open,
       report_cordic_bundle_1 => report_cordic_bundle,
-      meta_data_out          => meta_data_out
+      meta_data_Z_2_0_out    => meta_data_Z_2_0_out,
+      meta_data_Y_2_0_out    => meta_data_Y_2_0_out
       );
 
 

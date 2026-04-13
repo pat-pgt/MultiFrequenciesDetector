@@ -144,7 +144,7 @@ begin
       Z_out_Y_2_0            => Z_out_Y_2_0,
       Y_Y_2_0_expon_out      => open,
       report_cordic_bundle_1 => report_cordic_bundle,
-      meta_data_out          => meta_data_out
+      meta_data_Y_2_0_out    => meta_data_out
       );
 
 

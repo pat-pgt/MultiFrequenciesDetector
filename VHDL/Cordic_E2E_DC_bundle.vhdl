@@ -42,7 +42,8 @@ package Cordic_E2E_DC_Bundle_pac is
       Z_out_Y_2_0            : out reg_type;
       Y_Y_2_0_expon_out      : out std_logic_vector(5 downto 0);
       report_cordic_bundle_1 : in  std_logic;
-      meta_data_out          : out meta_data_t
+      meta_data_Z_2_0_out    : out meta_data_t;
+      meta_data_Y_2_0_out    : out meta_data_t
       );
   end component Cordic_E2E_DC_Bundle;
 
@@ -89,7 +90,8 @@ entity Cordic_E2E_DC_Bundle is
     Z_out_Y_2_0            : out reg_type;
     Y_Y_2_0_expon_out      : out std_logic_vector(5 downto 0);
     report_cordic_bundle_1 : in  std_logic;
-    meta_data_out          : out meta_data_t
+    meta_data_Z_2_0_out    : out meta_data_t;
+    meta_data_Y_2_0_out    : out meta_data_t
     );
 end entity Cordic_E2E_DC_Bundle;
 
@@ -99,8 +101,6 @@ architecture arch of Cordic_E2E_DC_Bundle is
   signal reg_sync_interm        : std_logic;
   signal meta_data_1            : meta_data_t;
   signal meta_data_2            : meta_data_t;
-  signal meta_data_3            : meta_data_t;
-  signal meta_data_4            : meta_data_t;
   signal meta_data_5            : meta_data_t;
   signal scz_1, scz_2, scz_3    : reg_sin_cos_z;
   signal report_cordic_bundle_2 : std_logic := '0';
@@ -145,7 +145,7 @@ begin
       reg_sync      => reg_sync_interm,
       full_sync     => full_sync,
       meta_data_in  => meta_data_2,
-      meta_data_out => meta_data_3,
+      meta_data_out => meta_data_Z_2_0_out,
       scz_in        => scz_1,
       scz_out       => scz_2,
       X_out         => X_out_Z_2_0,
@@ -156,15 +156,13 @@ begin
       report_out    => report_cordic_bundle_2);
 
 
-  -- Prefilter and filter
-  meta_data_4 <= meta_data_3;
 
   cordic_first_stage_Y_2_0_instanc : Cordic_FirstStage_Y_to_0
     port map (
       CLK           => CLK,
       RST           => RST,
       reg_sync      => reg_sync_interm,
-      meta_data_in  => meta_data_4,
+      meta_data_in  => meta_data_Z_2_0_out,
       meta_data_out => meta_data_5,
       scz_in        => scz_2,
       scz_out       => scz_3);
@@ -180,7 +178,7 @@ begin
       reg_sync      => reg_sync_interm,
       full_sync     => full_sync,
       meta_data_in  => meta_data_5,
-      meta_data_out => meta_data_out,
+      meta_data_out => meta_data_Y_2_0_out,
       scz_in        => scz_3,
       X_out         => X_out_Y_2_0,
       Y_out         => Y_out_Y_2_0,

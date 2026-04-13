@@ -46,12 +46,18 @@ using namespace std;
  */ 
 class InitialValueData
 {
-  const int X_init;
-  const int Y_init;
+  int X_init;
+  int Y_init;
 
 public:
   InitialValueData() = delete;
   InitialValueData(const int&X_init,const int&Y_init,bool sanity_check = true);
+
+  InitialValueData&operator=(const InitialValueData&a){
+	X_init=a.X_init;
+	Y_init=a.Y_init;
+	return*this;
+  }
 
   int value_type()const;
   long double module_value_type()const;
@@ -91,6 +97,9 @@ public:
 	long long X2 = a.X_init;
 	long long Y2 = a.Y_init;
 	return X1 * X2 + Y1 * Y2;
+  }
+  operator string()const{
+	return format("{},{}\t",X_init,Y_init);
   }
   /** @brief Get size to compare with the VHDL
    *
@@ -160,7 +169,7 @@ struct SimulDataType
 	  stats<double>check_X_converges;
 	  stats<double>check_Y_converges;
 	  map< pair< unsigned char, unsigned char >,
-		   pair<double, stats<double> > > check_spin_per_ON_constant;
+		   pair<unsigned int, stats<double> > > check_spin_per_ON_constant;
 	}  Y_2_0;
 
 	SimulDataType()=delete;
