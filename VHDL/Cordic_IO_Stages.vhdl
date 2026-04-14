@@ -489,21 +489,25 @@ begin
             quadrant_to_rotate_v := "11";
           when "010" =>
             quadrant_to_rotate_v := "00";
-            when others =>
+          when others =>
         end case;
         
         quadrant_to_rotate <= quadrant_to_rotate_v;
 
         -- Value Z is set during the reg_sync
         -- The next stage depend on Y only, not Z
-        scz_out.angle_z( scz_out.angle_z'high downto scz_out.angle_z'high - 1 ) <= quadrant_to_rotate_v;
-        scz_out.angle_z( scz_out.angle_z'high - 2 downto scz_out.angle_z'low ) <= ( others => '0' );
+        scz_12.angle_z( scz_12.angle_z'high downto scz_12.angle_z'high - 1 ) <= quadrant_to_rotate_v;
+        scz_12.angle_z( scz_12.angle_z'high - 2 downto scz_12.angle_z'low ) <= ( others => '0' );
 
         debug_catch_X_sync <= scz_out.the_cos;
         debug_catch_Y_sync <= scz_out.the_sin;
         debug_catch_Z_sync <= scz_out.angle_z;
         debug_catch_rot_sync <= quadrant_to_rotate_v;
       else
+        -- Shifted here, now at stage 1 because the value wasn't known
+        scz_12.angle_z(scz_12.angle_z'high - arithm_size downto scz_12.angle_z'low) <=
+          scz_12.angle_z(scz_12.angle_z'high downto scz_12.angle_z'low + arithm_size);
+
         xy1_quadrant : case quadrant_to_rotate is
           when "00" =>
             scz_out.the_cos(scz_out.the_cos'high downto scz_out.the_cos'high - arithm_size + 1) <=
@@ -527,6 +531,9 @@ begin
               scz_12.the_cos(scz_12.the_cos'low + arithm_size - 1 downto scz_12.the_cos'low);
           when others => null;
         end case xy1_quadrant;
+        scz_out.angle_z(scz_out.angle_z'high downto scz_out.angle_z'high - arithm_size + 1) <=
+          scz_12.angle_z(scz_12.angle_z'low + arithm_size - 1 downto scz_12.angle_z'low);
+
         --shift the rest of the registers
         scz_out.the_cos(scz_out.the_cos'high - arithm_size downto scz_out.the_cos'low) <=
           scz_out.the_cos(scz_out.the_cos'high downto scz_out.the_cos'low + arithm_size);
