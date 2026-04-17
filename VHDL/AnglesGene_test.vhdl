@@ -1,9 +1,11 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
+  work.InterModule_formats.reg_type,
   work.MultiFreqDetect_package.all,
   work.Meta_data_package.all,
-  work.DataMonitor_package.DataMonitorMultiZ;
+  work.DataMonitor_package.DataMonitorMultiZ,
+  work.Input_modules.AngleGene;
 
 
 entity AngleGene_test is
@@ -28,7 +30,8 @@ architecture rtl of AngleGene_test is
       1 => octave_note_to_meta_data(octave => 2, note => 0),
       2 => octave_note_to_meta_data(octave => 0, note => 0),
       3 => octave_note_to_meta_data(octave => 0, note => 1),
-      4 => octave_note_to_meta_data(octave => 0, note => 11)
+      4 => octave_note_to_meta_data(octave => 0, note => 2),
+      5 => octave_note_to_meta_data(octave => 0, note => 3)
       );
 begin
   display_note   <= meta_data.note;
