@@ -117,9 +117,9 @@ int main()
 {
   vector<InitialValueData>theInitialData = { 
 	InitialValueData( 0x3fffffff, 0 ),
-	InitialValueData( 0, 0x3fffffff ),
-	InitialValueData( 0xc0000000, 0 ),
-	InitialValueData( 0, 0xc0000000 )
+	//	InitialValueData( 0, 0x3fffffff ),
+	// InitialValueData( 0xc0000000, 0 ),
+	// InitialValueData( 0, 0xc0000000 )
   };
   vector<SimulDataType>theSimulData;
 
@@ -129,7 +129,7 @@ int main()
 			 back_inserter(theSimulData),
 			 [&](const InitialValueData&dat) {
 			   
-	  unsigned long long ind;
+			   unsigned long long ind;
 
 	  cxxrtl_design::p_Cordic__E2E__DC__CXX__test top;
 
@@ -192,10 +192,8 @@ int main()
 			}
 		}
 
-	  // TEMP TEMP Looks like there is a shift between the meta data and the data
-	  pair< unsigned char, unsigned char > key_ON_Y_2_0;
 
-	  for ( ind = 0; ind < 96 * 33 ; ind ++ )
+	  for ( ind = 0; ind < 400 * 24 * 33 ; ind ++ )
 		{
 		  top.p_CLK.set<bool>(true);
 		  top.step();
@@ -216,20 +214,36 @@ int main()
 			decltype(dat.value_type()) Z_Z_2_0 = top.p_Z__Z__2__0.get<decltype(dat.value_type())>();
 
 			InitialValueData currentPoint_Z_2_0( X_Z_2_0, Y_Z_2_0, false);
+
 			simulData.Z_2_0.check_module_constant +=
 			  sqrt( (decltype(dat.module_value_type()))currentPoint_Z_2_0.GetModuleSquared()) ;			
 
 			// cout << X_Z_2_0 << ',' << Y_Z_2_0 << ':';
 			simulData.Z_2_0.check_Z_converges += (float)Z_Z_2_0;
 			// cout << '\t' << Z_Z_2_0;
+
 			if ( simulData.Z_2_0.check_scalar_prod_per_ON_constant.contains(key_ON_Z_2_0) )
 			  {
+				/** The following code displays the high digits of X and Y of the note 3
+				 *    as an array of octaves columns.
+				 *  It is intended to debug the test software and/or check the meta data fits the values.
+				 *  Uncomment it if needed.
+				 */
+				/*
+				  if ( key_ON_Z_2_0.second == 3 )
+				  {
+				  cout << (unsigned short)key_ON_Z_2_0.first << ": " << currentPoint_Z_2_0.string_light() << '\t';
+				  if ( key_ON_Z_2_0.first == 5 )
+				  cout << endl;
+				  }
+				*/
+
 				// Found, then process the diff, replace the old value and add the diff in the statistics
 				pair<InitialValueData,stats<long double>>&data_info =
 				  simulData.Z_2_0.check_scalar_prod_per_ON_constant.find( key_ON_Z_2_0 )->second;
 				data_info.second += currentPoint_Z_2_0.GetScalarProduct(data_info.first);
 				data_info.first = currentPoint_Z_2_0;
-				cout << 'z';
+				// cout << 'z';
 			  }
 			else
 			  {
@@ -241,14 +255,14 @@ int main()
 				  Z_2_0.
 				  check_scalar_prod_per_ON_constant.
 				  insert(make_pair(key_ON_Z_2_0,make_pair(currentPoint_Z_2_0,theNewZStats)));
-				cout << 'Z';
+				// cout << 'Z';
 			  }
 
 			// Now bring back the vector to the X axis
 			unsigned char octave_Y_2_0 = top.p_metadata__Y__2__0__octave.get<unsigned char>();
 			unsigned char note_Y_2_0 = top.p_metadata__Y__2__0__note.get<unsigned char>();
 			// TEMP TEMP Looks like there is a shift between the meta data and the data
-			pair< unsigned char, unsigned char > key_ON_Y_2_0_next = make_pair( octave_Y_2_0, note_Y_2_0 );
+			pair< unsigned char, unsigned char > key_ON_Y_2_0 = make_pair( octave_Y_2_0, note_Y_2_0 );
 
 			// cout << (unsigned short)octave_Y_2_0 << ',' << (unsigned short)note_Y_2_0 << " \t";
 
@@ -280,8 +294,6 @@ int main()
 				  insert(make_pair(key_ON_Y_2_0,make_pair((unsigned int)Z_Y_2_0,theNewYStats)));
 				//cout << 'Y';
 			  }
-			// TEMP TEMP Looks like there is a shift between the meta data and the data
-			key_ON_Y_2_0 = key_ON_Y_2_0_next;
 		  }
 		}
 	  return simulData;

@@ -68,8 +68,10 @@ end entity Cordic_FirstStage_Z_to_0;
 --! The Z is transmitted while filling up the 3 high bits
 --! using the high - 2 bit of the input Z.
 architecture rtl of Cordic_FirstStage_Z_to_0 is
-  signal scz_local : reg_sin_cos_z;
-  signal z_3_high_bits : std_logic_vector(2 downto 0);
+  signal scz_local       : reg_sin_cos_z;
+  signal z_3_high_bits   : std_logic_vector(2 downto 0);
+  signal meta_data_local : meta_data_t;
+
 begin
   assert input_x'length > 3 report "The size of input_x (" & integer'image(input_x'length) &
     ") should be at least 4" severity failure;
@@ -92,7 +94,12 @@ begin
   begin
     CLK_IF : if rising_edge(CLK) then
       REGSYNC_IF : if reg_sync_in = '1' then
-        meta_data_out <= meta_data_in;
+        -- The latency is 2
+        -- * store the values into the scz_local
+        -- * shift them for the output.
+        -- Then the metadata should be delayed by 2
+        meta_data_local <= meta_data_in;
+        meta_data_out   <= meta_data_local;
         -- Sync, parallel load the input registers
         --
         -- Load the registers X and Y, while formatting
