@@ -91,15 +91,21 @@ public:
 	long long Y = Y_init;
 	return X * X + Y * Y;
   }
-  constexpr long long GetScalarProduct(const InitialValueData&a)const {
+  constexpr long double GetCosine(const InitialValueData&a)const {
 	long long X1 = X_init;
 	long long Y1 = Y_init;
 	long long X2 = a.X_init;
 	long long Y2 = a.Y_init;
-	return X1 * X2 + Y1 * Y2;
+	long double scalarProduct = X1 * X2 + Y1 * Y2;
+	// Since it has been checked the modules squared are always constant
+	// It is assume here the sqrt( module_1 ** 2 ).sqrt( module_2 ** 2 ) = module_2 ** 2
+	return scalarProduct / GetModuleSquared();
   }
   operator string()const{
 	return format("{},{}\t",X_init,Y_init);
+  }
+  string string_light()const{
+	return format("{: 4},{: 4}\t",X_init/1000000,Y_init/1000000);
   }
   /** @brief Get size to compare with the VHDL
    *

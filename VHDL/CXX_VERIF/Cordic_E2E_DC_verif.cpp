@@ -26,14 +26,14 @@ InitialValueData::InitialValueData(const int&X_init,const int&Y_init,bool sanity
 
 /** @brief stats class constructor
  *
- * The offset and the normalization are not initialized.
- * It should be done. Otherwise, the software crashes
  */
 template<typename T>stats<T>::stats():
   nbre_points( 0 ),
   the_sum_avg( 0 ),the_sum_stddev( 0 ),the_sum_skew( 0 ),the_sum_kurt( 0 ),
   the_min( numeric_limits<T>::max() ),
-  the_max( numeric_limits<T>::min() )
+  the_max( numeric_limits<T>::min() ),
+  offset( 0.0 ),
+  normalize( 1.0 )
 {}
 
 /** @brief Add a new value for the statistics
@@ -69,7 +69,7 @@ template<typename T>stats<T>::operator string()const
 
   // TODO improve the display
 
-  return format("{: E}, {: 1.3E}, {: E}, {:E}",
+  return format("{: E}, {: E}, {: E}, {:1.3E}",
 				the_min, the_avg, the_max, the_stddev); 
 }
 
@@ -84,6 +84,7 @@ SimulDataType::SimulDataType(const long double&module_vector,
 	Z_2_0_cumul_cos *= cos( atan( 1.0 / (float) pow( 2, ind + 1))); 
   // The expected module value is the initial module divided by the cosines
   Z_2_0.check_module_constant.SetOffset( module_vector / Z_2_0_cumul_cos );
+  // The expected module value is the initial module divided by the cosines
   cout << Z_2_0_stages << '\t' << module_vector << " * " << 1.0 / Z_2_0_cumul_cos << " = " << module_vector / Z_2_0_cumul_cos << '\t';
   // The expected Z value is 0
   Z_2_0.check_Z_converges.SetOffset( 0.0 );
@@ -117,9 +118,9 @@ int main()
 {
   vector<InitialValueData>theInitialData = { 
 	InitialValueData( 0x3fffffff, 0 ),
-	//	InitialValueData( 0, 0x3fffffff ),
-	// InitialValueData( 0xc0000000, 0 ),
-	// InitialValueData( 0, 0xc0000000 )
+	InitialValueData( 0, 0x3fffffff ),
+	InitialValueData( 0xc0000000, 0 ),
+	InitialValueData( 0, 0xc0000000 )
   };
   vector<SimulDataType>theSimulData;
 
@@ -129,7 +130,7 @@ int main()
 			 back_inserter(theSimulData),
 			 [&](const InitialValueData&dat) {
 			   
-			   unsigned long long ind;
+			   unsigned long long ind,ind2;
 
 	  cxxrtl_design::p_Cordic__E2E__DC__CXX__test top;
 
@@ -192,9 +193,15 @@ int main()
 			}
 		}
 
-
-	  for ( ind = 0; ind < 400 * 24 * 33 ; ind ++ )
+	  for ( ind = 0; ind < 40 * 24 * 33 ; ind ++ )
 		{
+		  if ( ind % ( 10 * 24 * 33 ) == 0 )
+			{
+			  cout << '.';
+			  cout.flush();
+			}
+
+
 		  top.p_CLK.set<bool>(true);
 		  top.step();
 		  top.p_CLK.set<bool>(false);
@@ -206,7 +213,7 @@ int main()
 			unsigned char note_Z_2_0 = top.p_metadata__Z__2__0__note.get<unsigned char>();
 			pair< unsigned char, unsigned char > key_ON_Z_2_0 = make_pair( octave_Z_2_0, note_Z_2_0 );
 
-			//			cout << (unsigned short)octave_Z_2_0 << ',' << (unsigned short)note_Z_2_0 << " \t";
+			// cout << (unsigned short)octave_Z_2_0 << ',' << (unsigned short)note_Z_2_0 << " \t";
 
 			// Spin the vector
 			decltype(dat.value_type()) X_Z_2_0 = top.p_X__Z__2__0.get<decltype(dat.value_type())>();
@@ -219,6 +226,7 @@ int main()
 			  sqrt( (decltype(dat.module_value_type()))currentPoint_Z_2_0.GetModuleSquared()) ;			
 
 			// cout << X_Z_2_0 << ',' << Y_Z_2_0 << ':';
+
 			simulData.Z_2_0.check_Z_converges += (float)Z_Z_2_0;
 			// cout << '\t' << Z_Z_2_0;
 
@@ -241,7 +249,7 @@ int main()
 				// Found, then process the diff, replace the old value and add the diff in the statistics
 				pair<InitialValueData,stats<long double>>&data_info =
 				  simulData.Z_2_0.check_scalar_prod_per_ON_constant.find( key_ON_Z_2_0 )->second;
-				data_info.second += currentPoint_Z_2_0.GetScalarProduct(data_info.first);
+				data_info.second += currentPoint_Z_2_0.GetCosine(data_info.first);
 				data_info.first = currentPoint_Z_2_0;
 				// cout << 'z';
 			  }
@@ -296,6 +304,7 @@ int main()
 			  }
 		  }
 		}
+	  cout << endl;
 	  return simulData;
 	});
 
@@ -311,24 +320,31 @@ int main()
 			[](SimulDataType&dat){
 			  if ( dat.GetAndCheck_nbre_points() )
 				{
-				  cout << format("{:06}", *dat.GetAndCheck_nbre_points()) << ",\t";
+				  cout << "  " << *dat.GetAndCheck_nbre_points() << ",  ";
 				  cout << (string)dat.Z_2_0.check_module_constant << '\t';
 				  cout << (string)dat.Z_2_0.check_Z_converges << endl;
 				}
 			  else
 				cout << "Problem: the number of points is not the same for all the tests" << endl;
+			});
 			// Now display the octave note specific results
+  for_each( execution::seq,
+			theSimulData.begin(), theSimulData.end(),
+			[](SimulDataType&dat){
+
 			for_each( execution::seq,
 					  dat.Z_2_0.check_scalar_prod_per_ON_constant.begin(),
 					  dat.Z_2_0.check_scalar_prod_per_ON_constant.end(),
 					  [](const auto&ON_iter){
-						cout << "Octave: " << (unsigned short)ON_iter.first.first <<
-						  ", note: " << (unsigned short)ON_iter.first.second << '\t';
+						cout << "O: " << (unsigned short)ON_iter.first.first <<
+						  ", N: " << (unsigned short)ON_iter.first.second << '\t';
 						cout << (unsigned int)ON_iter.second.second << '\t';
 						cout << (string)ON_iter.second.second;
 						cout << endl;
 					  });
+			cout << endl;
 			});
+  cout << endl;
   cout << "Checking the Y to 0 second set of stages" << endl;
   cout << "Number       X to the grown input module                                         Y to 0"<< endl;
   cout << "of points         min average max standard dev                        min average max standard dev " << endl;
@@ -337,26 +353,27 @@ int main()
 			[](const SimulDataType&dat){
 			  if ( dat.GetAndCheck_nbre_points() )
 				{
-				  cout << format("{:06}", *dat.GetAndCheck_nbre_points()) << ",\t";
+				  cout << "  " << *dat.GetAndCheck_nbre_points() << ",  ";
 				  cout << (string)dat.Y_2_0.check_X_converges << '\t';
 				  cout << (string)dat.Y_2_0.check_Y_converges << endl;
 				}
 			  else
 				cout << "Problem: the number of points is not the same for all the tests" << endl;
+			});
 			// Now display the octave note specific results
+  for_each( execution::seq,
+			theSimulData.begin(), theSimulData.end(),
+			[](const SimulDataType&dat){
 			for_each( execution::seq,
 					  dat.Y_2_0.check_spin_per_ON_constant.begin(),
 					  dat.Y_2_0.check_spin_per_ON_constant.end(),
 					  [](const auto&ON_iter){
-						cout << "Octave: " << (unsigned short)ON_iter.first.first <<
-						  ", note: " << (unsigned short)ON_iter.first.second << '\t';
+						cout << "O: " << (unsigned short)ON_iter.first.first <<
+						  ", N: " << (unsigned short)ON_iter.first.second << '\t';
 						cout << (unsigned int)ON_iter.second.second << '\t';
 						cout << (string)ON_iter.second.second;
 						cout << endl;
 					  });
+			cout << endl;
 			});
-  unsigned int a = 0xffff0000;
-  unsigned int b = 0x0000ffff;
-  unsigned int c = 0x0002ffff;
-  cout << b - a << "   " << c - b << endl;
-}
+ }
