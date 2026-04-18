@@ -16,6 +16,7 @@ use IEEE.STD_LOGIC_1164.all,
 --! * a run or sync flipflop and an arithmetic bloc counter
 --! inside the notes\n
 --! \return The angle, the metadata and the sync bit
+--! @anchor AngleGene_entity
 
 entity AngleGene is
   generic (

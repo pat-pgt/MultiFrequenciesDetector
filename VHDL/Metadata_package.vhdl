@@ -19,18 +19,27 @@ package Meta_data_package is
   --! If 3, the A, C#, F are used. If 4, the A, C, D# and F# are used
   --! If 5, 7, 8, 9, 10 or 11, a strange result is expected but it does not crash
   --! If 12 all the notes are used\n
-  --! This is nice for testing or checking an FPGA size
-  constant N_notes          : notes_N_range   := 12;
+  --! This is nice for testing or checking an FPGA size.\n
+  --! The maximum is 16, due to the number of bits in the metadata_t.
+  --! TODO make this dynamic.
+  constant N_notes          : notes_N_range   := 4;
   --! @brief Number of octaves.
   --!
-  --! It should be at least two, due to restrictions in the angle generator
-  --!   as the angle "spinning" is done using vectors of double size
-  constant N_octaves        : integer range 2 to 8    := 7;
+  --! It should be at least two, due some restrictions\n
+  --! * In the angle generator, the angle "spinning" is done using vectors of double size
+  --!   Then the serial computation requires 2 reg_syncs to process
+  --!   TODO as today it is a parallel computation\n
+  --! * The down sampling requires at least 2 octaves\n
+  --! * The filter (non the prefilter) requires many cycles.
+  --!   In fact the minimum number of cycles may be driven by the filter.\n
+  --! The maximum is 7, due to the number of bits in the metadata_t.
+  --! TODO make this dynamic
+  constant N_octaves        : integer range 2 to 7    := 6;
   --! @brief starting octave.
   --!
   --! Lowest A note to handle.
-  --! The 440Hz is the A4, the 220Hz is the A3 etc... The A00 is quoted as -1.
-  constant starting_octave  : integer range -1 to 4   := 4;
+  --! The 440Hz is the A4, the 220Hz is the A3 etc... The A00 is quoted as -1.\n
+  constant starting_octave  : integer range -1 to 4   := -1;
 
   
   -- This part contains privates definitions
