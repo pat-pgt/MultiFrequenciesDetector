@@ -344,6 +344,7 @@ use IEEE.STD_LOGIC_1164.all,
 --!   The input of the next stage should not be more 1.5999..99
 --! * That can provide an amplitude margin
 --!   in case the filters modules require it (that needs to re-validate).
+--! @anchor Cordic_FirstStage_Y_to_0_entity
 entity Cordic_FirstStage_Y_to_0 is
   port (
     CLK           : in  std_logic;

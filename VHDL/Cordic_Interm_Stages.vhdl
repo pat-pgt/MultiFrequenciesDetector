@@ -15,6 +15,7 @@ use IEEE.STD_LOGIC_1164.all,
 --! * To multiply a value by an angle vector, the angle should converged to 0\n
 --! * To convert rectangular coordinates to polar, The Y should convergent to 0.
 --! For this case, it is required the angle is already in the -PI/2 +PI/2 zone
+--! @anchor Cordic_IntermStage_entity
 entity Cordic_IntermStage is
   generic (
     Z_not_Y_to_0 : boolean;

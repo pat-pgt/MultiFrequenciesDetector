@@ -65,7 +65,7 @@ begin
 
   Downsampling_controller_instanc : Downsampling_controller
     generic map (
-      extra_downsampling => 1)
+      extra_downsampling => 0)
     port map (
       CLK,
       RST           => RST(RST'low),

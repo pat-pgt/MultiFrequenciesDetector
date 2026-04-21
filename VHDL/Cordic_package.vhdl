@@ -182,7 +182,8 @@ package Cordic_package is
       meta_data_out : out meta_data_t;
       --! Input of X, Y and Z.
       scz_in        : in  reg_sin_cos_z;
-      scz_out       : out reg_sin_cos_z
+      scz_out       : out reg_sin_cos_z;
+      xy_is_neg     : in std_logic_vector
       );
   end component Cordic_FirstStage_Y_to_0;
 
