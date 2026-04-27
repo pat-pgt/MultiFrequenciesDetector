@@ -104,6 +104,7 @@ architecture arch of Cordic_E2E_DC_Bundle is
   signal meta_data_5            : meta_data_t;
   signal scz_1, scz_2, scz_3    : reg_sin_cos_z;
   signal report_cordic_bundle_2 : std_logic := '0';
+  constant null_vector          : std_logic_vector(0 downto 1) := "";
 begin
 
   angle_gene_instanc : AngleGene
@@ -165,7 +166,8 @@ begin
       meta_data_in  => meta_data_Z_2_0_out,
       meta_data_out => meta_data_5,
       scz_in        => scz_2,
-      scz_out       => scz_3);
+      scz_out       => scz_3,
+      xy_is_neg     => null_vector);
 
   cordic_bundle_Y_2_0_instanc : Cordic_Bundle_Y_to_0 generic map (
     stages_nbre         => nbre_Y_2_0_stages,

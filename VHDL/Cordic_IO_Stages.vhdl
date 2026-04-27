@@ -357,7 +357,8 @@ entity Cordic_FirstStage_Y_to_0 is
     meta_data_out : out meta_data_t;
     --! Input of X, Y and Z.
     scz_in        : in  reg_sin_cos_z;
-    scz_out       : out reg_sin_cos_z
+    scz_out       : out reg_sin_cos_z;
+    xy_is_neg     : in std_logic_vector
     );
 end entity Cordic_FirstStage_Y_to_0;
 
@@ -408,9 +409,17 @@ begin
       REGSYNC_IF : if reg_sync = '1' then
         -- Stages 1 and 2 are handled here together
         -- 1 Y, 0 X
-        xy_in_is_neg(1)                    <= scz_in.the_cos(scz_in.the_cos'high);
-        xy_in_is_neg(0)                    <= scz_in.the_sin(scz_in.the_sin'high);
-        
+        if xy_is_neg'length = 2 then
+          xy_in_is_neg <= xy_is_neg;
+        elsif xy_is_neg'length = 0 then
+          xy_in_is_neg(1)                    <= scz_in.the_cos(scz_in.the_cos'high);
+          xy_in_is_neg(0)                    <= scz_in.the_sin(scz_in.the_sin'high);
+        else
+          assert false report
+            "Internal error, length of the xy_is_neg vector (" & integer'image(xy_is_neg'length) &
+            ") should be 0 or 2"
+            severity failure;
+        end if;
         y_gt_x <= 'X';
         -- If the values are equal, the angle is PI/4 modulo PI/2
         meta_data_12 <= meta_data_in;
