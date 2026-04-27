@@ -2,76 +2,28 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   IEEE.NUMERIC_STD.all,
   work.InterModule_formats.all,
-  work.Meta_data_package.all;
-
---! @brief Computes the down-sampling indexes and select the data
---!
---! The frequencies should be generated as
---!   for each note for each octave do it  (see @ref AngleGene_entity).\n
---! After the down sampling, only one octave comes during each note.
---! The time slots of the n - 1 octaves receive an idle octave code.\n
---! To keep the features of the filter standard per note for all the octaves,
---!   if an octave N is down sampled by 2 ** P,
---!   the octave N - 1 is down sampled by 2 ** ( P + 1 ).\n
---! An example with 4 octaves is A by 2, B by 4, C by 8, D by 16
---!   A B A C A B A D A B A C A B A /
-
-package Downsampling_package is
-
-  component Downsampling_controller is
-    generic (
-      -- TEMP
-      --! If the filter requires more down sampling
-      --!   and the sampling rate is enought high,
-      --!   an additional ratio is added.
-      extra_downsampling : natural := 0);
-    port (
-      CLK           : in  std_logic;
-      RST           : in  std_logic;
-      reg_sync      : in  std_logic;
-      full_sync     : in  std_logic;
-      meta_data_in  : in  meta_data_t;
-      meta_data_out : out meta_data_t;
-      does_catch    : out std_logic;
-      does_forward  : out std_logic;
-      pre_forward   : out std_logic
-      );
-  end component Downsampling_controller;
-
-end package Downsampling_package;
-
-
-library IEEE;
-use IEEE.STD_LOGIC_1164.all,
-  IEEE.NUMERIC_STD.all,
-  work.InterModule_formats.all,
   work.MultiFreqDetect_package.all,
   work.Meta_data_package.all,
   work.Cordic_package.all;
 
---! @brief Controler of the downsampling
+--! @brief Controller of the downsampling
 --!
 --! 
 
 entity Downsampling_controller is
   generic (
     --! If the filter requires more down sampling
-    --!   and the sampling rate is enought high,
+    --!   and the sampling rate is enough high,
     --!   an additional ratio is added.
     extra_downsampling : natural := 0);
   port (
-    CLK           : in  std_logic;
-    RST           : in  std_logic;
-    reg_sync      : in  std_logic;
-    full_sync     : in  std_logic;
-    meta_data_in  : in  meta_data_t;
-    meta_data_out : out meta_data_t;
-    does_catch    : out std_logic;
-    does_forward  : out std_logic;
-    pre_forward   : out std_logic
-   --! Input of X and Y. Z is voided.
---    scz_in        : in  reg_sin_cos_z;
---    scz_out       : out reg_sin_cos_z
+    CLK          : in  std_logic;
+    RST          : in  std_logic;
+    reg_sync     : in  std_logic;
+    meta_data_in : in  meta_data_t;
+    does_catch   : out std_logic;
+    does_forward : out std_logic;
+    pre_forward  : out std_logic
     );
 end entity Downsampling_controller;
 
@@ -104,7 +56,7 @@ begin  -- architecture arch
         REGSYNC_IF : if reg_sync = '1' then
           if meta_data_in.octave = std_logic_vector(to_unsigned(N_octaves - 1, meta_data_in.octave'length)) then
             if meta_data_in.note = std_logic_vector(to_unsigned(N_notes - 1, meta_data_in.note'length)) then
-              -- Increment the counter for the convertion is the next run
+              -- Increment the counter for the conversion is the next run
               -- The octave value is still the one active during the previous run
               downsample_counter <= std_logic_vector(unsigned(downsample_counter) + 1);
               octave_counter     <= (others => '0');
@@ -153,7 +105,7 @@ use IEEE.STD_LOGIC_1164.all,
   work.MultiFreqDetect_package.all,
   work.Meta_data_package.all;
 
---! @brief Buffer of the catched registers
+--! @brief Buffer of the caught registers
 --!
 --! Since the downsampling is intended to give more clock cycles
 --!   to the filter, the output should have always the same intervals.\n
@@ -161,15 +113,15 @@ use IEEE.STD_LOGIC_1164.all,
 --! If the register has been loaded earlier,
 --!   it is going to shift if the forward is active.
 --! In 1 / <number of octaves> cases, the downsampler acts as transparent.
---! That means the register is shifted just after being parrallel loaded.\n
---! Then the data is not valid during the regsync.\n
+--! That means the register is shifted just after being parallel loaded.\n
+--! Then the data is not valid during the reg-sync.\n
 --! It is not a problem for the filter (see ref ... )
 --!   that does not have anything to do during the reg_sync.
 --! However, if the output is directly connected to the Y to 0 input stage
 --!   (see @ref Cordic_FirstStage_Y_to_0_entity) in test modes,
 --!   the sign of the sine and the cosine are wrong.
 --! For this reason, this data should be picked up on the xy_is_neg signal.
---!   The xy_is_neg is shitched from the scz_in or the register.\n
+--!   The xy_is_neg is switched from the scz_in or the register.\n
 
 entity Downsampling_buffer is
   generic (
@@ -194,6 +146,38 @@ architecture arch of Downsampling_buffer is
   signal meta_data_latch : meta_data_t;
 begin
 
+  meta_data_proc : process (scz_in, scz_out, pre_forward, does_catch) is
+  begin
+    if pre_forward = '1' then
+      --! The pre forward is active from the forward detection
+      --!   (about 5 to 10 clock cycles after the reg_sync),
+      --!   until the next reg_sync.
+      --! Only one clock cycle before the reg_sync is relevant.
+      --! The MD and the negative data can change and should be valid
+      --!   just before the reg_sync.
+      --! It would have been irrelevant to compute the assertion.
+      -- This part is not synchronous to the CLK.
+      -- However there is only a switch between two options
+      --   without any processing.
+      if does_catch = '1' then
+        -- The previous stage (currently running) is going
+        --   to be directly forwarded without the usage of the latch
+        -- Then the scz_in is shown for latching by the next stage.
+        meta_data_out <= meta_data_latch;
+        xy_is_neg(1)  <= scz_in.the_cos(scz_in.the_cos'high);
+        xy_is_neg(0)  <= scz_in.the_sin(scz_in.the_sin'high);
+      else
+
+        meta_data_out <= meta_data_in;
+        xy_is_neg(1)  <= scz_out.the_cos(scz_out.the_cos'high);
+        xy_is_neg(0)  <= scz_out.the_sin(scz_out.the_sin'high);
+      end if;
+    else
+      meta_data_out.octave <= (others => '1');
+      xy_is_neg            <= (others => '-');
+    end if;
+  end process meta_data_proc;
+
   main_proc : process (CLK) is
   begin
     if rising_edge(CLK) then
@@ -205,39 +189,95 @@ begin
       if does_catch = '1' then
         meta_data_latch <= meta_data_in;
       end if;
-      if pre_forward = '1' then
-        if does_catch = '1' then
-          meta_data_out <= meta_data_latch;
-          xy_is_neg( 1 ) <= scz_in.the_cos( scz_in.the_cos'high - 1 );
-          xy_is_neg( 0 ) <= scz_in.the_sin( scz_in.the_sin'high - 1 );
-        else
-          meta_data_out <= meta_data_in;
-          xy_is_neg( 1 ) <= scz_out.the_cos( scz_out.the_cos'high - 1 );
-          xy_is_neg( 0 ) <= scz_out.the_sin( scz_out.the_sin'high - 1 );
-        end if;
-      else
-          meta_data_out.octave <= (others => '1');
-          xy_is_neg <= ( others => '-' );
-      end if;
-
       if reg_sync = '1' then
         if does_catch = '1' then
           scz_out <= scz_in;
         end if;
       else
         if does_forward = '1' then
-        scz_out.the_cos(scz_out.the_cos'high - arithm_size downto scz_out.the_cos'low) <=
-          scz_out.the_cos(scz_out.the_cos'high downto scz_out.the_cos'low + arithm_size);
-        scz_out.the_sin(scz_out.the_sin'high - arithm_size downto scz_out.the_sin'low) <=
-          scz_out.the_sin(scz_out.the_sin'high downto scz_out.the_sin'low + arithm_size);
-          -- For debug reasons, instert don't cares at the top
-        scz_out.the_cos(scz_out.the_cos'high downto scz_out.the_cos'high - arithm_size + 1) <=
-          ( others => '-' );
-        scz_out.the_sin(scz_out.the_sin'high downto scz_out.the_sin'high - arithm_size + 1) <=
-          ( others => '-' );
+          scz_out.the_cos(scz_out.the_cos'high - arithm_size downto scz_out.the_cos'low) <=
+            scz_out.the_cos(scz_out.the_cos'high downto scz_out.the_cos'low + arithm_size);
+          scz_out.the_sin(scz_out.the_sin'high - arithm_size downto scz_out.the_sin'low) <=
+            scz_out.the_sin(scz_out.the_sin'high downto scz_out.the_sin'low + arithm_size);
+          -- For debug reasons, insert don't cares at the top
+          scz_out.the_cos(scz_out.the_cos'high downto scz_out.the_cos'high - arithm_size + 1) <=
+            (others => '-');
+          scz_out.the_sin(scz_out.the_sin'high downto scz_out.the_sin'high - arithm_size + 1) <=
+            (others => '-');
         end if;
       end if;
     end if;
   end process main_proc;
 
+end architecture arch;
+
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.all,
+  IEEE.NUMERIC_STD.all,
+  work.InterModule_formats.all,
+  work.MultiFreqDetect_package.all,
+  work.Meta_data_package.all,
+  work.Downsampling_package.all;
+
+
+entity Downsampling_bundle is
+  generic (
+    -- TEMP
+    --! If the filter requires more down sampling
+    --!   and the sampling rate is enough high,
+    --!   an additional ratio is added.
+    extra_downsampling : natural := 0);
+  port (
+    CLK           : in  std_logic;
+    RST           : in  std_logic;
+    reg_sync      : in  std_logic;
+    meta_data_in  : in  meta_data_t;
+    meta_data_out : out meta_data_t;
+    scz_in        : in  reg_sin_cos_z;
+    scz_out       : out reg_sin_cos_z;
+    xy_is_neg     : out std_logic_vector(1 downto 0)
+    );
+end entity Downsampling_bundle;
+
+architecture arch of Downsampling_bundle is
+  signal does_catch      : std_logic;
+  signal does_forward    : std_logic;
+  signal pre_forward     : std_logic;
+  signal meta_data_local : meta_data_t;
+begin  -- architecture arch
+
+
+
+
+
+  Downsampling_controller_instanc : Downsampling_controller
+    generic map (
+      extra_downsampling => 0)
+    port map (
+      CLK,
+      RST,
+      reg_sync,
+      meta_data_in,
+      does_catch,
+      does_forward,
+      pre_forward
+      );
+
+  Downsampling_buffer_instanc : Downsampling_buffer
+    generic map (
+      extra_downsampling)
+    port map (
+      CLK,
+      RST,
+      reg_sync,
+      does_catch,
+      does_forward,
+      pre_forward,
+      meta_data_in  => meta_data_in,
+      meta_data_out => meta_data_out,
+      scz_in        => scz_in,
+      scz_out       => scz_out,
+      xy_is_neg     => xy_is_neg
+      );
 end architecture arch;
