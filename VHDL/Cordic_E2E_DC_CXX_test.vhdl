@@ -2,8 +2,11 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
   ieee.math_real.all,
+  work.Utils_pac.StateNumbers_2_BitsNumbers,
   work.InterModule_formats.reg_type,
   work.InterModule_formats.reg_size,
+  work.Meta_data_package.N_notes,
+  work.Meta_data_package.N_octaves,
   work.Meta_data_package.meta_data_t,
   work.Meta_data_package.meta_data_list_t,
   work.MultiFreqDetect_package.cordic_stages_num_list,
@@ -38,10 +41,11 @@ entity Cordic_E2E_DC_CXX_test is
     nbre_Z_2_0_stages_out : out integer range 4 to reg_size;
     nbre_Y_2_0_stages_out : out integer range 4 to reg_size;
     reg_size_4_verif      : out integer range 16 to 255;
-    metadata_Z_2_0_note   : out std_logic_vector(3 downto 0);
-    metadata_Z_2_0_octave : out std_logic_vector(2 downto 0);
-    metadata_Y_2_0_note   : out std_logic_vector(3 downto 0);
-    metadata_Y_2_0_octave : out std_logic_vector(2 downto 0)
+    metadata_Z_2_0_note   : out std_logic_vector(StateNumbers_2_BitsNumbers(N_notes) - 1 downto 0);
+    metadata_Z_2_0_octave : out std_logic_vector(StateNumbers_2_BitsNumbers(N_octaves) - 1  downto 0);
+    metadata_Y_2_0_note   : out std_logic_vector(StateNumbers_2_BitsNumbers(N_notes) - 1 downto 0);
+    metadata_Y_2_0_octave : out std_logic_vector(StateNumbers_2_BitsNumbers(N_octaves) - 1  downto 0);
+    metadata_strobe       : out std_logic
     );
 end entity Cordic_E2E_DC_CXX_test;
 

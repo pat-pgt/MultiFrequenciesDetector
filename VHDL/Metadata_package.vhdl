@@ -7,7 +7,8 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
-  ieee.math_real.all;
+  ieee.math_real.all,
+  work.Utils_pac.StateNumbers_2_BitsNumbers;
 
 package Meta_data_package is
   -- This part contains the user's definitions
@@ -53,10 +54,15 @@ package Meta_data_package is
   --! It can be used to verify values are in sync in an improved version.
   type meta_data_t is record
     --! First one 0x0 => octave -1, last one 0x7 => octave 6.
-    octave : std_logic_vector(2 downto 0);
+    octave : std_logic_vector(StateNumbers_2_BitsNumbers(N_octaves) - 1 downto 0);
     --! First one 0 => C/do, last one 0xb => B/si. \n
     --! Catch test with all notes and all octaves 0xff
-    note   : std_logic_vector(3 downto 0);
+    note   : std_logic_vector(StateNumbers_2_BitsNumbers(N_notes) - 1 downto 0);
+    --! Strobe bit.\n
+    --! During the first Cordic stages, it is forced to 1 and ignored at the end.
+    --! After the down-sampling, then during the second Cordic stages,
+    --!   it validates the data.
+    strobe : std_logic;
   end record meta_data_t;
   --! Set from integers
   function octave_note_to_meta_data(constant octave : integer range 0 to N_octaves - 1;
@@ -110,6 +116,9 @@ package body Meta_data_package is
     else
       return (lmd.octave = rmd.octave) and (lmd.note = rmd.note);
     end if;
+    assert false report "This is going to be removed. " &
+      "The signed(-1) is going to be replaced by an explicit strobe bit"
+      severity warning;
   end function "=";
 
   function meta_data_image(md : meta_data_t) return string is
