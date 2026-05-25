@@ -1,0 +1,40 @@
+[*]
+[*] GTKWave Analyzer v3.3.111 (w)1999-2020 BSI
+[*] Fri May  8 11:40:43 2026
+[*]
+[dumpfile_mtime] "Fri May  8 11:39:25 2026"
+[dumpfile_size] 1823818
+[timestart] 18751000
+[size] 3527 600
+[pos] -1 -1
+*-19.991234 21690000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] downsampling_test.
+[sst_width] 200
+[signals_width] 297
+[sst_expanded] 1
+[sst_vpaned_height] 191
+@28
+downsampling_test.downsampling_controller_instanc.does_forward
+downsampling_test.downsampling_controller_instanc.pre_forward
+downsampling_test.downsampling_controller_instanc.clk
+downsampling_test.downsampling_controller_instanc.reg_sync
+downsampling_test.debug_does_catch_and_forward
+downsampling_test.downsampling_controller_instanc.does_catch
+downsampling_test.the_note_in[1:0]
+downsampling_test.the_octave_in[2:0]
+@22
+downsampling_test.downsampling_controller_instanc.downsample_counter[5:0]
+downsampling_test.downsampling_controller_instanc.downsample_shiftreg[5:0]
+@8028
+downsampling_test.downsampling_controller_instanc.octave_counter[2:0]
+@20000
+-
+-
+-
+-
+@28
+downsampling_test.downsampling_controller_instanc.strobe
+@29
+downsampling_test.downsampling_controller_instanc.extra_downsampling_note[1:0]
+[pattern_trace] 1
+[pattern_trace] 0

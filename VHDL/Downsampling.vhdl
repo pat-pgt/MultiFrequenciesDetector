@@ -1,12 +1,13 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   IEEE.NUMERIC_STD.all,
+  work.Utils_pac.StateNumbers_2_BitsNumbers,
   work.InterModule_formats.all,
   work.MultiFreqDetect_package.all,
   work.Meta_data_package.all,
   work.Cordic_package.all;
 
---! @brief Controller of the downsampling
+--! @brief Controller of the down-sampling
 --!
 --! 
 
@@ -14,8 +15,8 @@ entity Downsampling_controller is
   generic (
     --! If the filter requires more down sampling
     --!   and the sampling rate is enough high,
-    --!   an additional ratio is added.
-    extra_downsampling : natural := 0);
+    --!   an additional ratio is multiplied.
+    extra_downsampling : positive := 1);
   port (
     CLK          : in  std_logic;
     RST          : in  std_logic;
@@ -29,23 +30,25 @@ end entity Downsampling_controller;
 
 
 architecture arch of Downsampling_controller is
-  signal downsample_counter : std_logic_vector(N_octaves - 1 downto 0);
--- TODO make it dynamic
-  signal octave_counter     : std_logic_vector(meta_data_in.octave'range);
+  signal downsample_counter         : std_logic_vector(N_octaves - 1 downto 0);
+  signal downsample_shiftreg        : std_logic_vector(downsample_counter'range);
+  signal octave_counter             : std_logic_vector(meta_data_in.octave'range);
+  signal regsync_delayed            : std_logic;
+  signal extra_downsampling_counter : std_logic_vector(StateNumbers_2_BitsNumbers(extra_downsampling) - 1 downto 0);
+  signal extra_downsampling_note    : std_logic_vector(meta_data_in.note'range);
+  signal octave_found               : std_logic;
 begin  -- architecture arch
 
-  assert extra_downsampling = 0 report
-    "Sorry extra downsampling (" & integer'image(extra_downsampling) &
-    ") not 0 is not yet implemented"
-    severity error;
-  assert extra_downsampling = 0 or N_octaves * N_notes rem 2 = 1 report
-    "The extra downsampling (" & integer'image(extra_downsampling) &
-    ") should be 0, or the product notes by octaves should be odd"
-    severity failure;
-  assert (reg_size / arithm_size) > N_octaves report
+  assert extra_downsampling = 1 report
+    "The extra down-sampling (" & integer'image(extra_downsampling) &
+    ") and the number of notes (" & integer'image(N_notes) &
+    ") should be premier to each other, otherwise some data is never processed." &
+    " Future work are going to verify this is enough and not too restrictive."
+    severity warning;
+  assert (3 + reg_size / arithm_size) >= N_octaves report
     "The registers size (" & integer'image(reg_size) &
     ") divided by the arithmetic size (" & integer'image(arithm_size) &
-    ") should be at least the number of octaves (" & integer'image(N_octaves) & ")"
+    ") should be at least the number of octaves plus 3 (" & integer'image(N_octaves) & ")"
     severity failure;
 
   main_proc : process(CLK)
@@ -55,42 +58,79 @@ begin  -- architecture arch
       if RST = '0' then
         REGSYNC_IF : if reg_sync = '1' then
           if meta_data_in.octave = std_logic_vector(to_unsigned(N_octaves - 1, meta_data_in.octave'length)) then
-            if meta_data_in.note = std_logic_vector(to_unsigned(N_notes - 1, meta_data_in.note'length)) then
-              -- Increment the counter for the conversion is the next run
-              -- The octave value is still the one active during the previous run
-              downsample_counter <= std_logic_vector(unsigned(downsample_counter) + 1);
-              octave_counter     <= (others => '0');
+            if extra_downsampling = 1 then
+              -- Don't consume resources as a simple comparator
+              -- on the note found in the meta data is enough
+              if meta_data_in.note = std_logic_vector(to_unsigned(N_notes - 1, meta_data_in.note'length)) then
+                downsample_counter <= std_logic_vector(unsigned(downsample_counter) + 1);
+              end if;
+            else
+              if extra_downsampling_counter =
+                std_logic_vector(to_unsigned(extra_downsampling - 1, extra_downsampling_counter'length)) then
+                if extra_downsampling_note =
+                  std_logic_vector(to_unsigned(N_notes - 1, extra_downsampling_note'length)) then
+                  extra_downsampling_note <= (others => '0');
+                else
+                  extra_downsampling_note <= std_logic_vector(unsigned(extra_downsampling_note) + 1);
+                  downsample_counter      <= std_logic_vector(unsigned(downsample_counter) + 1);
+                end if;
+                extra_downsampling_counter <= (others => '0');
+              else
+                extra_downsampling_counter <= std_logic_vector(unsigned(extra_downsampling_counter) + 1);
+              end if;
             end if;
-            does_forward <= '1';
+            octave_found       <= '0';
+            does_forward <= pre_forward;
             pre_forward  <= '0';
           elsif meta_data_in.octave = std_logic_vector(to_unsigned(N_octaves - 2, meta_data_in.octave'length)) then
-            pre_forward  <= '1';
+            pre_forward  <= octave_found;
             -- Relevant only if there are only 2 octaves
             does_forward <= '0';
           else
             does_forward <= '0';
           end if;
+          does_catch <= '0';
+        elsif regsync_delayed = '1' then
+          octave_counter <= meta_data_in.octave;
+          if extra_downsampling = 1 then
+            downsample_shiftreg <= downsample_counter;
+          elsif extra_downsampling_counter =
+            std_logic_vector(to_unsigned (0, extra_downsampling_counter'length)) then
+            downsample_shiftreg <= downsample_counter;
+          else
+            downsample_shiftreg <= (others => '0');
+          end if;
         else
-          --! It is a basic find the first 1 bits.
-          --! However, we have dozen of clock cycles to find it.
-          --! Then we don't take any risk on the timing.
+          --! It is a basic find the first 1 bits to get the octave number.
+          --! The goal is to avoid arithmetic in order to not break the timing.
+          --! We have dozen of clock cycles to find it.
+          -- The shift down-sample counter (copy) is shifted until a 1 is found.
+          -- Sometimes no one is found, it shifts for ever.
+          -- To avoid a compare between 2 variables, the octave is incremented
+          --   at each shift. If the value is N_octaves - 1 at the end, the
+          --   catch and the octave_found are asserted.
           if true then
-            if downsample_counter(to_integer(unsigned(octave_counter))) = '1' then
-              if meta_data_in.octave = octave_counter then
+            BITFOUND_IF : if downsample_shiftreg(downsample_shiftreg'low) = '1' then
+              if octave_counter = std_logic_vector(to_unsigned(N_octaves - 1, octave_counter'length)) then
                 does_catch <= '1';
-              else
-                does_catch <= '0';
               end if;
-            elsif octave_counter /= std_logic_vector(to_unsigned(N_octaves - 1, octave_counter'length)) then
-              octave_counter <= std_logic_vector(unsigned(octave_counter) + 1);
+              octave_found <= '1';
             else
-              does_catch <= '0';
-            end if;
+              downsample_shiftreg(downsample_shiftreg'high - 1 downto downsample_shiftreg'low) <=
+                downsample_shiftreg(downsample_shiftreg'high downto downsample_shiftreg'low + 1);
+              octave_counter <= std_logic_vector(unsigned(octave_counter) + 1);
+            end if BITFOUND_IF;
+
           end if;
         end if REGSYNC_IF;
+        regsync_delayed <= reg_sync;
       else
         octave_counter     <= (others => '0');
         downsample_counter <= (others => '0');
+        if extra_downsampling /= 1 then
+          extra_downsampling_counter <= (others => '0');
+          extra_downsampling_note    <= (others => '0');
+        end if;
       end if;
     end if CLK_IF;
   end process main_proc;
@@ -107,12 +147,12 @@ use IEEE.STD_LOGIC_1164.all,
 
 --! @brief Buffer of the caught registers
 --!
---! Since the downsampling is intended to give more clock cycles
+--! Since the down-sampling is intended to give more clock cycles
 --!   to the filter, the output should have always the same intervals.\n
 
 --! If the register has been loaded earlier,
 --!   it is going to shift if the forward is active.
---! In 1 / <number of octaves> cases, the downsampler acts as transparent.
+--! In 1 / <number of octaves> cases, the down-sampler acts as transparent.
 --! That means the register is shifted just after being parallel loaded.\n
 --! Then the data is not valid during the reg-sync.\n
 --! It is not a problem for the filter (see ref ... )
@@ -125,7 +165,7 @@ use IEEE.STD_LOGIC_1164.all,
 
 entity Downsampling_buffer is
   generic (
-    extra_downsampling : natural := 0);
+    extra_downsampling : positive := 1);
   port (
     CLK           : in  std_logic;
     RST           : in  std_logic;
@@ -147,7 +187,9 @@ architecture arch of Downsampling_buffer is
 begin
 
   meta_data_proc : process (scz_in, scz_out, pre_forward, does_catch) is
+    variable meta_data_v : meta_data_t;
   begin
+    meta_data_v := meta_data_latch;
     if pre_forward = '1' then
       --! The pre forward is active from the forward detection
       --!   (about 5 to 10 clock cycles after the reg_sync),
@@ -160,22 +202,21 @@ begin
       -- However there is only a switch between two options
       --   without any processing.
       if does_catch = '1' then
-        -- The previous stage (currently running) is going
-        --   to be directly forwarded without the usage of the latch
-        -- Then the scz_in is shown for latching by the next stage.
-        meta_data_out <= meta_data_latch;
+                                        -- The previous stage (currently running) is going
+                                        --   to be directly forwarded without the usage of the latch
+                                        -- Then the scz_in is shown for latching by the next stage.
         xy_is_neg(1)  <= scz_in.the_cos(scz_in.the_cos'high);
         xy_is_neg(0)  <= scz_in.the_sin(scz_in.the_sin'high);
       else
-
-        meta_data_out <= meta_data_in;
         xy_is_neg(1)  <= scz_out.the_cos(scz_out.the_cos'high);
         xy_is_neg(0)  <= scz_out.the_sin(scz_out.the_sin'high);
       end if;
+      meta_data_v.strobe := '1';
     else
-      meta_data_out.octave <= (others => '1');
+      meta_data_v.strobe := '0';
       xy_is_neg            <= (others => '-');
     end if;
+    meta_data_out <= meta_data_v;
   end process meta_data_proc;
 
   main_proc : process (CLK) is
@@ -199,7 +240,7 @@ begin
             scz_out.the_cos(scz_out.the_cos'high downto scz_out.the_cos'low + arithm_size);
           scz_out.the_sin(scz_out.the_sin'high - arithm_size downto scz_out.the_sin'low) <=
             scz_out.the_sin(scz_out.the_sin'high downto scz_out.the_sin'low + arithm_size);
-          -- For debug reasons, insert don't cares at the top
+                                        -- For debug reasons, insert don't cares at the top
           scz_out.the_cos(scz_out.the_cos'high downto scz_out.the_cos'high - arithm_size + 1) <=
             (others => '-');
           scz_out.the_sin(scz_out.the_sin'high downto scz_out.the_sin'high - arithm_size + 1) <=
@@ -227,7 +268,7 @@ entity Downsampling_bundle is
     --! If the filter requires more down sampling
     --!   and the sampling rate is enough high,
     --!   an additional ratio is added.
-    extra_downsampling : natural := 0);
+    extra_downsampling : positive := 1);
   port (
     CLK           : in  std_logic;
     RST           : in  std_logic;
@@ -241,19 +282,18 @@ entity Downsampling_bundle is
 end entity Downsampling_bundle;
 
 architecture arch of Downsampling_bundle is
-  signal does_catch      : std_logic;
-  signal does_forward    : std_logic;
-  signal pre_forward     : std_logic;
-  signal meta_data_local : meta_data_t;
-begin  -- architecture arch
+  signal does_catch                   : std_logic;
+  signal does_forward                 : std_logic;
+  signal pre_forward                  : std_logic;
+  signal meta_data_local              : meta_data_t;
+  signal debug_does_catch_and_forward : std_logic;
+begin
 
-
-
-
+  debug_does_catch_and_forward <= does_catch and pre_forward;
 
   Downsampling_controller_instanc : Downsampling_controller
     generic map (
-      extra_downsampling => 0)
+      extra_downsampling)
     port map (
       CLK,
       RST,

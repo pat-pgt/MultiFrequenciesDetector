@@ -23,8 +23,8 @@ package Downsampling_package is
       -- TEMP
       --! If the filter requires more down sampling
       --!   and the sampling rate is enough high,
-      --!   an additional ratio is added.
-      extra_downsampling : natural := 0);
+      --!   an additional ratio is multiplied.
+      extra_downsampling : positive := 1);
     port (
       CLK          : in  std_logic;
       RST          : in  std_logic;
@@ -38,7 +38,7 @@ package Downsampling_package is
 
   component Downsampling_buffer is
     generic (
-      extra_downsampling : natural := 0);
+      extra_downsampling : positive := 1);
     port (
       CLK           : in  std_logic;
       RST           : in  std_logic;
@@ -58,9 +58,9 @@ package Downsampling_package is
     generic (
       -- TEMP
       --! If the filter requires more down sampling
-      --!   and the sampling rate is en-ought high,
-      --!   an additional ratio is added.
-      extra_downsampling : natural := 0);
+      --!   and the sampling rate is enought high,
+      --!   an additional ratio is multiplied.
+      extra_downsampling : positive := 1);
     port (
       CLK           : in  std_logic;
       RST           : in  std_logic;

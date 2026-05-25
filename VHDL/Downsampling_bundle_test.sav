@@ -1,0 +1,69 @@
+[*]
+[*] GTKWave Analyzer v3.3.111 (w)1999-2020 BSI
+[*] Mon May 25 10:46:56 2026
+[*]
+[dumpfile_mtime] "Mon May 25 10:45:44 2026"
+[dumpfile_size] 15025459
+[timestart] 187009000
+[size] 3757 922
+[pos] -1 -1
+*-18.143555 125931590 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] downsampling_bundle_test.
+[treeopen] downsampling_bundle_test.downsampling_bundle_instanc.
+[sst_width] 256
+[signals_width] 347
+[sst_expanded] 1
+[sst_vpaned_height] 333
+@28
+downsampling_bundle_test.clk
+@200
+-
+@28
+downsampling_bundle_test.the_note_in[1:0]
+downsampling_bundle_test.the_octave_in[2:0]
+downsampling_bundle_test.next_note[1:0]
+downsampling_bundle_test.next_octave[2:0]
+downsampling_bundle_test.next_strobe
+downsampling_bundle_test.next_latched_note[1:0]
+downsampling_bundle_test.next_latched_octave[2:0]
+downsampling_bundle_test.next_latched_strobe
+downsampling_bundle_test.run_match_tint
+@200
+-
+@28
+downsampling_bundle_test.downsampling_bundle_instanc.reg_sync
+@200
+-
+@28
+downsampling_bundle_test.downsampling_bundle_instanc.does_catch
+downsampling_bundle_test.downsampling_bundle_instanc.pre_forward
+downsampling_bundle_test.downsampling_bundle_instanc.does_forward
+@200
+-
+@22
+downsampling_bundle_test.downsampling_bundle_instanc.downsampling_controller_instanc.downsample_counter[5:0]
+@28
+downsampling_bundle_test.downsampling_bundle_instanc.downsampling_controller_instanc.octave_counter[2:0]
+@200
+-
+@22
+downsampling_bundle_test.prev_cos[31:0]
+downsampling_bundle_test.prev_sin[31:0]
+downsampling_bundle_test.next_cos[31:0]
+downsampling_bundle_test.next_sin[31:0]
+@28
+downsampling_bundle_test.match_tint_x_vector[0]
+@29
+downsampling_bundle_test.match_tint_y_vector[0]
+@28
+downsampling_bundle_test.match_tint_x
+@420
+downsampling_bundle_test.number_good_x
+downsampling_bundle_test.number_bad_x
+@28
+downsampling_bundle_test.match_tint_y
+@420
+downsampling_bundle_test.number_good_y
+downsampling_bundle_test.number_bad_y
+[pattern_trace] 1
+[pattern_trace] 0
