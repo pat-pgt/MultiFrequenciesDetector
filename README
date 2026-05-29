@@ -2,13 +2,11 @@ Multi audio frequencies detector
 
 It is intended to build on every (enough large) FPGA and ASICs as he design is highly parametric. No multiplication nor division library is required.
 
-The test and verification are included in the project. It look like wheel re-invention. However, it does not require any verification tool. They are in the *.test.vhl files and some FPGA based are planned to speed up the run. By this way, verifying the verification tools is easy.
-
 For easy validation, especially the carries propagation, the additions (and subtractions) are proceed N bits at a time. Some shift registers handle the full length. However, there is no test planned for now with N greater than 1.
 
-The Cordic algorithm is split into stages that proceed only one angle/arc-tangeant. That improves the sample rate, but increases the latency. 
+The Cordic algorithm is split into stages that proceed only one angle/arc-tangent. That improves the sample rate, but increases the latency. 
 
-It is designed using modules. More or less modules have to be used according with the requiered properties. The schema choices mostly include the amplitude of signals to be detected, with which "neighbour" signals, in which environement (noise, high amplitude signals etc...). For more information, see the README.modules file.
+It is designed using modules. More or less modules have to be used according with the required properties. The schema choices mostly include the amplitude of signals to be detected, with which "neighbour" signals, in which environment (noise, high amplitude signals etc...). For more information, see the README.modules file.
 
 It detects all the 12 notes of N octaves. The edges of the notes are precise. N can be large if the master clock is high. Fclk=396.N.SampleRate
 
@@ -20,4 +18,4 @@ This project is in an early stage. The documentation may refer to document not y
 
 The design is a DevOps style. It goes forward to get a working end to end. The detailed tests are going to be done after.
 
-The initial development tests are performed, using a wave viewer. VHDL modules perform extended tests. The run of the tests is done, using scripts rather than mouse actions in a GUI.
+All the tests are provided to verify mathematics, low level and high level. Some of them run after the synthesis. For more details, see the README.tests file.
