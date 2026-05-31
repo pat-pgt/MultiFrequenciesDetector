@@ -2,7 +2,7 @@ NETLIST_PROG?=gnetlist
 EXPORT_PROG?=gaf
 GHDL_PROG=ghdl
 GCC_PROG=g++
-CXXFLAGS?=-std=c++20 -ffast-math -m64
+CXXFLAGS?=-std=c++20 -ffast-math -m64 -O2
 VFLAGS?=--std=08
 SRCDIR?=
 BUILDDIR?=build/
@@ -15,7 +15,8 @@ NEXTPNR-ICE40_PROG?=nextpnr-ice40
 ICEPACK?=icepack
 
 
-$(BUILDDIR)packages_compiled : $(SCRDIR)InterModule_package.vhdl $(SCRDIR)Metadata_package.vhdl $(SCRDIR)MFD_package.vhdl $(SCRDIR)DataMonitor_package.vhdl	$(SCRDIR)Cordic_package.vhdl $(SCRDIR)Prefilter_package.vhdl $(SCRDIR)Frequencies_package.vhdl $(SCRDIR)Input_package.vhdl
+$(BUILDDIR)packages_compiled : $(SCRDIR)Utils_package.vhdl $(SCRDIR)InterModule_package.vhdl $(SCRDIR)Metadata_package.vhdl $(SCRDIR)Frequencies_package.vhdl $(SCRDIR)Input_package.vhdl $(SCRDIR)MFD_package.vhdl $(SCRDIR)DataMonitor_package.vhdl $(SCRDIR)Cordic_package.vhdl $(SCRDIR)Prefilter_package.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Utils_package.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)InterModule_package.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Metadata_package.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Frequencies_package.vhdl
@@ -81,18 +82,20 @@ simul_Cordic_E2E_DC_four_inits : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO
 	$(GHDL_PROG) -r $(VFLAGS) Cordic_bundle_test_Z_to_0_Y_to_0 -gnbre_Y_2_0_stages=14 -gnbre_Z_2_0_stages=16 -gwith_4_angles_test=true -gwith_angles_vs_MD=false --vcd=$(WAVDESTDIR)Cordic_E2E_DC_four_inits.wav --read-wave-opt=$(BUILDDIR)GHDL_wave_opt_toplevel 2>&1 | tee $(DESTDIR)Cordic.out.txt
 	echo "The wav file is ***NOT*** an audio file, it can be opened, for instance, using gtk-wave" > $(WAVDESTDIR)README.important
 
-$(SYNTHDESTDIR)Cordic_E2E_DC_CXX.cpp : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages.vhdl $(SCRDIR)Cordic_Interm_Stages.vhdl $(SCRDIR)Cordic_Bundle_Stages.vhdl $(SCRDIR)DataMonitor.vhdl $(SCRDIR)Cordic_E2E_DC_CXX_test.vhdl
+$(SYNTHDESTDIR)Cordic_E2E_DC_CXX.cpp : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages.vhdl $(SCRDIR)Cordic_Interm_Stages.vhdl $(SCRDIR)Cordic_Bundle_Stages.vhdl $(SCRDIR)DataMonitor.vhdl $(SCRDIR)Downsampling_package.vhdl $(SCRDIR)Downsampling.vhdl $(SCRDIR)Cordic_E2E_DC_CXX_test.vhdl $(SCRDIR)Cordic_E2E_DC_bundle.vhdl 
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_IO_Stages.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_Interm_Stages.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_Bundle_Stages.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)AnglesGene.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)DataMonitor.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_Monitor.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Downsampling_package.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Downsampling.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_E2E_DC_bundle.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_E2E_DC_CXX_test.vhdl
 	$(YOSYS_PROG) -m ghdl -p '$(GHDL_PROG) $(VFLAGS) Cordic_E2E_DC_CXX_test; write_cxxrtl $(SYNTHDESTDIR)Cordic_E2E_DC_CXX.cpp' 2>&1 |tee $(SYNTHDESTDIR)Cordic.synth.out.txt
 
-$(CXXVERIFDIR)Cordic_E2E_DC_verif : $(SYNTHDESTDIR)Cordic_E2E_DC_CXX.cpp $(CXXVERIFDIR)Cordic_E2E_DC_verif.cpp $(CXXVERIFDIR)Cordic_E2E_DC_verif.hxx
+$(CXXVERIFDIR)Cordic_E2E_DC_verif : $(BUILDDIR)packages_compiled $(SYNTHDESTDIR)Cordic_E2E_DC_CXX.cpp $(CXXVERIFDIR)Cordic_E2E_DC_verif.cpp $(CXXVERIFDIR)Cordic_E2E_DC_verif.hxx
 	$(GCC_PROG) $(CXXFLAGS) $(CXXVERIFDIR)Cordic_E2E_DC_verif.cpp -o $(CXXVERIFDIR)Cordic_E2E_DC_verif -I$(SYNTHDESTDIR) -I/usr/local/share/yosys/include/backends/cxxrtl/runtime
 
 simul_Prefilter_Storage : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages.vhdl $(SCRDIR)Cordic_Interm_Stages.vhdl $(SCRDIR)Cordic_Bundle_Stages.vhdl $(SCRDIR)DataMonitor.vhdl

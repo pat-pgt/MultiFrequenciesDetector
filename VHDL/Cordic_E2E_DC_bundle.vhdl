@@ -16,6 +16,10 @@ package Cordic_E2E_DC_Bundle_pac is
 --! It is intended to test, using a softwre or implemented into a FGPA.
   component Cordic_E2E_DC_Bundle is
     generic (
+      -- 0         : no downsampling
+      -- 1         : downsampling without extra rate
+      -- 2 or more : downsampling with N extra rate
+      with_downsampling   : natural := 0;
       metadata_catch_list : meta_data_list_t(15 to 14);      --  := (
       nbre_Z_2_0_stages   : natural;
       nbre_Y_2_0_stages   : natural;
@@ -58,12 +62,16 @@ use IEEE.STD_LOGIC_1164.all,
   work.Meta_data_package.all,
   work.MultiFreqDetect_package.cordic_stages_num_list,
   work.Input_modules.all,
-  work.Cordic_package.all;
+  work.Cordic_package.all,
+  work.Downsampling_package.Downsampling_bundle;
 
 --! This entity is an end to end bundle without the filtering.
 --! It is intended to test, using a softwre or implemented into a FGPA.
 entity Cordic_E2E_DC_Bundle is
   generic (
+    --! 0         : no downsampling
+    --! 1 or more : downsampling without or with N extra rate
+    with_downsampling   : natural := 0;
     metadata_catch_list : meta_data_list_t(15 to 14);      --  := (
     nbre_Z_2_0_stages   : natural;
     nbre_Y_2_0_stages   : natural;
@@ -102,8 +110,13 @@ architecture arch of Cordic_E2E_DC_Bundle is
   signal meta_data_1            : meta_data_t;
   signal meta_data_2            : meta_data_t;
   signal meta_data_5            : meta_data_t;
-  signal scz_1, scz_2, scz_3    : reg_sin_cos_z;
+  signal Meta_data_Y_2_0_in     : meta_data_t;
+  signal scz_1                  : reg_sin_cos_z;
+  signal scz_Z_2_0_out          : reg_sin_cos_z;
+  signal scz_Y_2_0_in           : reg_sin_cos_z;
+  signal scz_3                  : reg_sin_cos_z;
   signal report_cordic_bundle_2 : std_logic := '0';
+  signal xy_is_neg              : std_logic_vector(1 downto 0);
   constant null_vector          : std_logic_vector(0 downto 1) := "";
 begin
 
@@ -148,7 +161,7 @@ begin
       meta_data_in  => meta_data_2,
       meta_data_out => meta_data_Z_2_0_out,
       scz_in        => scz_1,
-      scz_out       => scz_2,
+      scz_out       => scz_Z_2_0_out,
       X_out         => X_out_Z_2_0,
       Y_out         => Y_out_Z_2_0,
       Z_out         => Z_out_Z_2_0,
@@ -156,19 +169,65 @@ begin
       report_in     => report_cordic_bundle_1,
       report_out    => report_cordic_bundle_2);
 
+  BYPASS_DOWNSAMPLING: if with_downsampling = 0 generate
+    scz_Y_2_0_in <= scz_Z_2_0_out;
+    OPY_INSERT_STROBE: process ( meta_data_Z_2_0_out ) is
+      variable meta_data_v : meta_data_t;
+    begin
+      meta_data_v := meta_data_Z_2_0_out;
+      meta_data_v.strobe := '1';
+      Meta_data_Y_2_0_in <= meta_data_v;
+    end process OPY_INSERT_STROBE;
 
-
-  cordic_first_stage_Y_2_0_instanc : Cordic_FirstStage_Y_to_0
+         
+  cordic_first_stage_Y_2_0_instanc_noDS : Cordic_FirstStage_Y_to_0
     port map (
       CLK           => CLK,
       RST           => RST,
       reg_sync      => reg_sync_interm,
-      meta_data_in  => meta_data_Z_2_0_out,
+      meta_data_in  => meta_data_Y_2_0_in,
       meta_data_out => meta_data_5,
-      scz_in        => scz_2,
+      scz_in        => scz_Y_2_0_in,
       scz_out       => scz_3,
       xy_is_neg     => null_vector);
 
+
+  end generate BYPASS_DOWNSAMPLING;
+
+    
+-- Now VHDL has an else generate.
+  -- unfortunately, my VHDL mode does not handle properly.
+  CONNECT_DS: if with_downsampling /= 0 generate
+
+  Downsampling_bundle_instanc : Downsampling_bundle
+    generic map (
+      extra_downsampling => with_downsampling)
+    port map (
+      CLK           ,
+      RST           ,
+      reg_sync      => reg_sync_interm,
+      meta_data_in  => meta_data_Z_2_0_out,
+      meta_data_out => meta_data_Y_2_0_in,
+      scz_in        => scz_Z_2_0_out,
+      scz_out       => scz_Y_2_0_in,
+      xy_is_neg     => xy_is_neg
+      );
+  
+  cordic_first_stage_Y_2_0_instanc_DS : Cordic_FirstStage_Y_to_0
+    port map (
+      CLK           => CLK,
+      RST           => RST,
+      reg_sync      => reg_sync_interm,
+      meta_data_in  => meta_data_Y_2_0_in,
+      meta_data_out => meta_data_5,
+      scz_in        => scz_Y_2_0_in,
+      scz_out       => scz_3,
+      xy_is_neg     => xy_is_neg);
+
+  end generate CONNECT_DS;
+
+
+  
   cordic_bundle_Y_2_0_instanc : Cordic_Bundle_Y_to_0 generic map (
     stages_nbre         => nbre_Y_2_0_stages,
     metadata_catch_list => metadata_catch_list,

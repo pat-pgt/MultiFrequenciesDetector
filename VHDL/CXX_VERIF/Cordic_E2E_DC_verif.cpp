@@ -118,8 +118,8 @@ int main()
 {
   vector<InitialValueData>theInitialData = { 
 	InitialValueData( 0x3fffffff, 0 ),
-	InitialValueData( 0, 0x3fffffff ),
-	InitialValueData( 0xc0000000, 0 ),
+	//	InitialValueData( 0, 0x3fffffff ),
+	// InitialValueData( 0xc0000000, 0 ),
 	InitialValueData( 0, 0xc0000000 )
   };
   vector<SimulDataType>theSimulData;
@@ -193,9 +193,9 @@ int main()
 			}
 		}
 
-	  for ( ind = 0; ind < 40 * 24 * 33 ; ind ++ )
+	  for ( ind = 0; ind < 2000 * 24 * 33 ; ind ++ )
 		{
-		  if ( ind % ( 10 * 24 * 33 ) == 0 )
+		  if ( ind % ( 50 * 24 * 33 ) == 0 )
 			{
 			  cout << '.';
 			  cout.flush();
@@ -269,6 +269,13 @@ int main()
 			// Now bring back the vector to the X axis
 			unsigned char octave_Y_2_0 = top.p_metadata__Y__2__0__octave.get<unsigned char>();
 			unsigned char note_Y_2_0 = top.p_metadata__Y__2__0__note.get<unsigned char>();
+			if ( top.p_metadata__Y__2__0__strobe.get<bool>() == false )
+			  {
+				// We should find a way to populate cleanly according to the N_octaves and N_notes
+				octave_Y_2_0 = 99;
+				note_Y_2_0 = 99;
+			  }
+
 			// TEMP TEMP Looks like there is a shift between the meta data and the data
 			pair< unsigned char, unsigned char > key_ON_Y_2_0 = make_pair( octave_Y_2_0, note_Y_2_0 );
 
@@ -277,6 +284,7 @@ int main()
 			decltype(dat.value_type()) X_Y_2_0 = top.p_X__Y__2__0.get<decltype(dat.value_type())>();
 			decltype(dat.value_type()) Y_Y_2_0 = top.p_Y__Y__2__0.get<decltype(dat.value_type())>();
 			decltype(dat.value_type()) Z_Y_2_0 = top.p_Z__Y__2__0.get<decltype(dat.value_type())>();
+
 			simulData.Y_2_0.check_X_converges += (float)X_Y_2_0;
 			// cout << '\t' << X_Y_2_0;
 			simulData.Y_2_0.check_Y_converges += (float)Y_Y_2_0;

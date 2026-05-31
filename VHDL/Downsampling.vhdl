@@ -186,7 +186,7 @@ architecture arch of Downsampling_buffer is
   signal meta_data_latch : meta_data_t;
 begin
 
-  meta_data_proc : process (scz_in, scz_out, pre_forward, does_catch) is
+  meta_data_proc : process (scz_in, scz_out, pre_forward, does_catch, meta_data_latch) is
     variable meta_data_v : meta_data_t;
   begin
     meta_data_v := meta_data_latch;
@@ -242,9 +242,9 @@ begin
             scz_out.the_sin(scz_out.the_sin'high downto scz_out.the_sin'low + arithm_size);
                                         -- For debug reasons, insert don't cares at the top
           scz_out.the_cos(scz_out.the_cos'high downto scz_out.the_cos'high - arithm_size + 1) <=
-            (others => '-');
+            (others => '0');
           scz_out.the_sin(scz_out.the_sin'high downto scz_out.the_sin'high - arithm_size + 1) <=
-            (others => '-');
+            (others => '0');
         end if;
       end if;
     end if;

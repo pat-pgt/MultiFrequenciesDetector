@@ -20,6 +20,7 @@ use IEEE.STD_LOGIC_1164.all,
 
 entity Cordic_E2E_DC_CXX_test is
   generic (
+    with_downsampling   : natural := 1;
     nbre_Z_2_0_stages   : integer range 4 to reg_size := 18;
     nbre_Y_2_0_stages   : integer range 4 to reg_size := 18;
     metadata_catch_list : meta_data_list_t(15 to 14);
@@ -45,7 +46,7 @@ entity Cordic_E2E_DC_CXX_test is
     metadata_Z_2_0_octave : out std_logic_vector(StateNumbers_2_BitsNumbers(N_octaves) - 1  downto 0);
     metadata_Y_2_0_note   : out std_logic_vector(StateNumbers_2_BitsNumbers(N_notes) - 1 downto 0);
     metadata_Y_2_0_octave : out std_logic_vector(StateNumbers_2_BitsNumbers(N_octaves) - 1  downto 0);
-    metadata_strobe       : out std_logic
+    metadata_Y_2_0_strobe : out std_logic
     );
 end entity Cordic_E2E_DC_CXX_test;
 
@@ -68,9 +69,13 @@ begin
     metadata_Z_2_0_octave <= meta_data_Z_2_0_out.octave;
     metadata_Y_2_0_note   <= meta_data_Y_2_0_out.note;
     metadata_Y_2_0_octave <= meta_data_Y_2_0_out.octave;
+    metadata_Y_2_0_strobe <= meta_data_Y_2_0_out.strobe;
   
   Cordic_E2E_DC_Bundle_instanc : Cordic_E2E_DC_Bundle
     generic map(
+      --! 0         : no downsampling
+      --! 1 or more : downsampling without or with N extra rate
+      with_downsampling,
       metadata_catch_list => metadata_catch_list,
       nbre_Z_2_0_stages   => nbre_Z_2_0_stages,
       nbre_Y_2_0_stages   => nbre_Y_2_0_stages,
