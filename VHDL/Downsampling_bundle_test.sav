@@ -1,9 +1,9 @@
 [*]
 [*] GTKWave Analyzer v3.3.111 (w)1999-2020 BSI
-[*] Mon May 25 10:46:56 2026
+[*] Sat May 30 06:57:33 2026
 [*]
-[dumpfile_mtime] "Mon May 25 10:45:44 2026"
-[dumpfile_size] 15025459
+[dumpfile_mtime] "Sat May 31 06:48:31 2026"
+[dumpfile_size] 11043739
 [timestart] 187009000
 [size] 3757 922
 [pos] -1 -1
@@ -14,6 +14,10 @@
 [signals_width] 347
 [sst_expanded] 1
 [sst_vpaned_height] 333
+@420
+downsampling_bundle_test.main_counter
+@421
+downsampling_bundle_test.reg_sync_counter
 @28
 downsampling_bundle_test.clk
 @200
@@ -53,9 +57,7 @@ downsampling_bundle_test.next_cos[31:0]
 downsampling_bundle_test.next_sin[31:0]
 @28
 downsampling_bundle_test.match_tint_x_vector[0]
-@29
 downsampling_bundle_test.match_tint_y_vector[0]
-@28
 downsampling_bundle_test.match_tint_x
 @420
 downsampling_bundle_test.number_good_x

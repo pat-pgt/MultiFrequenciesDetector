@@ -1,9 +1,9 @@
 [*]
 [*] GTKWave Analyzer v3.3.111 (w)1999-2020 BSI
-[*] Fri May  8 11:40:43 2026
+[*] Sat May 30 06:26:49 2026
 [*]
-[dumpfile_mtime] "Fri May  8 11:39:25 2026"
-[dumpfile_size] 1823818
+[dumpfile_mtime] "Sat May 31 06:22:40 2026"
+[dumpfile_size] 3297532
 [timestart] 18751000
 [size] 3527 600
 [pos] -1 -1
@@ -13,6 +13,11 @@
 [signals_width] 297
 [sst_expanded] 1
 [sst_vpaned_height] 191
+@420
+downsampling_test.main_counter
+downsampling_test.reg_sync_counter
+@200
+-
 @28
 downsampling_test.downsampling_controller_instanc.does_forward
 downsampling_test.downsampling_controller_instanc.pre_forward
@@ -25,7 +30,7 @@ downsampling_test.the_octave_in[2:0]
 @22
 downsampling_test.downsampling_controller_instanc.downsample_counter[5:0]
 downsampling_test.downsampling_controller_instanc.downsample_shiftreg[5:0]
-@8028
+@8029
 downsampling_test.downsampling_controller_instanc.octave_counter[2:0]
 @20000
 -
@@ -33,8 +38,6 @@ downsampling_test.downsampling_controller_instanc.octave_counter[2:0]
 -
 -
 @28
-downsampling_test.downsampling_controller_instanc.strobe
-@29
 downsampling_test.downsampling_controller_instanc.extra_downsampling_note[1:0]
 [pattern_trace] 1
 [pattern_trace] 0

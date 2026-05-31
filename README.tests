@@ -25,18 +25,16 @@ It has been tested with GTK-Wave using the basic VCD file format, but it should 
 VHDL tests using reports
 ------------------------
 
-The test scripts are mostly VHDL code.
+The test scripts are mostly VHDL code, in order to prevent communication errors between different languages.
 
 The goal is, in general, to verify the data looks like to be computed correctly.
-
-It prevents communication errors between different languages.
 
 The test entity should be started. It exits when done. Some progress information is sent using "report ... severity note". When the test is over, a report is sent by the same way.
 
 To prevent mixture of lines, coming from different entities, there is a management in the high level of some tests.
 An and-reduce checks everybody completed their tests. The entities wait a signal to assert before sending the results (process ... wait until report_in = '1'). When an assertion is received, the report is sent. The output signal is asserted for the next entity.
 
-The report can be an Ok/NOk or data to be inspected. Especially for a low number of bits, the expected result is never reached. For instance sine2+cosine2 is never exactly equal to 1. The minimum and the maximum are generally computed. A decision accepts or rejects the result.
+The report can be an Ok/NOk or data to be inspected. Especially for a low number of bits, the expected result is never reached. For instance sine2+cosine2 is never exactly equal to 1. The minimum and the maximum are generally computed. A human decision accepts or rejects the result.
 
 (For high genericity), (the test is a set of one parametric test) (and a generic test to run the first one) (with many configurations). (One can choose) (according to his activities.)
 
@@ -52,7 +50,7 @@ See the details in their respective files.
 CXX tests
 ---------
 
-In order to test not only the VHDL itself, but how it has been understood.
+In order to test not only the VHDL itself, but how it has been understood by the tools.
 
 They are mostly high level tests.
 It is a general verification to ensure both the mathematics and the implementation are correct.
@@ -61,23 +59,23 @@ Since everything is written in C++, it can run with a large data on many machine
 All the features of a high level language are used, including floating numbers.
 
 The Yosys CXXRTL module produces a C++ file that matches the VHDL. Used with the C++ test file, found in the CXX_VERIF, it produces some statistics and some results.
-They should work with many not too old compilers supporting the C++20. The new format (Python style formatting class) and the execution class should be supported. It is a console software. The results are sent using the iostream class. TODO replace the cout by a reference on a stream object, connected to cout or something else at the beginning.
+They should work with many not too old compilers supporting the C++20. The new Python style formatting class and the execution class should be supported. It is a console software. The results are sent using the iostream class. TODO replace the cout by a reference on a stream object, connected to cout or something else at the beginning.
 
 
 Python tests
 ------------
 
-In the tek and géné foler, there are python software to ensure some mathematical are correct.
+In the tek and géné folder, there are python software to ensure some mathematical are correct.
 Since the values use fixed integers (rather than float), they insure there are no overflow or convergence problems.
 
-They are useful to choose some parameters as well. According to user's requirements, a good precision against resources consumption can be found.
+They are useful to choose some parameters as well. According to user's requirements, a good precision against resources consumption compromise can be found.
 
 
 Dynamic and timing tests
 ------------------------
 
 There is no automated tests for that.
-The design is full synchronous. The circuit should respond against a maximum time path.
+The design is full synchronous. Each elementary part of the circuit between two flip-flops should respond against a maximum time path.
 
 A code review ensures there are no more than:
 * a 1 to 8 'arithm_size' bits selector followed by an 'arithm_size' two inputs exclusive 'or' followed by an 'arithm_size' bits two values plus a ripple carry input adder.
@@ -91,7 +89,7 @@ FPGA based tests
 
 A few tests are written using an FPGA.
 
-The first goal is to see the resource consumption while running synthesis and the P&R.
+The first goal is to see the resource consumption while running the synthesis and the P&R.
 
 The second goal is to run a post synthesis test.
 However, it is a little bit obsolete as the CXX_RTL is similar.
@@ -109,7 +107,7 @@ ASIC production tests.
 Low level.
 ----------
 The communication inter-modules is standard and uses a shift register. Future versions of the project are going to replace the shift registers by an entity. Its first architecture reproduces the SR as today. The second architecture adds injection and monitoring. During all the reg_sync, the master clock of the modules can be stopped, and the registers are all connected in series to load and store the data. By this way all the modules can be tested separately
-Since the data is locally injected in each module, the expected monitored result should be exactly what is expected using simulation or calculation.
+Since the data is locally injected in each module, the expected monitored result should be exactly what is expected using simulation or calculation, without rounding errors accumulation.
 
 High level.
 -----------

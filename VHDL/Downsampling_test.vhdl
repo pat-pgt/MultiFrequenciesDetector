@@ -53,9 +53,9 @@ end entity Downsampling_test;
 
 
 architecture arch of Downsampling_test is
-  signal main_counter                 : unsigned(19 downto 0)               := (others             => '0');
-  signal main_counter_max             : unsigned(main_counter'range)        := ("11111111", others => '0');
-  signal main_counter_end             : unsigned(main_counter'range)        := (others             => '1');
+  signal main_counter                 : natural := 0;
+  signal reg_sync_counter             : natural := 0;
+  signal report_done                  : boolean := false;
   signal CLK                          : std_logic                           := '0';
   signal RST                          : std_logic_vector(8 downto 0)        := (others             => '1');
   signal reg_sync                     : std_logic;
@@ -76,7 +76,6 @@ architecture arch of Downsampling_test is
   type on_data_t is array (0 to N_octaves - 1, 0 to N_notes - 1) of on_data_elem;
   signal on_data : on_data_t :=
     (others => (others => (0, 0, 0.0, 0.0)));
-  signal reg_sync_counter : natural;
 
 begin
   meta_data_in.octave <= std_logic_vector(the_octave_in);
@@ -88,8 +87,11 @@ begin
     variable on_var    : on_data_elem;
     variable the_space : real;
   begin
---    if main_counter /= main_counter_max and main_counter /= main_counter_end then
-    if reg_sync_counter /= 3 * N_notes * N_octaves * 2 ** N_octaves * extra_downsampling then
+    -- A full cycle is on 2**octaves multiplied by the extra_downsampling if so
+    -- For each down-sampling, N_octave are proposed
+    -- This is repeated again for N_notes
+    -- An addiitonal 2 is mulpliplied to pass a warm-up period of N_octaves * N_notes
+    if reg_sync_counter /= 2 * N_notes * N_octaves * 2 ** N_octaves * extra_downsampling then
       -- * 3 times all the cycle
       -- * The down-sampling is repeated for N_notes times
       -- * For each note, there is a choice between N_octaves samples
@@ -100,13 +102,12 @@ begin
         RST(RST'high)                    <= '0';
         RST(RST'high - 1 downto RST'low) <= RST(RST'high downto RST'low + 1);
 
-        main_counter <= main_counter + 1;
-
         -- 1 reg_sync clock cycles and 7 data clock cycles are enough
         --   as there is no arithmetic.
         -- 15 has been chosen to avoid a false positive if the number
         --   of octaves is increased.
-        if or(main_counter(main_counter'low + 3 downto main_counter'low)) = '0' then
+        if main_counter = 15 then
+          main_counter <= 0;
           reg_sync <= '1';
           if start_offset > 0 then
             start_offset <= start_offset - 1;
@@ -130,6 +131,7 @@ begin
             end if;
           end if;
         else
+          main_counter <= main_counter + 1;
           reg_sync <= '0';
           REG_SYNC_IF : if reg_sync = '1' then
             if to_integer(the_octave_in) < N_octaves - 1 then
@@ -148,9 +150,7 @@ begin
       end if;
       CLK <= not CLK;
       wait for 1 ps;
-    elsif main_counter /= main_counter_end then
-      main_counter <= main_counter_end;
-
+    elsif report_done = false then
       assert false report "Simulation is over" severity note;
       assert false report
         "Based on " & natural'image(reg_sync_counter) & " samples: " &
@@ -168,6 +168,7 @@ begin
             severity note;
         end loop NOTES_LOOP;  -- ind
       end loop OCTAVES_LOOP;
+      report_done <= true;
       wait for 1 ps;
     else
       wait;
@@ -201,22 +202,63 @@ use IEEE.STD_LOGIC_1164.all,
   work.Meta_data_package.all;
 
 
---! @brief Test of the down-sampling, mostly the data management.
+--! @brief test of the full downsampling module
 --!
---! The goals are mostly
---! * to help the design
---! * a quick verification there is no cross talk in the channels \n
---! For a complete verification, see the CXX software
---!   @ref ...
+--! This test assumes the controller has been fully tested and is correct.
+--! The catch and the forward signals match the parameters,
+--!   including the extra downsampling.\n
+--! We are testing now if the correct data is caught at the correct time
+--!   and if the related meta-data fits the output.\n
+--! The strobe should be active only during the forwarding of the data.
+--! Indeed, the strobe is used in the Cordic Y to 0 stages
+--!   in case the multi angles is used.
+--! It is the synchronization of the multiple runs.
+--! TODO implement it TODO document it.\n
+--! We test here only if the relevant registers are loaded and shifted.
+--! All the bits of a register type are loaded and should remain the same.
+--! First, since the bits are parallel loaded or shifted, there is no reason
+--!   to have some scrambling.
+--! Second, the high level CXX test can easily detect scrambling.\n
+--! To do that, the bits are "tinted"
+--!   against the note for the sine and the octave for the cosine.
+--! A LUT converts the IDs into 6 of the 9 states of the VHDL standard logic.
+--! A system-C implementation would have been better,
+--!  using the inheritance of the signals to add some data.\n
+--! A quick check, using a wave viewer, can verify the output bits
+--!   are properly tinted.
+--! The note should appear <N_octaves> times.
+--! The highest octave appears in 50% of the case,
+--!   the N-1 appears in 25 of the cases.
+--! Only a quick test is relevant as the CXX test should see
+--!   the same frequency for all the octaves for a given note.\n
+--! A check, using the VHDL reports tells how many octave notes couple
+--!   match or not match the tint.
+--! It is the most important as if something is wrong,
+--!   It would have been difficult to debug.
+--! Since it is an exhaustive test of all the octave notes couple,
+--!   all the possible bugs can be found.\n
+--! One may want to "tickle" the tint LUT and re-run the test.
+-- The test is divided in 5 blocs:
+-- * A set of counter to emulate the AngleGene module
+--   sending octaves from the lowest to the highest
+--   inside super frames per note.
+-- * A set of shift registers and bits filling,
+--   according to the octave or the note,
+--   to emulate the previous module.
+-- * The connection with the DUT.
+-- * A check that all the output bits are tinted by the same value.
+--   and compare it matches with the output meta-data.
+-- * A display of the match/unmatch counts.entity Downsampling_bundle_test is
 entity Downsampling_bundle_test is
-
+  generic (
+    extra_downsampling : positive := 1);
 end entity Downsampling_bundle_test;
 
 architecture arch of Downsampling_bundle_test is
-  signal reg_counter : unsigned(StateNumbers_2_BitsNumbers(reg_size / arithm_size) + 1 - 1 downto
-                                0) := (others => '0');
-  signal main_counter     : unsigned(12 downto 0)        := (others      => '0');
-  signal main_counter_max : unsigned(main_counter'range) := ('1', others => '0');
+  signal reg_sync_counter : natural := 0;
+  signal main_counter     : natural := 0;
+
+  signal report_done      : boolean := false;
   signal CLK              : std_logic                    := '0';
   signal RST              : std_logic_vector(8 downto 0) := (others      => '1');
   signal reg_sync         : std_logic;
@@ -259,8 +301,6 @@ architecture arch of Downsampling_bundle_test is
   signal run_match_tint                     :    boolean;
 --! In order to verify the data matches what has been catched,
   --!   we use a maximum number of std_logic symbols to tint.
-  --! A system-C version would have make the things easy
-  --!   as one can inherit the type by some meta-data.
   function tint_bits_per_octave_note (the_value : in natural)
     return std_logic is
     variable the_return : std_logic;
@@ -299,17 +339,21 @@ begin
     variable match_tint_y_v      : boolean;
     variable match_tint_cmp_bloc : std_logic_vector(arithm_size - 1 downto 0);
   begin
-    if main_counter /= main_counter_max then
+    -- A full cycle is on 2**octaves multiplied by the extra_downsampling if so
+    -- For each down-sampling, N_octave are proposed
+    -- This is repeated again for N_notes
+    -- An addiitonal 2 is mulpliplied to pass a warm-up period of N_octaves * N_notes
+    if reg_sync_counter /= 2 * N_notes * N_octaves * 2 ** N_octaves * extra_downsampling then
       CLK_IF : if CLK = '1' then
         RST(RST'high)                    <= '0';
         RST(RST'high - 1 downto RST'low) <= RST(RST'high downto RST'low + 1);
 
-        PRE_REG_IF : if to_integer(reg_counter) = reg_size / arithm_size then
-          reg_counter   <= (others => '0');
-          main_counter  <= main_counter + 1;
+        PRE_REG_IF : if main_counter = reg_size / arithm_size then
+          reg_sync_counter <= reg_sync_counter + 1;
+          main_counter  <= 0;
           reg_sync      <= '1';
         else
-          reg_counter <= reg_counter + 1;
+          main_counter <= main_counter + 1;
           reg_sync    <= '0';
           REG_SYNC_IF : if reg_sync = '1' then
             if to_integer(the_octave_in) < N_octaves - 1 then
@@ -326,8 +370,9 @@ begin
           STROBE_IF : if run_match_tint then
             match_tint_cmp_bloc := (others => tint_bits_per_octave_note(to_integer(unsigned(next_octave))));
             match_tint_x_v      := true;
-            -- TEMP TEMP TEMP For now, check ony the body, not the edges
-            for ind in 4 to reg_size / arithm_size - 4 loop
+            -- To check ony the body, not the edges use the mine just below
+            -- for ind in 4 to reg_size / arithm_size - 4 loop
+            for ind in 0 to reg_size / arithm_size - 1 loop
               if match_tint_cmp_bloc /=
                 next_scz.the_cos(next_scz.the_cos'low + (ind + 1) * arithm_size - 1 downto
                                  next_scz.the_cos'low + ind * arithm_size) then
@@ -384,6 +429,18 @@ begin
         end if;
       end if CLK_IF;
       CLK <= not CLK;
+      wait for 1 ps;
+    elsif report_done = false then
+      assert false report "Simulation has ended" severity note;
+      assert false report "Octave tint matches, there are/is " &
+        integer'image(number_good_X) & " good, " &
+        integer'image(number_bad_X) & " bad"
+        severity note;
+      assert false report "Note tint matches, there are/is " &
+        integer'image(number_good_Y) & " good, " &
+        integer'image(number_bad_Y) & " bad"
+        severity note;
+      report_done <= true;
       wait for 1 ps;
     else
       wait;                             -- for ever;
