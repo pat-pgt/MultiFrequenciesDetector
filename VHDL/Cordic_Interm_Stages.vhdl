@@ -57,6 +57,10 @@ architecture rtl of Cordic_IntermStage is
   constant angle_add_or_subtract                  : reg_type  := arctg_2_angle_reg(shifts_calc);
   signal CCW_not_CW                             : std_logic;
   signal X2_plus_Y2 : std_logic_vector( 31 downto 0 );
+
+
+  signal  meta_data_temp  : meta_data_t;
+
 begin
   -- To be improved with automatic size
   assert reg_size < 2**remaining_shift_count'length report "Internal error" severity failure;
@@ -74,7 +78,15 @@ begin
   
   scz_out <= scz_out_s;
 
-
+  bypass_MD: process (Meta_data_in) is
+  begin
+    -- Details, see below
+    -- If Z to 0, "undelay" the metadata
+    if shifts_calc = 4 and Z_not_Y_to_0 then
+      meta_data_out         <= meta_data_in;
+    end if;
+  end process bypass_MD;
+  
   main_proc : process(CLK)
     variable carry_in_vector_X            : std_logic_vector(arithm_size downto 0);
     variable carry_in_vector_Y            : std_logic_vector(arithm_size downto 0);
@@ -99,7 +111,15 @@ begin
           end if;
           sign_X <= scz_in.the_cos(scz_in.the_cos'high);
           sign_Y <= scz_in.the_sin(scz_in.the_sin'high);
-          meta_data_out         <= meta_data_in;
+          if shifts_calc /= 4 then
+            -- Stage 4 has been chosen to not be the first nor the mast one
+            -- Not the stage 4, do it as usual
+            meta_data_out         <= meta_data_in;
+          elsif not Z_not_Y_to_0 then
+            -- If Y to 0, delay the meta data by one reg_sync
+              meta_data_temp        <= meta_data_in;
+              meta_data_out         <= meta_data_temp;
+          end if;
           remaining_shift_count <= std_logic_vector(to_unsigned(reg_size - shifts_calc, remaining_shift_count'length));
           Z_shifts_count        <= (others => '0');
           is_first              <= '1';

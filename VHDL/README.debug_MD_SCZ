@@ -1,0 +1,24 @@
+Up to now, without the down-sampling, the meta-data was forwarded from an intermediary stage to another one.
+No interaction exited with the sine and cosine, and there was always some valid data at each frame (between two reg_sync)
+
+They could even be two separated projects.
+
+The CXX_RTL test shown a correct result.
+
+
+
+Now, if the down-sampling applied,  the meta-data has an impact on the behavior and, in this example, 1/6 of the frames are valid.
+
+The result was completely wrong. Changing fill up data during the invalid frames changes the result.
+
+
+
+A patch has been applied to:
+* Reduce 1 reg_sync the number of hops of the meta-data during the Z to 0 set of intermediary stages
+* Increase 1 reg_sync the number of hops of the meta-data during the Y to 0 set of intermediary stages
+
+As we can see in the Debug_MD_SCZ.out.txt, the result is now correct.
+
+
+
+Then 2 bugs have to be found.
