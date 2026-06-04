@@ -203,10 +203,7 @@ package Cordic_package is
       meta_data_in  : in  meta_data_t;
       meta_data_out : out meta_data_t;
       scz_in        : in  reg_sin_cos_z;
-      X_out         : out reg_type;
-      Y_out         : out reg_type;
-      Z_out         : out reg_type;
-      Y_expon_out   : out std_logic_vector(5 downto 0);
+      scz_out       : out reg_sin_cos_z;
       report_in     : in  std_logic;
       report_out    : out std_logic);
   end component Cordic_Bundle_Y_to_0;

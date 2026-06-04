@@ -5,6 +5,7 @@ use IEEE.STD_LOGIC_1164.all,
 
   work.InterModule_formats.reg_type,
   work.InterModule_formats.reg_size,
+  work.InterModule_formats.reg_sin_cos_z,
 
   work.Meta_data_package.meta_data_t,
   work.Meta_data_package.meta_data_list_t,
@@ -41,10 +42,7 @@ package Cordic_E2E_DC_Bundle_pac is
       Y_out_Z_2_0            : out reg_type;
       Z_out_Z_2_0            : out reg_type;
       Z_Z_2_0_expon_out      : out std_logic_vector(5 downto 0);
-      X_out_Y_2_0            : out reg_type;
-      Y_out_Y_2_0            : out reg_type;
-      Z_out_Y_2_0            : out reg_type;
-      Y_Y_2_0_expon_out      : out std_logic_vector(5 downto 0);
+      SCZ_out_Y_2_0          : out reg_sin_cos_z;
       report_cordic_bundle_1 : in  std_logic;
       meta_data_Z_2_0_out    : out meta_data_t;
       meta_data_Y_2_0_out    : out meta_data_t
@@ -93,10 +91,7 @@ entity Cordic_E2E_DC_Bundle is
     Y_out_Z_2_0            : out reg_type;
     Z_out_Z_2_0            : out reg_type;
     Z_Z_2_0_expon_out      : out std_logic_vector(5 downto 0);
-    X_out_Y_2_0            : out reg_type;
-    Y_out_Y_2_0            : out reg_type;
-    Z_out_Y_2_0            : out reg_type;
-    Y_Y_2_0_expon_out      : out std_logic_vector(5 downto 0);
+    SCZ_out_Y_2_0          : out reg_sin_cos_z;
     report_cordic_bundle_1 : in  std_logic;
     meta_data_Z_2_0_out    : out meta_data_t;
     meta_data_Y_2_0_out    : out meta_data_t
@@ -241,10 +236,8 @@ begin
       meta_data_in  => meta_data_5,
       meta_data_out => meta_data_Y_2_0_out,
       scz_in        => scz_3,
-      X_out         => X_out_Y_2_0,
-      Y_out         => Y_out_Y_2_0,
-      Z_out         => Z_out_Y_2_0,
-      Y_expon_out   => Y_Y_2_0_expon_out,
+      scz_out       => SCZ_out_Y_2_0,
       report_in     => report_cordic_bundle_2);
 
+  
 end architecture arch;

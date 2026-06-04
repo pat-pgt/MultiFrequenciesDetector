@@ -5,6 +5,7 @@ use IEEE.STD_LOGIC_1164.all,
   work.Utils_pac.StateNumbers_2_BitsNumbers,
   work.InterModule_formats.reg_type,
   work.InterModule_formats.reg_size,
+  work.InterModule_formats.reg_sin_cos_z,
   work.Meta_data_package.N_notes,
   work.Meta_data_package.N_octaves,
   work.Meta_data_package.meta_data_t,
@@ -52,29 +53,39 @@ end entity Cordic_E2E_DC_CXX_test;
 
 
 architecture arch of Cordic_E2E_DC_CXX_test is
-  signal RST_monitor_Z_2_0 : natural := nbre_Z_2_0_stages + 5;
-  signal RST_monitor_Y_2_0 : natural := nbre_Y_2_0_stages + 5;
-  signal meta_data_Z_2_0_out     : meta_data_t;
-  signal meta_data_Y_2_0_out     : meta_data_t;
+  signal RST_monitor_Z_2_0    : natural := nbre_Z_2_0_stages + 5;
+  signal RST_monitor_Y_2_0    : natural := nbre_Y_2_0_stages + 5;
+  signal meta_data_Z_2_0_out  : meta_data_t;
+  signal meta_data_Y_2_0_out  : meta_data_t;
 
   signal report_cordic_bundle : std_logic := '0';
-
+  signal SCZ_out_Y_2_0        : reg_sin_cos_z;
 begin
     nbre_Z_2_0_stages_out <= nbre_Z_2_0_stages;
     nbre_Y_2_0_stages_out <= nbre_Y_2_0_stages;
 
     reg_size_4_verif      <= reg_size;
 
+    --! Since the C++ software may not know the reg_sin_cos_z type
+    --!   we split into multiples signals.
+    --! Since it is supposed to be read by a verification software,
+    --!   we expose directly the shift registers,
+    --!   it is supposed to read during the reg_sync.
+    --! 
     metadata_Z_2_0_note   <= meta_data_Z_2_0_out.note;
     metadata_Z_2_0_octave <= meta_data_Z_2_0_out.octave;
     metadata_Y_2_0_note   <= meta_data_Y_2_0_out.note;
     metadata_Y_2_0_octave <= meta_data_Y_2_0_out.octave;
     metadata_Y_2_0_strobe <= meta_data_Y_2_0_out.strobe;
-  
+
+    X_Y_2_0 <= SCZ_out_Y_2_0.the_sin;
+    Y_Y_2_0 <= SCZ_out_Y_2_0.the_cos;
+    Z_Y_2_0 <= SCZ_out_Y_2_0.angle_z;
+
   Cordic_E2E_DC_Bundle_instanc : Cordic_E2E_DC_Bundle
     generic map(
-      --! 0         : no downsampling
-      --! 1 or more : downsampling without or with N extra rate
+      --! 0         : no down-sampling
+      --! 1 or more : down-sampling without or with N extra rate
       with_downsampling,
       metadata_catch_list => metadata_catch_list,
       nbre_Z_2_0_stages   => nbre_Z_2_0_stages,
@@ -92,10 +103,7 @@ begin
       Y_out_Z_2_0            => Y_Z_2_0,
       Z_out_Z_2_0            => Z_Z_2_0,
       Z_Z_2_0_expon_out      => open,
-      X_out_Y_2_0            => X_Y_2_0,
-      Y_out_Y_2_0            => Y_Y_2_0,
-      Z_out_Y_2_0            => Z_Y_2_0,
-      Y_Y_2_0_expon_out      => open,
+      SCZ_out_Y_2_0          => SCZ_out_Y_2_0,
       report_cordic_bundle_1 => report_cordic_bundle,
       meta_data_Z_2_0_out    => meta_data_Z_2_0_out,
       meta_data_Y_2_0_out    => meta_data_Y_2_0_out

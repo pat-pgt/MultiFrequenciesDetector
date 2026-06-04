@@ -4,6 +4,7 @@ use IEEE.STD_LOGIC_1164.all,
   ieee.math_real.all,
   work.InterModule_formats.reg_type,
   work.InterModule_formats.reg_size,
+  work.InterModule_formats.reg_sin_cos_z,
   work.Meta_data_package.meta_data_t,
   work.Meta_data_package.meta_data_list_t,
   work.MultiFreqDetect_package.cordic_stages_num_list,
@@ -54,6 +55,7 @@ architecture rtl of Cordic_E2E_DC_FPGA_test is
   signal X_out_Y_2_0         : reg_type;
   signal Y_out_Y_2_0         : reg_type;
   signal Z_out_Y_2_0         : reg_type;
+  signal SCZ_out_Y_2_0       : reg_sin_cos_z;
   signal meta_data_out       : meta_data_t;
   
   signal report_cordic_bundle : std_logic := '0';
@@ -66,8 +68,23 @@ begin
   Y_Y_2_0 <= X_out_Y_2_0(Y_out_Y_2_0'high downto Y_out_Y_2_0'high - Y_Y_2_0'length + 1 );
   Z_Y_2_0 <= X_out_Y_2_0(Z_out_Y_2_0'high downto Z_out_Y_2_0'high - Z_Y_2_0'length + 1 );
 
-  metadata_note <= meta_data_out.note;
-  metadata_octave <= meta_data_out.octave;
+  --! @brief Split and latch for a better readability
+  --!
+  --! Since the FPGA does not know the reg_sin_cos_z type
+  --!   we split into multiples signals.
+  --! Since it is supposed to be check using a logic analyser,
+  --!   we don't expose the shift registers directly
+  latch_proc: process (CLK) is
+  begin
+    if rising_edge(CLK) then
+      metadata_note <= meta_data_out.note;
+      metadata_octave <= meta_data_out.octave;
+      
+      X_out_Y_2_0 <= SCZ_out_Y_2_0.the_sin;
+      Y_out_Y_2_0 <= SCZ_out_Y_2_0.the_cos;
+      Z_out_Y_2_0 <= SCZ_out_Y_2_0.angle_z;
+    end if;
+  end process latch_proc;
   
   casting_X : process( input_X ) is
     variable ind_in : integer;
@@ -120,7 +137,7 @@ begin
       end if;
     end if CLK_IF;
   end process RST_monitor_proc;
-
+  
   Cordic_E2E_DC_Bundle_instanc : Cordic_E2E_DC_Bundle
     generic map(
       metadata_catch_list => metadata_catch_list,
@@ -129,8 +146,8 @@ begin
       stages_catch_list   => stages_catch_list
       )
     port map(
-      CLK                    => CLK,
-      RST                    => RST,
+      CLK                    ,
+      RST                    ,
       input_x                => casted_X,
       input_y                => casted_Y,
       reg_sync               => reg_sync,
@@ -139,10 +156,7 @@ begin
       Y_out_Z_2_0            => Y_out_Z_2_0,
       Z_out_Z_2_0            => Z_out_Z_2_0,
       Z_Z_2_0_expon_out      => open,
-      X_out_Y_2_0            => X_out_Y_2_0,
-      Y_out_Y_2_0            => Y_out_Y_2_0,
-      Z_out_Y_2_0            => Z_out_Y_2_0,
-      Y_Y_2_0_expon_out      => open,
+      SCZ_out_Y_2_0          => SCZ_out_Y_2_0,
       report_cordic_bundle_1 => report_cordic_bundle,
       meta_data_Y_2_0_out    => meta_data_out
       );
