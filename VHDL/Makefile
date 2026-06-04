@@ -137,6 +137,9 @@ synth_Cordic_E2E_DC_FPGA	: $(BUILDDIR)packages_compiled
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_IO_Stages.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_Interm_Stages.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_Bundle_Stages.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Downsampling_package.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Downsampling.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_E2E_DC_bundle.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SRCDIR)Cordic_E2E_DC_FPGA_test.vhdl
 	mkdir -p $(SYNTHDESTDIR)
 	$(YOSYS_PROG) -m ghdl -p '$(GHDL_PROG) $(VFLAGS) -gnbre_Z_2_0_stages=12 -gnbre_Y_2_0_stages=15 Cordic_E2E_DC_FPGA_test; synth_ice40 -json $(SYNTHDESTDIR)Cordic.ice40.json' 2>&1 |tee $(SYNTHDESTDIR)Cordic.synth.out.txt
