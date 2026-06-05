@@ -22,10 +22,6 @@ entity Cordic_Bundle_Z_to_0 is
     meta_data_out : out meta_data_t;
     scz_in        : in  reg_sin_cos_z;
     scz_out       : out reg_sin_cos_z;
-    X_out         : out reg_type;
-    Y_out         : out reg_type;
-    Z_out         : out reg_type;
-    Z_expon_out   : out std_logic_vector(5 downto 0);
     report_in     : in  std_logic;
     report_out    : out std_logic);
 end entity Cordic_Bundle_Z_to_0;
@@ -92,19 +88,6 @@ begin
         scz_in        => scz_array(ind - 1),
         scz_out       => scz_array(ind));
   end generate gene_interm;
-
-  last_stage_instanc : Cordic_LastStage_4_test
-    generic map (
-      Z_not_Y_2_0    => true)
-    port map (
-      CLK            => CLK,
-      RST            => RST,
-      reg_sync       => reg_sync,
-      scz_in         => scz_array(stages_nbre),
-      X_out          => X_out,
-      Y_out          => Y_out,
-      Z_out          => Z_out,
-      error_exponent => Z_expon_out);
 
 end architecture rtl;
 

@@ -59,6 +59,7 @@ architecture arch of Cordic_E2E_DC_CXX_test is
   signal meta_data_Y_2_0_out  : meta_data_t;
 
   signal report_cordic_bundle : std_logic := '0';
+  signal SCZ_out_Z_2_0        : reg_sin_cos_z;
   signal SCZ_out_Y_2_0        : reg_sin_cos_z;
 begin
     nbre_Z_2_0_stages_out <= nbre_Z_2_0_stages;
@@ -82,7 +83,11 @@ begin
     Y_Y_2_0 <= SCZ_out_Y_2_0.the_cos;
     Z_Y_2_0 <= SCZ_out_Y_2_0.angle_z;
 
-  Cordic_E2E_DC_Bundle_instanc : Cordic_E2E_DC_Bundle
+    X_Z_2_0 <= SCZ_out_Z_2_0.the_sin;
+    Y_Z_2_0 <= SCZ_out_Z_2_0.the_cos;
+    Z_Z_2_0 <= SCZ_out_Z_2_0.angle_z;
+
+    Cordic_E2E_DC_Bundle_instanc : Cordic_E2E_DC_Bundle
     generic map(
       --! 0         : no down-sampling
       --! 1 or more : down-sampling without or with N extra rate
@@ -99,10 +104,7 @@ begin
       input_y                => input_Y,
       reg_sync               => reg_sync,
       full_sync              => full_sync,
-      X_out_Z_2_0            => X_Z_2_0,
-      Y_out_Z_2_0            => Y_Z_2_0,
-      Z_out_Z_2_0            => Z_Z_2_0,
-      Z_Z_2_0_expon_out      => open,
+      SCZ_out_Z_2_0          => SCZ_out_Z_2_0,
       SCZ_out_Y_2_0          => SCZ_out_Y_2_0,
       report_cordic_bundle_1 => report_cordic_bundle,
       meta_data_Z_2_0_out    => meta_data_Z_2_0_out,

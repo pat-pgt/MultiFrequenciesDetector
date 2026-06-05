@@ -38,10 +38,7 @@ package Cordic_E2E_DC_Bundle_pac is
       input_y                : in  std_logic_vector(reg_size - 2 downto 0);
       reg_sync               : out std_logic;
       full_sync              : out std_logic;
-      X_out_Z_2_0            : out reg_type;
-      Y_out_Z_2_0            : out reg_type;
-      Z_out_Z_2_0            : out reg_type;
-      Z_Z_2_0_expon_out      : out std_logic_vector(5 downto 0);
+      SCZ_out_Z_2_0          : out reg_sin_cos_z;
       SCZ_out_Y_2_0          : out reg_sin_cos_z;
       report_cordic_bundle_1 : in  std_logic;
       meta_data_Z_2_0_out    : out meta_data_t;
@@ -87,10 +84,7 @@ entity Cordic_E2E_DC_Bundle is
     input_y                : in  std_logic_vector(reg_size - 2 downto 0);
     reg_sync               : out std_logic;
     full_sync              : out std_logic;
-    X_out_Z_2_0            : out reg_type;
-    Y_out_Z_2_0            : out reg_type;
-    Z_out_Z_2_0            : out reg_type;
-    Z_Z_2_0_expon_out      : out std_logic_vector(5 downto 0);
+    SCZ_out_Z_2_0          : out reg_sin_cos_z;
     SCZ_out_Y_2_0          : out reg_sin_cos_z;
     report_cordic_bundle_1 : in  std_logic;
     meta_data_Z_2_0_out    : out meta_data_t;
@@ -107,7 +101,6 @@ architecture arch of Cordic_E2E_DC_Bundle is
   signal meta_data_5            : meta_data_t;
   signal Meta_data_Y_2_0_in     : meta_data_t;
   signal scz_1                  : reg_sin_cos_z;
-  signal scz_Z_2_0_out          : reg_sin_cos_z;
   signal scz_Y_2_0_in           : reg_sin_cos_z;
   signal scz_3                  : reg_sin_cos_z;
   signal report_cordic_bundle_2 : std_logic := '0';
@@ -156,16 +149,12 @@ begin
       meta_data_in  => meta_data_2,
       meta_data_out => meta_data_Z_2_0_out,
       scz_in        => scz_1,
-      scz_out       => scz_Z_2_0_out,
-      X_out         => X_out_Z_2_0,
-      Y_out         => Y_out_Z_2_0,
-      Z_out         => Z_out_Z_2_0,
-      Z_expon_out   => Z_Z_2_0_expon_out,
+      scz_out       => scz_out_Z_2_0,
       report_in     => report_cordic_bundle_1,
       report_out    => report_cordic_bundle_2);
 
   BYPASS_DOWNSAMPLING: if with_downsampling = 0 generate
-    scz_Y_2_0_in <= scz_Z_2_0_out;
+    scz_Y_2_0_in <= scz_out_Z_2_0;
     OPY_INSERT_STROBE: process ( meta_data_Z_2_0_out ) is
       variable meta_data_v : meta_data_t;
     begin
@@ -203,7 +192,7 @@ begin
       reg_sync      => reg_sync_interm,
       meta_data_in  => meta_data_Z_2_0_out,
       meta_data_out => meta_data_Y_2_0_in,
-      scz_in        => scz_Z_2_0_out,
+      scz_in        => scz_out_Z_2_0,
       scz_out       => scz_Y_2_0_in,
       xy_is_neg     => xy_is_neg
       );

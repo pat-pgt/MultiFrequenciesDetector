@@ -56,6 +56,7 @@ architecture rtl of Cordic_E2E_DC_FPGA_test is
   signal Y_out_Y_2_0         : reg_type;
   signal Z_out_Y_2_0         : reg_type;
   signal SCZ_out_Y_2_0       : reg_sin_cos_z;
+  signal SCZ_out_Z_2_0       : reg_sin_cos_z;
   signal meta_data_out       : meta_data_t;
   
   signal report_cordic_bundle : std_logic := '0';
@@ -83,6 +84,10 @@ begin
       X_out_Y_2_0 <= SCZ_out_Y_2_0.the_sin;
       Y_out_Y_2_0 <= SCZ_out_Y_2_0.the_cos;
       Z_out_Y_2_0 <= SCZ_out_Y_2_0.angle_z;
+
+      X_out_Z_2_0 <= SCZ_out_Z_2_0.the_sin;
+      --Y_out_Z_2_0            => Y_out_Z_2_0,
+      --Z_out_Z_2_0            => Z_out_Z_2_0,
     end if;
   end process latch_proc;
   
@@ -152,11 +157,8 @@ begin
       input_y                => casted_Y,
       reg_sync               => reg_sync,
       full_sync              => full_sync,
-      X_out_Z_2_0            => X_out_Z_2_0,
-      Y_out_Z_2_0            => Y_out_Z_2_0,
-      Z_out_Z_2_0            => Z_out_Z_2_0,
-      Z_Z_2_0_expon_out      => open,
       SCZ_out_Y_2_0          => SCZ_out_Y_2_0,
+      SCZ_out_Z_2_0          => SCZ_out_Z_2_0,
       report_cordic_bundle_1 => report_cordic_bundle,
       meta_data_Y_2_0_out    => meta_data_out
       );
