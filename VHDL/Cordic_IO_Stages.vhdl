@@ -70,7 +70,6 @@ end entity Cordic_FirstStage_Z_to_0;
 architecture rtl of Cordic_FirstStage_Z_to_0 is
   signal scz_local       : reg_sin_cos_z;
   signal z_3_high_bits   : std_logic_vector(2 downto 0);
-  signal meta_data_local : meta_data_t;
 
 begin
   assert input_x'length > 3 report "The size of input_x (" & integer'image(input_x'length) &
@@ -87,19 +86,21 @@ begin
 
 
   reg_sync_out <= reg_sync_in;
-  
+
+  --! @brief Process to rotate the vector according with the 3 angle high bits
+  --!
+  --! The difference with many other stages, in the project,
+  --!   is the data comes in parallel.
+  --! Then, it has to emulate the previous stage with a shift register named "local".
+  --! It is loaded during the reg_sync.
+  --! The latency is still 1.
   main_proc : process(CLK)
     variable temp_reg_X, temp_reg_Y : reg_type;
     variable high_bits_Z            : std_logic_vector(2 downto 0);
   begin
     CLK_IF : if rising_edge(CLK) then
       REGSYNC_IF : if reg_sync_in = '1' then
-        -- The latency is 2
-        -- * store the values into the scz_local
-        -- * shift them for the output.
-        -- Then the metadata should be delayed by 2
-        meta_data_local <= meta_data_in;
-        meta_data_out   <= meta_data_local;
+        meta_data_out <= meta_data_in;
         -- Sync, parallel load the input registers
         --
         -- Load the registers X and Y, while formatting
