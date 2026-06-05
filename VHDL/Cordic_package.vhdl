@@ -91,48 +91,9 @@ package Cordic_package is
       );
   end component Cordic_IntermStage;
 
---! @brief Cordic last stage for test
---!
---! This converts the serial format of X, Y and Z
---!   to parallel and check.\n
---! This gets the exponent of the value that
---!   should converge to 0.
-  component Cordic_LastStage_4_test is
-    generic (
-      Z_not_Y_2_0    : boolean
-      );
-    port (
-      CLK            : in  std_logic;
-      RST            : in  std_logic;
-      reg_sync       : in  std_logic;
-      scz_in         : in  reg_sin_cos_z;
-      X_out          : out reg_type;
-      Y_out          : out reg_type;
-      Z_out          : out reg_type;
-      error_exponent : out std_logic_vector(5 downto 0)
-      );
-  end component Cordic_LastStage_4_test;
-
---! @brief Cordic last stage for processing
---!
---! This converts into parallel with mantissa and exponent
---!   
-  component Cordic_LastStage_4_processing is
-    generic (
-      Z_not_Y_2_0    : boolean
-      );
-    port (
-      CLK        : in  std_logic;
-      RST        : in  std_logic;
-      reg_sync   : in  std_logic;
-      scz_in     : in  reg_sin_cos_z;
-      X_out      : out reg_type;
-      X_exponent : out std_logic_vector(5 downto 0);
-      Z_out      : out reg_type;
-      Z_exponent : out std_logic_vector(5 downto 0)
-      );
-  end component Cordic_LastStage_4_processing;
-
+  --! @brief Cordic Bundle Z to 0
+  --!
+  --! Instantiate and connect the intermediary stages
   component Cordic_Bundle_Z_to_0 is
     generic (
       --! Number of stages with shifts, some warnings applies, see in the code
@@ -149,10 +110,6 @@ package Cordic_package is
       meta_data_out : out meta_data_t;
       scz_in        : in  reg_sin_cos_z;
       scz_out       : out reg_sin_cos_z;
-      X_out         : out reg_type;
-      Y_out         : out reg_type;
-      Z_out         : out reg_type;
-      Z_expon_out   : out std_logic_vector(5 downto 0);
       report_in     : in  std_logic;
       report_out    : out std_logic);
   end component Cordic_Bundle_Z_to_0;
@@ -187,6 +144,9 @@ package Cordic_package is
       );
   end component Cordic_FirstStage_Y_to_0;
 
+  --! @brief Cordic Bundle Y to 0
+  --!
+  --! Instantiate and connect the intermediary stages
   component Cordic_Bundle_Y_to_0 is
     generic (
       --! Number of stages with shifts, some warnings applies, see in the code
