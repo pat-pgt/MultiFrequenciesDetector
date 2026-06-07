@@ -79,12 +79,12 @@ begin
     metadata_Y_2_0_octave <= meta_data_Y_2_0_out.octave;
     metadata_Y_2_0_strobe <= meta_data_Y_2_0_out.strobe;
 
-    X_Y_2_0 <= SCZ_out_Y_2_0.the_sin;
-    Y_Y_2_0 <= SCZ_out_Y_2_0.the_cos;
+    X_Y_2_0 <= SCZ_out_Y_2_0.the_cos;
+    Y_Y_2_0 <= SCZ_out_Y_2_0.the_sin;
     Z_Y_2_0 <= SCZ_out_Y_2_0.angle_z;
 
-    X_Z_2_0 <= SCZ_out_Z_2_0.the_sin;
-    Y_Z_2_0 <= SCZ_out_Z_2_0.the_cos;
+    X_Z_2_0 <= SCZ_out_Z_2_0.the_cos;
+    Y_Z_2_0 <= SCZ_out_Z_2_0.the_sin;
     Z_Z_2_0 <= SCZ_out_Z_2_0.angle_z;
 
     Cordic_E2E_DC_Bundle_instanc : Cordic_E2E_DC_Bundle

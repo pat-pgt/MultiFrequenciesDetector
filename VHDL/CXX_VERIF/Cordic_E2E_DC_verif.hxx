@@ -1,7 +1,9 @@
-#include <Cordic_E2E_DC_CXX.cpp>
+#include <Cordic_E2E_DC_CXX_noDS.cpp>
+#include <Cordic_E2E_DC_CXX_DS1.cpp>
+#include <Cordic_E2E_DC_CXX_DS2.cpp>
 
-#include <execution>
 #include <algorithm>
+#include <execution>
 #include <chrono>
 #include <iostream>
 #include <limits>
@@ -98,7 +100,7 @@ public:
 	long long Y2 = a.Y_init;
 	long double scalarProduct = X1 * X2 + Y1 * Y2;
 	// Since it has been checked the modules squared are always constant
-	// It is assume here the sqrt( module_1 ** 2 ).sqrt( module_2 ** 2 ) = module_2 ** 2
+	// It is assumed here the sqrt( module_1 ** 2 ).sqrt( module_2 ** 2 ) = module_2 ** 2
 	return scalarProduct / GetModuleSquared();
   }
   operator string()const{
@@ -110,15 +112,11 @@ public:
 };
 /* @brief Holds the initial values
  *
- * THIS DOCUMLENTATION IS OUTDATED
  * Since the Cordic algorithm grows the values, the input is divided by 2.
+ * The Python emulations validate that, for the 3 first stages done "by hand".\n
  * Functions are provided for standard IT formats and for the vector size in VHDL
  * (CXXRTL expects the unused bits are 0).\n
- * This is a first version that runs ONLY for 32 bits reg_size.
- * It should be moved into an implementation using bit wise.
- * However, due to the implementation, one bigger and one smaller test
- *   can validate the design.
- * That means a future 16 and a future 48 bits may be enough
+ * It is a template instantiation. However, for now, it is specific instantiations.
  */ 
   template <typename cxx_reg_type, unsigned short reg_size>
   class InitialValueData : public XY_Data<cxx_reg_type, reg_size>
@@ -127,18 +125,17 @@ public:
   InitialValueData() = delete;
   InitialValueData(const int&X_init,const int&Y_init);
 
-
   long double module_value_type()const;
   /** @brief Get the X value for the VHDL
    *
    * @return the value
    */
-  constexpr int Get_X_init_2divided()const;
+  constexpr cxx_reg_type Get_X_init_2divided()const;
 /** @brief Get the Y value for the VHDL
    *
    * @return the value
    */
-  constexpr int Get_Y_init_2divided()const;
+  constexpr cxx_reg_type Get_Y_init_2divided()const;
   /** @brief Get size to compare with the VHDL
    *
    * This function returns the number of BITS.
@@ -181,6 +178,7 @@ public:
   string Display_without_offset_normalize()const;
   string Display_arccos_degrees()const;
   operator unsigned int()const{return nbre_points;}
+  string Display_arccos_Nth_turns()const;
 };
 
 
@@ -212,8 +210,9 @@ struct SimulDataType
 		   pair<cxx_reg_type, stats<double> > > check_spin_per_ON_constant;
 	}  Y_2_0;
 
-	SimulDataType()=delete;
-	SimulDataType(const long double&module_vector,
-				  const unsigned short &Z_2_0_stages,const unsigned short&Y_2_0_stages);
+	void Init(const long double&module_vector,
+		 const unsigned short &Z_2_0_stages,const unsigned short&Y_2_0_stages);
 	optional<unsigned int> GetAndCheck_nbre_points()const;
 };
+
+
