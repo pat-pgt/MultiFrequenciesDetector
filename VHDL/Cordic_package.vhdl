@@ -78,7 +78,11 @@ package Cordic_package is
       --! With the preprocessing, it is a non-sense to start before 1
       --! With the high limit to rs - 4, the last shifted number
       --!   contains 3 bits with a sign.
-      shifts_calc  : integer range 1 to reg_size - 4
+      shifts_calc  : integer range 1 to reg_size - 4;
+      --! After the down-sampling, the strobe is active during 1/<number of octaves> of the time.
+      --! The idle times can be used to process the next shift,
+      --!   rather than consume resources.
+      extra_shifts : integer range 0 to 7 := 0
       );
     port (
       CLK           : in  std_logic;
@@ -153,7 +157,8 @@ package Cordic_package is
       -- Related to the X>Y or Y>X limited precision. TODO Doc
       stages_nbre         : natural := 20;
       metadata_catch_list : meta_data_list_t;
-      stages_catch_list   : Cordic_stages_num_list
+      stages_catch_list   : Cordic_stages_num_list;
+      extra_shifts : integer range 0 to 7 := 0
       );
     port (
       CLK           : in  std_logic;

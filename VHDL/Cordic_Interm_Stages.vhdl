@@ -19,7 +19,8 @@ use IEEE.STD_LOGIC_1164.all,
 entity Cordic_IntermStage is
   generic (
     Z_not_Y_to_0 : boolean;
-    shifts_calc  : integer range 1 to reg_size - 4
+    shifts_calc  : integer range 1 to reg_size - 4;
+    extra_shifts : integer range 0 to 7
     );
   port (
     CLK           : in  std_logic;
@@ -57,6 +58,9 @@ architecture rtl of Cordic_IntermStage is
   constant angle_add_or_subtract                  : reg_type  := arctg_2_angle_reg(shifts_calc);
   signal CCW_not_CW                             : std_logic;
   signal X2_plus_Y2 : std_logic_vector( 31 downto 0 );
+  --
+  signal input_sczin_not_scz_out                : std_logic;
+  signal extra_shifts_counter                   : std_logic_vector( 2 downto 0 );
 begin
   -- To be improved with automatic size
   assert reg_size < 2**remaining_shift_count'length report "Internal error" severity failure;
@@ -71,6 +75,22 @@ begin
   -- Some code has to be written for the case the arithm_size is not 1
   -- For now, this set a restriction, using this code.
   assert shifts_calc mod arithm_size = 0 report "This is not yet implemented" severity error;
+  assert extra_shifts = 0 or not Z_not_Y_to_0 report
+    "There are " & integer'image(extra_shifts) & " extra shifts in the Z to 0 set. It can not be supported"
+    severity error;
+  assert extra_shifts < ( N_octaves - 1) report
+    "The extra shifts (" & integer'image(extra_shifts) &
+    ") should be less than the number of octaves (" & integer'image(N_octaves) &
+    ") minus 1" severity error;
+
+
+  
+  assert extra_shifts = 0
+    report "WARNING The extra shifts are selected. They are not yet implemented"
+    severity warning;
+
+
+
   
   scz_out <= scz_out_s;
 

@@ -106,7 +106,8 @@ entity Cordic_Bundle_Y_to_0 is
     debug_mode          : boolean               := false;
     stages_nbre         : natural := 20;
     metadata_catch_list : meta_data_list_t;
-    stages_catch_list   : cordic_stages_num_list
+    stages_catch_list   : cordic_stages_num_list;
+    extra_shifts        : integer range 0 to 7 := 0
     );
   port (
     CLK           : in  std_logic;
@@ -123,9 +124,9 @@ end entity Cordic_Bundle_Y_to_0;
 
 
 architecture rtl of Cordic_Bundle_Y_to_0 is
-  type scz_array_t is array (0 to stages_nbre) of reg_sin_cos_z;
+  type scz_array_t is array (0 to stages_nbre/(extra_shifts + 1)) of reg_sin_cos_z;
   signal scz_array                : scz_array_t;
-  type meta_data_array_t is array(0 to stages_nbre) of meta_data_t;
+  type meta_data_array_t is array(0 to stages_nbre/(extra_shifts + 1)) of meta_data_t;
   signal meta_data_array          : meta_data_array_t;
   signal debug_catch_in_operation : std_logic;
   signal report_catch_chain       : std_logic_vector(stages_catch_list'length downto 0);
@@ -137,6 +138,11 @@ begin
   assert ( reg_size - stages_nbre ) > 6
     report "Number of Cordic stages Y to 0 set to " & integer'image( stages_nbre ) & " is a non-sense"
     severity warning;
+  assert stages_nbre mod ( extra_shifts + 1 ) = 0 report
+    "The number of stages (" & integer'image(stages_nbre) &
+    ") should be a multiple of the extra_shifts (" & integer'image(extra_shifts) &
+    ") + 1"
+    severity failure;
 
   has_catch_debugs : if stages_catch_list'length > 0 and metadata_catch_list'length > 0 generate
     Catch_monitor_stages : for ind in 1 to stages_catch_list'length generate
@@ -163,26 +169,27 @@ begin
   report_out                                 <= report_catch_chain(report_catch_chain'high);
     
   scz_array(0) <= scz_in;
-  scz_out <= scz_array(stages_nbre);
+  scz_out <= scz_array(scz_array'high);
   
   meta_data_array(0) <= meta_data_in;
-  meta_data_out      <= meta_data_array(stages_nbre);
+  meta_data_out      <= meta_data_array(meta_data_array'high);
 
-  gene_interm : for ind in 1 to stages_nbre generate
+  gene_interm : for ind in 0 to stages_nbre/(extra_shifts + 1) - 1 generate
     interm_stage_instanc : Cordic_IntermStage generic map
       (
         Z_not_Y_to_0 => false,
-        shifts_calc  => ind
+        shifts_calc  => 1 + ind * (extra_shifts + 1),
+        extra_shifts => extra_shifts
         )
       port map
       (
         CLK           => CLK,
         RST           => RST,
         reg_sync      => reg_sync,
-        meta_data_in  => meta_data_array(ind - 1),
-        meta_data_out => meta_data_array(ind),
-        scz_in        => scz_array(ind - 1),
-        scz_out       => scz_array(ind));
+        meta_data_in  => meta_data_array(ind),
+        meta_data_out => meta_data_array(ind + 1),
+        scz_in        => scz_array(ind),
+        scz_out       => scz_array(ind + 1));
   end generate gene_interm;
 
   
