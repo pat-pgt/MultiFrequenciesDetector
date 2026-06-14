@@ -1,5 +1,54 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
+  ieee.numeric_std.all;
+
+--! @brief Selector for the shifted operand
+--!
+--! There are many cases with different arithmetic size and extra shifts.
+--! The selector is an explicit component.\n
+--! All the global constants has been redefined here,
+--!   to make the generic atomic test easy.
+entity Cordic_IntermStage_ShiftSelector is
+  generic (
+    arithm_size  : integer range 1 to 24;
+    reg_size     : integer range 16 to 255;
+    shifts_calc  : integer range 1 to reg_size - 4;
+    extra_shifts : integer range 0 to 7
+    );
+  port (
+    CLK                : in  std_logic;
+    RST                : in  std_logic;
+    reg_sync           : in  std_logic;
+    --! The sign is used to populate for the cases over the shifts
+    sincos_sign        : in  std_logic;
+    --! The slice of the first shift is taken from the scz_in
+    sincos_in_slice    : in  std_logic_vector(arithm_size - 1 downto 0);
+    --! The slice of the other shifts is taken from the scz_out,
+    --!   which is re-entrant for the extra shifts.\n
+    --! The size would have been the arithmetic size plus the extra size,
+    --!   but since the first one is taken from the scz_in, one is subtracted
+    sincos_inout_slice : in  std_logic_vector(arithm_size + extra_shifts - 1 - 1 downto 0);
+    --! The size of the output, intended to supply the adder or the subtracter
+    --!   is always the arithmetic size. 
+    sincos_out_slice   : out std_logic_vector(arithm_size - 1 downto 0)
+  );
+end entity Cordic_IntermStage_ShiftSelector;
+
+
+architecture arch of Cordic_IntermStage_ShiftSelector is
+
+begin  -- architecture arch
+assert false
+  report "scz_in length: " & integer'image(sincos_in_slice'length) &
+  ", scz_out length: " & integer'image(sincos_inout_slice'length) &
+  ", arithm out length: " & integer'image(sincos_out_slice'length)
+  severity note;
+  
+
+end architecture arch;
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
   ieee.math_real.all,
   work.InterModule_formats.all,
@@ -7,7 +56,6 @@ use IEEE.STD_LOGIC_1164.all,
   work.Meta_data_package.all,
   work.Input_modules.all,
   work.Cordic_package.all;
-
 --! @brief Cordic intermediary stages
 --!
 --! This computes one Cordic vector spin with its angle (Z) update\n
@@ -57,7 +105,9 @@ architecture rtl of Cordic_IntermStage is
   signal debug_flipflop_2                       : std_logic := '0';
   constant angle_add_or_subtract                  : reg_type  := arctg_2_angle_reg(shifts_calc);
   signal CCW_not_CW                             : std_logic;
-  signal X2_plus_Y2 : std_logic_vector( 31 downto 0 );
+  signal X2_plus_Y2                             : std_logic_vector( 31 downto 0 );
+  signal selected_X_for_arithm                  : std_logic_vector( arithm_size - 1 downto 0 );
+  signal selected_Y_for_arithm                  : std_logic_vector( arithm_size - 1 downto 0 );
   --
   signal input_sczin_not_scz_out                : std_logic;
   signal extra_shifts_counter                   : std_logic_vector( 2 downto 0 );
@@ -198,7 +248,7 @@ begin
                 angle_add_or_subtract'low + to_integer(unsigned (Z_shifts_count)));
           else
             -- The electronics should always know what to do.
-            -- Then the low bit/gourp of bits is duplicated in case the shifts
+            -- Then the low bit/group of bits is duplicated in case the shifts
             -- are grater than the Z constant.
             -- This should not occur in run mode. It may occur at the end of a reset
             op_C_Z(op_C_Z'high - 1 downto op_C_Z'low) :=
@@ -281,5 +331,64 @@ begin
       end if RST_IF;
     end if CLK_IF;
   end process main_proc;
+
+  Cordic_IntermStage_ShiftSelector_instanc_X : Cordic_IntermStage_ShiftSelector
+    generic map (
+      arithm_size,
+      reg_size,
+      shifts_calc,
+      extra_shifts
+      )
+    port map (
+      CLK,
+      RST,
+      reg_sync,
+      sincos_sign        => sign_X,
+      sincos_in_slice    => scz_in.the_cos(scz_in.the_cos'low + shifts_calc + arithm_size - 1  downto
+                                           scz_in.the_cos'low + shifts_calc ),
+
+      sincos_inout_slice => scz_out.the_cos(scz_out.the_cos'low + shifts_calc + arithm_size - 1 + extra_shifts - 1 + 1
+                                            downto
+                                            scz_out.the_cos'low + shifts_calc + 1 ),
+
+      sincos_out_slice   => selected_X_for_arithm
+      );
+
+  Cordic_IntermStage_ShiftSelector_instanc_Y : Cordic_IntermStage_ShiftSelector
+    generic map (
+      arithm_size,
+      reg_size,
+      shifts_calc,
+      extra_shifts
+      )
+    port map (
+      CLK,
+      RST,
+      reg_sync,
+      sincos_sign        => sign_Y,
+      sincos_in_slice    => scz_in.the_sin(scz_in.the_sin'low + shifts_calc + arithm_size - 1  downto
+                                           scz_in.the_sin'low + shifts_calc ),
+
+      sincos_inout_slice => scz_out.the_sin(scz_out.the_sin'low + shifts_calc + arithm_size - 1 + extra_shifts - 1 + 1
+                                            downto
+                                            scz_out.the_sin'low + shifts_calc + 1 ),
+
+      sincos_out_slice   => selected_Y_for_arithm
+      );
+
+
+  assert false
+    report "the_cos( "& integer'image(scz_in.the_cos'low + shifts_calc + arithm_size - 1) &
+    " downto " &
+    integer'image(scz_in.the_cos'low + shifts_calc) &
+    ")"
+    severity note;
+  assert false
+    report "the_cos( "& integer'image(scz_out.the_cos'low + shifts_calc + arithm_size - 1 + extra_shifts - 1 + 1 ) &
+    " downto " &
+    integer'image(scz_in.the_cos'low + shifts_calc + 1) &
+    ")"
+    severity note;
+  
 end architecture rtl;
  

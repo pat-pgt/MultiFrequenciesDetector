@@ -3,6 +3,7 @@ use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
   ieee.math_real.all,
   work.InterModule_formats.all,
+  work.Meta_data_package.all,
   work.Cordic_package.Cordic_IntermStage;
 
 --! @brief Test one Cordic X, Y and Z stage
@@ -53,7 +54,6 @@ entity Cordic_Interm_stages_test is
     test_vector_length_low  : positive := 2;
     Z_not_Y_to_0            : boolean;
     shifts_calc_from        : integer range 1 to reg_size - 2
-    shifts_calc_from        : integer range 1 to reg_size - 2
     );
 
 end entity Cordic_Interm_stages_test;
@@ -63,13 +63,15 @@ end entity Cordic_Interm_stages_test;
 --!   and to send them with error patterns between every one.
 
 architecture arch of Cordic_Interm_stages_test is
-  signal CLK        : bit      := '0';
+  signal CLK          : std_logic := '0';
   --! Number of runs
-  constant run_nbre : positive := reg_size / arithm_size;
-  signal run_val    : integer  := 0;
-  signal reg_sync   : std_logic;
-  signal odd_even   : bit;
-
+  constant run_nbre   : positive := reg_size / arithm_size;
+  signal run_val      : integer  := 0;
+  signal reg_sync     : std_logic:= '0';
+  signal odd_even     : bit;
+  signal meta_data_in : meta_data_t;
+  signal scz_in       : reg_sin_cos_z;
+  
   --! Global counter to check all the combinations
   signal global_counter : unsigned(4 downto 0) := (others => '0');
   --! An and/or reduce to check if there are some X error in a run result
@@ -83,9 +85,24 @@ begin
 
   begin
 
-
+    wait;
   end process main_proc;
 
+Cordic_IntermStage_instanc : Cordic_IntermStage
+  generic map (
+    Z_not_Y_to_0 => false,
+    shifts_calc  => 5,
+    extra_shifts => 3
+    )
+  port map (
+    CLK           => CLK,
+    RST           => '0',
+    reg_sync      => '0',
+    meta_data_in  => meta_data_in,
+    meta_data_out => open,
+    scz_in        => scz_in,
+    scz_out       => open
+    );
 
 
 end architecture arch;
