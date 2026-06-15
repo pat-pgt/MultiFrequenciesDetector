@@ -1,0 +1,440 @@
+digraph Step_1 {
+		 rankdir="LR";
+		 lanscape=true;
+		 subgraph cluster_array_scz_in_1 {
+		 		  style = dashed;
+				  color=lightgray;
+				  
+				  array_scz_in_1 [ shape=plain label=<
+				  			   <table border="0" cellborder="1" cellspacing="1" >
+							   <tr><td>old</td><td port="sign_scz_in">b11</td></tr>
+							   <tr><td colspan="2"></td></tr>
+							   <tr><td rowspan="3">old</td><td port="11">b11</td></tr>
+							   <tr><td port="10">b10</td></tr>
+							   <tr><td port="9">b9</td></tr>
+							   <tr><td rowspan="3">old</td><td port="8">b8</td></tr>
+							   <tr><td port="7">b7</td></tr>
+							   <tr><td port="6">b6</td></tr>
+							   <tr><td rowspan="3">old</td><td port="5">b5</td></tr>
+							   <tr><td port="4">b4</td></tr>
+							   <tr><td port="3">b3</td></tr>
+							   <tr><td rowspan="3">old</td><td port="2">b2</td></tr>
+							   <tr><td port="1">b1</td></tr>
+							   <tr><td port="0">b0</td></tr>
+							   </table>> ];
+				  label = "SCZ IN (from previous stage)";
+				  }
+		 subgraph cluster_scz_out_1 {
+				  color=blue;
+				  node[style=filled];
+				  array_scz_out_1 [ shape=plain label=<
+				  			   <table border="0" cellborder="1" cellspacing="1" >
+							   <tr><td>old</td><td port="sign_scz_out">b11</td></tr>
+							   <tr><td colspan="2"></td></tr>
+							   <tr><td rowspan="3">old</td><td port="11">b11</td></tr>
+							   <tr><td port="10">b10</td></tr>
+							   <tr><td port="9">b9</td></tr>
+							   <tr><td rowspan="3">old</td><td port="8">b8</td></tr>
+							   <tr><td port="7">b7</td></tr>
+							   <tr><td port="6">b6</td></tr>
+							   <tr><td rowspan="3">old</td><td port="5">b5</td></tr>
+							   <tr><td port="4">b4</td></tr>
+							   <tr><td port="3">b3</td></tr>
+							   <tr><td rowspan="3">old</td><td port="2">b2</td></tr>
+							   <tr><td port="1">b1</td></tr>
+							   <tr><td port="0">b0</td></tr>
+							   </table>> ];
+				  label = "SCZ OUT";
+				  }
+
+
+		 subgraph cluster_out_for_add_sub_1 {
+				  color=blue;
+				  node[style=filled];
+				  array_out_for_add_sub_1 [ shape=plain label=<
+				  			   <table border="0" cellborder="1" cellspacing="1" >
+							   <tr><td port="zero">0</td><td></td><td></td><td></td></tr>
+							   <tr><td colspan="4"></td></tr>
+							   <tr><td rowspan="4">op_S</td><td port="s3">b3</td>
+							   		   <td rowspan="9">Add or sub</td><td rowspan="2">carry</td></tr>
+							   <tr><td port="s2">b2</td></tr>
+							   <tr><td port="s1">b1</td><td rowspan="2">b2</td></tr>
+							   <tr><td port="s0">b0</td></tr>
+							   <tr><td rowspan="4">op_N</td><td port="n3">b3</td><td rowspan="2">b1</td></tr>
+							   <tr><td port="n2">b2</td></tr>
+							   <tr><td port="n1">b1</td><td rowspan="2">b0</td></tr>
+							   <tr><td port="n0">b0</td></tr>
+							   <tr><td>op_C</td><td>carry</td></tr>
+							   </table>> ];
+
+				  label = "Output for add or sub base";
+				  }
+
+
+		 array_out_for_add_sub_1:zero:w -> array_out_for_add_sub_1:s3:w;
+		 array_out_for_add_sub_1:zero:w -> array_out_for_add_sub_1:n3:w;
+		 array_scz_in_1:6:e -> array_out_for_add_sub_1:s2:w [color="blue"];
+		 array_scz_in_1:5:e -> array_out_for_add_sub_1:s1:w [color="blue"];
+		 array_scz_in_1:4:e -> array_out_for_add_sub_1:s0:w [color="blue"];
+		 array_scz_in_1:2:e -> array_out_for_add_sub_1:n2:w [color="blue"];
+		 array_scz_in_1:1:e -> array_out_for_add_sub_1:n1:w [color="blue"];
+		 array_scz_in_1:0:e -> array_out_for_add_sub_1:n0:w [color="blue"];
+
+	 subgraph cluster_out_for_add_sub_extra_1 {
+				  color=blue;
+				  node[style=filled];
+				  array_out_for_add_sub_extra_1 [ shape=plain label=<
+				  			   <table border="0" cellborder="1" cellspacing="1" >
+							   <tr><td></td><td port="zero">0</td></tr>
+							   <tr><td colspan="2"></td></tr>
+							   <tr><td rowspan="4">op_S</td><td port="s3">b3</td></tr>
+							   <tr><td port="s2">b2</td></tr>
+							   <tr><td port="s1">b1</td></tr>
+							   <tr><td port="s0">b0</td></tr>
+							   <tr><td rowspan="4">op_N</td><td port="n3">b3</td></tr>
+							   <tr><td port="n2">b2</td></tr>
+							   <tr><td port="n1">b1</td></tr>
+							   <tr><td port="n0">b0</td></tr>
+							   <tr><td>op_C</td><td>carry</td></tr>
+							   </table>> ];
+
+				  label = "Output for add or sub extra 1";
+				  }
+		 array_out_for_add_sub_extra_1:zero:w -> array_out_for_add_sub_extra_1:s3:w;
+		 array_out_for_add_sub_extra_1:zero:w -> array_out_for_add_sub_extra_1:n3:w;
+		 array_scz_out_1:7:e -> array_out_for_add_sub_extra_1:s2:w [color="red"];
+		 array_scz_out_1:6:e -> array_out_for_add_sub_extra_1:s1:w [color="red"];
+		 array_scz_out_1:5:e -> array_out_for_add_sub_extra_1:s0:w [color="red"];
+		 array_scz_out_1:8:e -> array_out_for_add_sub_extra_1:s2:w [color="green"];
+		 array_scz_out_1:7:e -> array_out_for_add_sub_extra_1:s1:w [color="green"];
+		 array_scz_out_1:6:e -> array_out_for_add_sub_extra_1:s0:w [color="green"];
+		 array_scz_out_1:2:e -> array_out_for_add_sub_extra_1:n2:w [color="orange"];
+		 array_scz_out_1:1:e -> array_out_for_add_sub_extra_1:n1:w [color="orange"];
+		 array_scz_out_1:0:e -> array_out_for_add_sub_extra_1:n0:w [color="orange"];
+
+		 label = "One clock cycle after reg_sync"
+}
+digraph Step_2 {
+		 rankdir="LR";
+		 subgraph cluster_array_scz_in_2 {
+		 		  style = dashed;
+				  color=lightgray;
+				  
+				  array_scz_in_2 [ shape=plain label=<
+				  			   <table border="0" cellborder="1" cellspacing="1" >
+							   <tr><td>old</td><td port="sign_scz_in">b11</td></tr>
+							   <tr><td colspan="2"></td></tr>
+							   <tr><td rowspan="3">new</td><td port="11">b2</td></tr>
+							   <tr><td port="10">b1</td></tr>
+							   <tr><td port="9">b0</td></tr>
+							   <tr><td rowspan="3">old</td><td port="8">b11</td></tr>
+							   <tr><td port="7">b10</td></tr>
+							   <tr><td port="6">b9</td></tr>
+							   <tr><td rowspan="3">old</td><td port="5">b8</td></tr>
+							   <tr><td port="4">b7</td></tr>
+							   <tr><td port="3">b6</td></tr>
+							   <tr><td rowspan="3">old</td><td port="2">b5</td></tr>
+							   <tr><td port="1">b4</td></tr>
+							   <tr><td port="0">b3</td></tr>
+							   </table>> ];
+				  label = "SCZ IN (from previous stage)";
+				  }
+		 subgraph cluster_scz_out_2 {
+				  color=blue;
+				  node[style=filled];
+				  array_scz_out_2 [ shape=plain label=<
+				  			   <table border="0" cellborder="1" cellspacing="1" >
+							   <tr><td>old</td><td port="sign_scz_out">b11</td></tr>
+							   <tr><td colspan="2"></td></tr>
+							   <tr><td rowspan="3">new</td><td port="11">b2</td></tr>
+							   <tr><td port="10">b1</td></tr>
+							   <tr><td port="9">b0</td></tr>
+							   <tr><td rowspan="3">old</td><td port="8">b11</td></tr>
+							   <tr><td port="7">b10</td></tr>
+							   <tr><td port="6">b9</td></tr>
+							   <tr><td rowspan="3">old</td><td port="5">b8</td></tr>
+							   <tr><td port="4">b7</td></tr>
+							   <tr><td port="3">b6</td></tr>
+							   <tr><td rowspan="3">old</td><td port="2">b5</td></tr>
+							   <tr><td port="1">b4</td></tr>
+							   <tr><td port="0">b3</td></tr>
+							   </table>> ];
+				  label = "SCZ OUT";
+				  }
+		 subgraph cluster_out_for_add_sub_2 {
+				  color=blue;
+				  node[style=filled];
+				  array_out_for_add_sub_2 [ shape=plain label=<
+				  			   <table border="0" cellborder="1" cellspacing="1" >
+							   <tr><td port="zero">0</td><td></td><td></td><td></td></tr>
+							   <tr><td colspan="4"></td></tr>
+							   <tr><td rowspan="4">op_S</td><td port="s3">b3</td>
+							   		   <td rowspan="9">Add or sub</td><td rowspan="2">carry</td></tr>
+							   <tr><td port="s2">b2</td></tr>
+							   <tr><td port="s1">b1</td><td rowspan="2">b2</td></tr>
+							   <tr><td port="s0">b0</td></tr>
+							   <tr><td rowspan="4">op_N</td><td port="n3">b3</td><td rowspan="2">b1</td></tr>
+							   <tr><td port="n2">b2</td></tr>
+							   <tr><td port="n1">b1</td><td rowspan="2">b0</td></tr>
+							   <tr><td port="n0">b0</td></tr>
+							   <tr><td>op_C</td><td>carry</td></tr>
+							   </table>> ];
+
+				  label = "Output for add or sub";
+				  }
+
+ 		 array_out_for_add_sub_2:zero:w -> array_out_for_add_sub_2:s3:w;
+		 array_out_for_add_sub_2:zero:w -> array_out_for_add_sub_2:n3:w;
+		 array_scz_in_2:6:e -> array_out_for_add_sub_2:s2:w [color="blue"];
+		 array_scz_in_2:5:e -> array_out_for_add_sub_2:s1:w [color="blue"];
+		 array_scz_in_2:4:e -> array_out_for_add_sub_2:s0:w [color="blue"];
+		 array_scz_in_2:2:e -> array_out_for_add_sub_2:n2:w [color="blue"];
+		 array_scz_in_2:1:e -> array_out_for_add_sub_2:n1:w [color="blue"];
+		 array_scz_in_2:0:e -> array_out_for_add_sub_2:n0:w [color="blue"];
+
+		 subgraph cluster_out_for_add_sub_extra_2 {
+				  color=blue;
+				  node[style=filled];
+				  array_out_for_add_sub_extra_2 [ shape=plain label=<
+				  			   <table border="0" cellborder="1" cellspacing="1" >
+							   <tr><td rowspan="4">op_S</td><td port="s3">b3</td></tr>
+							   <tr><td port="s2">b2</td></tr>
+							   <tr><td port="s1">b1</td></tr>
+							   <tr><td port="s0">b0</td></tr>
+							   <tr><td rowspan="4">op_N</td><td port="n3">b3</td></tr>
+							   <tr><td port="n2">b2</td></tr>
+							   <tr><td port="n1">b1</td></tr>
+							   <tr><td port="n0">b0</td></tr>
+							   <tr><td>op_C</td><td>carry</td></tr>
+							   </table>> ];
+
+				  label = "Output for add or sub extra 1";
+				  }
+		 zero_0 -> array_out_for_add_sub_extra_2:s3:w;
+		 zero_0 -> array_out_for_add_sub_extra_2:n3:w;
+		 array_scz_out_2:7:e -> array_out_for_add_sub_extra_2:s2:w [color="red"];
+		 array_scz_out_2:6:e -> array_out_for_add_sub_extra_2:s1:w [color="red"];
+		 array_scz_out_2:5:e -> array_out_for_add_sub_extra_2:s0:w [color="red"];
+		 array_scz_out_2:8:e -> array_out_for_add_sub_extra_2:s2:w [color="green"];
+		 array_scz_out_2:7:e -> array_out_for_add_sub_extra_2:s1:w [color="green"];
+		 array_scz_out_2:6:e -> array_out_for_add_sub_extra_2:s0:w [color="green"];
+		 array_scz_out_2:2:e -> array_out_for_add_sub_extra_2:n2:w [color="orange"];
+		 array_scz_out_2:1:e -> array_out_for_add_sub_extra_2:n1:w [color="orange"];
+		 array_scz_out_2:0:e -> array_out_for_add_sub_extra_2:n0:w [color="orange"];
+
+		 label = "Two clock cycles after reg_sync"
+}
+digraph Step_3 {
+		 rankdir="LR";
+		 subgraph cluster_array_scz_in_3 {
+		 		  style = dashed;
+				  color=lightgray;
+				  
+				  array_scz_in_3 [ shape=plain label=<
+				  			   <table border="0" cellborder="1" cellspacing="1" >
+							   <tr><td>old</td><td port="sign_scz_in">b11</td></tr>
+							   <tr><td colspan="2"></td></tr>
+							   <tr><td rowspan="3">new</td><td port="11">b5</td></tr>
+							   <tr><td port="10">b4</td></tr>
+							   <tr><td port="9">b3</td></tr>
+							   <tr><td rowspan="3">new</td><td port="8">b2</td></tr>
+							   <tr><td port="7">b1</td></tr>
+							   <tr><td port="6">b0</td></tr>
+							   <tr><td rowspan="3">old</td><td port="5">b11</td></tr>
+							   <tr><td port="4">b10</td></tr>
+							   <tr><td port="3">b9</td></tr>
+							   <tr><td rowspan="3">old</td><td port="2">b8</td></tr>
+							   <tr><td port="1">b7</td></tr>
+							   <tr><td port="0">b6</td></tr>
+							   </table>> ];
+				  label = "SCZ IN (from previous stage)";
+				  }
+		 subgraph cluster_scz_out_3 {
+				  color=blue;
+				  node[style=filled];
+				  array_scz_out_3 [ shape=plain label=<
+				  			   <table border="0" cellborder="1" cellspacing="1" >
+							   <tr><td>old</td><td port="sign_scz_out">b11</td></tr>
+							   <tr><td colspan="2"></td></tr>
+							   <tr><td rowspan="3">new</td><td port="11">b5</td></tr>
+							   <tr><td port="10">b4</td></tr>
+							   <tr><td port="9">b3</td></tr>
+							   <tr><td rowspan="3">new</td><td port="8">b2</td></tr>
+							   <tr><td port="7">b1</td></tr>
+							   <tr><td port="6">b0</td></tr>
+							   <tr><td rowspan="3">old</td><td port="5">b11</td></tr>
+							   <tr><td port="4">b10</td></tr>
+							   <tr><td port="3">b9</td></tr>
+							   <tr><td rowspan="3">old</td><td port="2">b8</td></tr>
+							   <tr><td port="1">b7</td></tr>
+							   <tr><td port="0">b6</td></tr>
+							   </table>> ];
+				  label = "SCZ OUT";
+				  }
+		 subgraph cluster_out_for_add_sub_3 {
+				  color=blue;
+				  node[style=filled];
+				  array_out_for_add_sub_3 [ shape=plain label=<
+				  			   <table border="0" cellborder="1" cellspacing="1" >
+							   <tr><td port="zero">0</td><td></td><td></td><td></td></tr>
+							   <tr><td colspan="4"></td></tr>
+							   <tr><td rowspan="4">op_S</td><td port="s3">b3</td>
+							   		   <td rowspan="9">Add or sub</td><td rowspan="2">carry</td></tr>
+							   <tr><td port="s2">b2</td></tr>
+							   <tr><td port="s1">b1</td><td rowspan="2">b2</td></tr>
+							   <tr><td port="s0">b0</td></tr>
+							   <tr><td rowspan="4">op_N</td><td port="n3">b3</td><td rowspan="2">b1</td></tr>
+							   <tr><td port="n2">b2</td></tr>
+							   <tr><td port="n1">b1</td><td rowspan="2">b0</td></tr>
+							   <tr><td port="n0">b0</td></tr>
+							   <tr><td>op_C</td><td>carry</td></tr>
+							   </table>> ];
+
+				  label = "Output for add or sub";
+				  }
+
+		 array_out_for_add_sub_3:zero:w -> array_out_for_add_sub_3:s3:w;
+		 array_out_for_add_sub_3:zero:w -> array_out_for_add_sub_3:n3:w;
+		 array_scz_in_3:sign_scz_in:e -> array_out_for_add_sub_3:s2:w [color="blue"];
+		 array_scz_in_3:5:e -> array_out_for_add_sub_3:s1:w [color="blue"];
+		 array_scz_in_3:4:e -> array_out_for_add_sub_3:s0:w [color="blue"];
+		 array_scz_in_3:2:e -> array_out_for_add_sub_3:n2:w [color="blue"];
+		 array_scz_in_3:1:e -> array_out_for_add_sub_3:n1:w [color="blue"];
+		 array_scz_in_3:0:e -> array_out_for_add_sub_3:n0:w [color="blue"];
+
+		 subgraph cluster_out_for_add_sub_extra_3 {
+				  color=blue;
+				  node[style=filled];
+				  array_out_for_add_sub_extra_3 [ shape=plain label=<
+				  			   <table border="0" cellborder="1" cellspacing="1" >
+							   <tr><td rowspan="4">op_S</td><td port="s3">b3</td></tr>
+							   <tr><td port="s2">b2</td></tr>
+							   <tr><td port="s1">b1</td></tr>
+							   <tr><td port="s0">b0</td></tr>
+							   <tr><td rowspan="4">op_N</td><td port="n3">b3</td></tr>
+							   <tr><td port="n2">b2</td></tr>
+							   <tr><td port="n1">b1</td></tr>
+							   <tr><td port="n0">b0</td></tr>
+							   <tr><td>op_C</td><td>carry</td></tr>
+							   </table>> ];
+
+				  label = "Output for add or sub extra 1";
+				  }
+		 zero_0 -> array_out_for_add_sub_extra_3:s3:w;
+		 zero_0 -> array_out_for_add_sub_extra_3:n3:w;
+		 array_scz_out_3:sign_scz_out:e -> array_out_for_add_sub_extra_3:s2:w [color="orange"];
+		 array_scz_out_3:sign_scz_out:e -> array_out_for_add_sub_extra_3:s1:w [color="orange"];
+		 array_scz_out_3:5:e -> array_out_for_add_sub_extra_3:s0:w [color="red"];
+		 array_scz_out_3:sign_scz_out:e -> array_out_for_add_sub_extra_3:s0:w [color="green"];
+		 array_scz_out_3:2:e -> array_out_for_add_sub_extra_3:n2:w [color="orange"];
+		 array_scz_out_3:1:e -> array_out_for_add_sub_extra_3:n1:w [color="orange"];
+		 array_scz_out_3:0:e -> array_out_for_add_sub_extra_3:n0:w [color="orange"];
+
+		 label = "Three clock cycles after reg_sync"
+}digraph Step_4 {
+		 rankdir="LR";
+		 subgraph cluster_array_scz_in_4 {
+		 		  style = dashed;
+				  color=lightgray;
+				  
+				  array_scz_in_4 [ shape=plain label=<
+				  			   <table border="0" cellborder="1" cellspacing="1" >
+							   <tr><td>old</td><td port="sign_scz_in">b11</td></tr>
+							   <tr><td colspan="2"></td></tr>
+							   <tr><td rowspan="3">new</td><td port="11">b8</td></tr>
+							   <tr><td port="10">b7</td></tr>
+							   <tr><td port="9">b6</td></tr>
+							   <tr><td rowspan="3">new</td><td port="8">b5</td></tr>
+							   <tr><td port="7">b4</td></tr>
+							   <tr><td port="6">b3</td></tr>
+							   <tr><td rowspan="3">new</td><td port="5">b2</td></tr>
+							   <tr><td port="4">b1</td></tr>
+							   <tr><td port="3">b0</td></tr>
+							   <tr><td rowspan="3">old</td><td port="2">b11</td></tr>
+							   <tr><td port="1">b10</td></tr>
+							   <tr><td port="0">b9</td></tr>
+							   </table>> ];
+				  label = "SCZ IN (from previous stage)";
+				  }
+		 subgraph cluster_scz_out_4 {
+				  color=blue;
+				  node[style=filled];
+				  array_scz_out_4 [ shape=plain label=<
+				  			   <table border="0" cellborder="1" cellspacing="1" >
+							   <tr><td>old</td><td port="sign_scz_out">b11</td></tr>
+							   <tr><td colspan="2"></td></tr>
+							   <tr><td rowspan="3">new</td><td port="11">b8</td></tr>
+							   <tr><td port="10">b7</td></tr>
+							   <tr><td port="9">b6</td></tr>
+							   <tr><td rowspan="3">new</td><td port="8">b5</td></tr>
+							   <tr><td port="7">b4</td></tr>
+							   <tr><td port="6">b3</td></tr>
+							   <tr><td rowspan="3">new</td><td port="5">b2</td></tr>
+							   <tr><td port="4">b1</td></tr>
+							   <tr><td port="3">b0</td></tr>
+							   <tr><td rowspan="3">old</td><td port="2">b11</td></tr>
+							   <tr><td port="1">b10</td></tr>
+							   <tr><td port="0">b9</td></tr>
+							   </table>> ];
+				  label = "SCZ OUT";
+				  }
+		 subgraph cluster_out_for_add_sub_4 {
+				  color=blue;
+				  node[style=filled];
+				  array_out_for_add_sub_4 [ shape=plain label=<
+				  			   <table border="0" cellborder="1" cellspacing="1" >
+							   <tr><td port="zero">0</td><td></td><td></td><td></td></tr>
+							   <tr><td colspan="4"></td></tr>
+							   <tr><td rowspan="4">op_S</td><td port="s3">b3</td>
+							   		   <td rowspan="9">Add or sub</td><td rowspan="2">carry</td></tr>
+							   <tr><td port="s2">b2</td></tr>
+							   <tr><td port="s1">b1</td><td rowspan="2">b2</td></tr>
+							   <tr><td port="s0">b0</td></tr>
+							   <tr><td rowspan="4">op_N</td><td port="n3">b3</td><td rowspan="2">b1</td></tr>
+							   <tr><td port="n2">b2</td></tr>
+							   <tr><td port="n1">b1</td><td rowspan="2">b0</td></tr>
+							   <tr><td port="n0">b0</td></tr>
+							   <tr><td>op_C</td><td>carry</td></tr>
+							   </table>> ];
+
+				  label = "Output for add or sub";
+				  }
+
+ 		 array_out_for_add_sub_4:zero:w -> array_out_for_add_sub_4:s3:w;
+		 array_out_for_add_sub_4:zero:w -> array_out_for_add_sub_4:n3:w;
+		 array_scz_in_4:sign_scz_in:e -> array_out_for_add_sub_4:s2:w [color="blue"];
+		 array_scz_in_4:sign_scz_in:e -> array_out_for_add_sub_4:s1:w [color="blue"];
+		 array_scz_in_4:sign_scz_in:e -> array_out_for_add_sub_4:s0:w [color="blue"];
+		 array_scz_in_4:2:e -> array_out_for_add_sub_4:n2:w [color="blue"];
+		 array_scz_in_4:1:e -> array_out_for_add_sub_4:n1:w [color="blue"];
+		 array_scz_in_4:0:e -> array_out_for_add_sub_4:n0:w [color="blue"];
+
+		 subgraph cluster_out_for_add_sub_extra_4 {
+				  color=blue;
+				  node[style=filled];
+				  array_out_for_add_sub_extra_4 [ shape=plain label=<
+				  			   <table border="0" cellborder="1" cellspacing="1" >
+							   <tr><td rowspan="4">op_S</td><td port="s3">b3</td></tr>
+							   <tr><td port="s2">b2</td></tr>
+							   <tr><td port="s1">b1</td></tr>
+							   <tr><td port="s0">b0</td></tr>
+							   <tr><td rowspan="4">op_N</td><td port="n3">b3</td></tr>
+							   <tr><td port="n2">b2</td></tr>
+							   <tr><td port="n1">b1</td></tr>
+							   <tr><td port="n0">b0</td></tr>
+							   <tr><td>op_C</td><td>carry</td></tr>
+							   </table>> ];
+
+				  label = "Output for add or sub extra 1";
+				  }
+		 "zero" -> array_out_for_add_sub_extra_4:s3:w;
+		 "zero" -> array_out_for_add_sub_extra_4:n3:w;
+		 array_scz_out_4:sign_scz_out:e -> array_out_for_add_sub_extra_4:s2:w [color="orange"];
+		 array_scz_out_4:sign_scz_out:e -> array_out_for_add_sub_extra_4:s1:w [color="orange"];
+		 array_scz_out_4:sign_scz_out:e -> array_out_for_add_sub_extra_4:s0:w [color="orange"];
+		 array_scz_out_4:2:e -> array_out_for_add_sub_extra_4:n2:w [color="orange"];
+		 array_scz_out_4:1:e -> array_out_for_add_sub_extra_4:n1:w [color="orange"];
+		 array_scz_out_4:0:e -> array_out_for_add_sub_extra_4:n0:w [color="orange"];
+
+		 label = "Four clock cycles after reg_sync"
+}
