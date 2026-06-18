@@ -1,0 +1,246 @@
+%!PS-Adobe-3.0
+%%BoundingBox: 0 0 595 842
+%%Pages: 2
+
+64 dict begin
+
+%%BeginProlog
+
+% set the list from top to bottom in an array
+/cellsdraw
+{
+	% check the largest one
+	dup 0 exch {
+		stringwidth pop dup 2 index gt {
+			exch pop
+		}{
+			pop
+		}ifelse
+	}forall
+	% don't forget the title
+	2 index	stringwidth pop dup 2 index gt {
+		exch pop
+		}{
+			pop
+		}ifelse
+	
+	8 add /cells_width exch def
+
+	dup length exch
+	aload  length 0 1 3 -1 roll 1 sub
+	{
+		cells_high mul dup
+		cells_high add 0 exch moveto 0 cells_high neg rlineto cells_width 0 rlineto
+		0 cells_high rlineto
+		closepath stroke
+		5 add 4 exch moveto show
+	} for
+	% and the title
+	cells_high mul dup
+	cells_high add 0 exch 1 add moveto 0 cells_high neg rlineto cells_width 0 rlineto
+	0 cells_high rlineto
+	closepath 0 0 0 0.3 setcmykcolor fill
+	5 add 4 exch moveto 0 0 0 1 setcmykcolor show
+}def
+
+
+% the_list, new elems list => new list
+/shift_list_reg {
+	[ 3 1 roll exch 1 index length 3 1 roll aload length
+	dup 3 add -1 roll dup 3 1 roll sub exch
+	1 1 3 -1 roll { pop exch pop } for % delete the old ones
+	dup 2 add -1 roll aload length dup 2 add -1 roll 1 index add exch roll % place the new ones
+	]
+}def
+
+% from to 
+/link_line_left {
+	cells_width cells_high 4 -1 roll mul moveto
+	160 cells_high 3 -1 roll mul lineto 40 0 rlineto % make the line horizontal before the arrow
+	-10 5 rlineto 10 -5 rmoveto -10 -5 rlineto % arrow
+}def
+% from to 
+/link_line_right {
+	200 cells_high 4 -1 roll mul moveto
+	20 cells_width add cells_high 3 -1 roll mul lineto -20 0 rlineto % make the line horizontal before the arrow
+	10 5 rlineto -10 -5 rmoveto 10 -5 rlineto % arrow
+}def
+
+
+/One_op_draw {
+	matrix currentmatrix
+	10 10 translate
+	(scz_in) list_reg_in cellsdraw
+	0.5 1.5 link_line_left
+	1.5 2.5 link_line_left
+	2.5 3.5 link_line_left
+	stroke
+
+	list_left_B aload pop
+	7.5 link_line_left
+	6.5 link_line_left
+	5.5 link_line_left
+	0 0 1 setrgbcolor
+	stroke
+	0 0 0 setrgbcolor
+
+	200 50 sub cells_high 4.5 mul 14 3 div sub moveto (0) show
+	3 14 3 div rmoveto 200 cells_high 4.5 mul lineto
+	-10 5 rlineto 10 -5 rmoveto -10 -5 rlineto
+	200 50 sub cells_high 8.5 mul 14 3 div sub moveto (0) show
+	3 14 3 div rmoveto 200 cells_high 8.5 mul lineto
+	-10 5 rlineto 10 -5 rmoveto -10 -5 rlineto
+	200 100 sub cells_high 0.5 mul 14 3 div sub moveto exch show
+	3 14 3 div rmoveto 200 cells_high 0.5 mul lineto
+	-10 5 rlineto 10 -5 rmoveto -10 -5 rlineto
+	stroke
+
+
+	
+0 0 0 1 setcmykcolor
+setmatrix
+matrix currentmatrix
+10 cells_high 12 1 1 add add mul 10 add translate
+(latched) [(old b11)] cellsdraw
+400 0 translate
+(latched) [(old b11)] cellsdraw
+setmatrix
+matrix currentmatrix
+210 10 translate
+(Add or subtract) list_add_sub cellsdraw
+
+	list_right_R aload pop
+	7.3 link_line_right
+	6.3 link_line_right
+	5.3 link_line_right
+	1 0 0 setrgbcolor
+	stroke
+
+	list_right_G aload pop
+	7.5 link_line_right
+	6.5 link_line_right
+	5.5 link_line_right
+	0 1 0 setrgbcolor
+	stroke
+
+	list_right_O aload pop
+	7.8 link_line_right
+	6.8 link_line_right
+	5.8 link_line_right
+	1 0.5 0 setrgbcolor
+	stroke
+	0 0 0 setrgbcolor
+	setmatrix
+	matrix currentmatrix
+	410 10 translate
+
+	(scz_out) list_reg_out cellsdraw
+	setmatrix
+} def
+
+/Legenda {
+	matrix currentmatrix
+	90	250 translate
+	0 0 0 setrgbcolor 0 80 moveto (all operations) show
+	0 0 1 setrgbcolor 0 60 moveto (no extra shift) show
+	1 0 0 setrgbcolor 0 40 moveto (1st extra shift) show
+	0 1 0 setrgbcolor 0 20 moveto (2nd extra shift) show
+	1 0.5 0 setrgbcolor 0 0 moveto (3rd extra shift) show
+	0 0 0 setrgbcolor
+	setmatrix
+
+	210 15.5 cells_high mul moveto show
+} def
+
+%%EndProlog
+
+
+%%Page: 1 1
+/Helvetica findfont 14 scalefont setfont
+
+% set hte cells heigh
+/cells_high 22 def
+
+matrix currentmatrix
+
+10 450 translate
+
+/list_right_R [ 5.5 6.5 7.5 ] def
+/list_right_G [ 6.5 7.5 8.5 ] def
+/list_right_O [ 7.5 8.5 9.5 ] def
+
+/list_left_B [ 4.5 5.5 6.5 ] def
+
+/list_add_sub [(out carry)(out b2)(out b1)(out b0)(op_S b3)(op_S b2)(op_S b1)(op_S b0)(op_N b3)(op_N b2)(op_N b1)(op_N b0)(in carry)] def
+/list_reg_in [(old b11) (old b10) (old b9)(old b8) (old b7) (old b6)(old b5) (old b4) (old b3)(old b2) (old b1) (old b0)] def
+/list_reg_out list_reg_in def
+
+(First clock cycle) Legenda
+
+(Add:0 Sub:1) One_op_draw
+
+% bottom of the page
+0 -440 translate
+
+%/list_right_R [ 5.5 6.5 7.5 ] def
+%/list_right_G [ 6.5 7.5 8.5 ] def
+%/list_right_O [ 7.5 8.5 9.5 ] def
+
+/list_left_B [ 4.5 5.5 6.5 ] def
+
+/list_reg_out list_reg_out [(out b2)(out b1)(out b0)] shift_list_reg def
+/list_reg_in list_reg_in [(new b2)(new b1)(new b0)] shift_list_reg def
+/list_right_O [ 7.5 8.5 14.5 ] def
+
+(Second clock cycle) Legenda
+
+
+(From latch) One_op_draw
+
+setmatrix
+
+showpage
+%%EndPage: 1
+%%Page: 2 2
+
+/list_add_sub [(out carry)(out b2)(out b1)(out b0)(op_S b3)(op_S b2)(op_S b1)(op_S b0)(op_N b3)(op_N b2)(op_N b1)(op_N b0)(in carry)] def
+/list_reg_in_base [(old b11) (old b10) (old b9)(old b8) (old b7) (old b6)(old b5) (old b4) (old b3)(old b2) (old b1) (old b0)] def
+/list_reg_in list_reg_in_base [(new b5)(new b4)(new b3)(new b2)(new b1)(new b0)] shift_list_reg def
+/list_reg_out list_reg_in_base [(out b5)(out b4)(out b3)(out b2)(out b1)(out b0)] shift_list_reg def
+
+
+/Helvetica findfont 14 scalefont setfont
+
+% set hte cells heigh
+/cells_high 22 def
+matrix currentmatrix
+
+10 450 translate
+
+/list_right_R [ 5.5 14.5 14.5 ] def
+/list_right_G [ 14.5 14.5 14.5 ] def
+/list_right_O [ 14.5 14.5 14.5 ] def
+
+/list_left_B [ 4.5 5.5 14.5 ] def
+
+(Third clock cycle) Legenda
+
+(From latch) One_op_draw
+
+0 -440 translate
+/list_reg_out list_reg_out [(out b8)(out b7)(out b6)] shift_list_reg def
+/list_reg_in list_reg_in [(new b8)(new b7)(new b6)] shift_list_reg def
+/list_right_R [ 14.5 14.5 14.5 ] def
+
+/list_left_B [ 14.5 14.5 14.5 ] def
+
+(Fourth clock cycle) Legenda
+
+(From latch) One_op_draw
+
+setmatrix
+showpage
+%%EndPage: 2
+end
+
+%%EOF
