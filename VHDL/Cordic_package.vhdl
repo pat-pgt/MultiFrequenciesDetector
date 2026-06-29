@@ -1,5 +1,6 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
+  work.Utils_pac.StateNumbers_2_BitsNumbers,
   work.InterModule_formats.all,
   work.Meta_data_package.all,
   work.MultiFreqDetect_package.all;
@@ -144,7 +145,7 @@ package Cordic_package is
       --! Input of X, Y and Z.
       scz_in        : in  reg_sin_cos_z;
       scz_out       : out reg_sin_cos_z;
-      xy_is_neg     : in std_logic_vector
+      xy_is_neg     : in  std_logic_vector
       );
   end component Cordic_FirstStage_Y_to_0;
 
@@ -155,10 +156,10 @@ package Cordic_package is
     generic (
       --! Number of stages with shifts, some warnings applies, see in the code
       -- Related to the X>Y or Y>X limited precision. TODO Doc
-      stages_nbre         : natural := 20;
+      stages_nbre         : natural              := 20;
       metadata_catch_list : meta_data_list_t;
       stages_catch_list   : Cordic_stages_num_list;
-      extra_shifts : integer range 0 to 7 := 0
+      extra_shifts        : integer range 0 to 7 := 0
       );
     port (
       CLK           : in  std_logic;
@@ -173,6 +174,52 @@ package Cordic_package is
       report_out    : out std_logic);
   end component Cordic_Bundle_Y_to_0;
 
+  --! @brief Private component for the intermediary stages
+  --!
+  --! It is involved for the second set of stages (Y to 0).
+  --! The documentation is in the implementation.
+  component Cordic_IntermStage_Z_Selector is
+    generic (
+      arithm_size  : integer range 1 to 24;
+      reg_size     : integer range 16 to 255;
+      extra_shifts : integer range 0 to 7;
+      shifts_calc  : integer range 1 to reg_size - extra_shifts - arithm_size - 1
+      );
+    port (
+      CLK                : in  std_logic;
+      RST                : in  std_logic;
+      reg_sync           : in  std_logic;
+      strobe_from_scz_in : in  std_logic;
+      Z_extra_select     : out std_logic_vector(StateNumbers_2_BitsNumbers(extra_shifts + 1) - 1 downto 0);
+      Z_slice            : out std_logic_vector(arithm_size - 1 downto 0)
+    );
+  end component Cordic_IntermStage_Z_Selector;
+
+  
+  --! @brief Private component for the intermediary stages
+  --!
+  --! It is involved for the second set of stages (Y to 0).
+  --! The documentation is in the implementation.
+  component Cordic_IntermStage_ShiftSelector is
+    generic (
+      arithm_size  : integer range 1 to 24;
+      reg_size     : integer range 16 to 255;
+      extra_shifts : integer range 0 to 7;
+      shifts_calc  : integer range 1 to reg_size - extra_shifts - arithm_size - 1
+      );
+    port (
+      CLK                : in  std_logic;
+      RST                : in  std_logic;
+      reg_sync           : in  std_logic;
+      mask_sign          : in  std_logic_vector(arithm_size - 1 downto 0);
+      sincos_sign        : in  std_logic;
+      sincos_in_slice    : in  std_logic_vector(arithm_size - 1 downto 0);
+      sincos_inout_slice : in  std_logic_vector(arithm_size + extra_shifts - 1 - 1 downto 0);
+      sincos_out_slice   : out std_logic_vector(arithm_size - 1 downto 0)
+      );
+  end component Cordic_IntermStage_ShiftSelector;
+
+
   --! @brief Monitor one Cordic stage
   --!
   --! This component is called for the stage num_stage
@@ -186,20 +233,20 @@ package Cordic_package is
   --! then its related entity should be missing.
   component Cordic_Interm_monitor is
     generic (
-      Z_not_Y_to_0 : boolean;
-      stage_num : positive;
+      Z_not_Y_to_0        : boolean;
+      stage_num           : positive;
       metadata_catch_list : meta_data_list_t
       );
     port (
-      CLK             : in std_logic;
-      RST             : in std_logic;
-      reg_sync        : in std_logic;
+      CLK             : in  std_logic;
+      RST             : in  std_logic;
+      reg_sync        : in  std_logic;
       full_sync       : in  std_logic;
-      report_in       : in std_logic;
+      report_in       : in  std_logic;
       report_out      : out std_logic;
-      meta_data_after : in meta_data_t;
-      scz_before      : in reg_sin_cos_z;
-      scz_after       : in reg_sin_cos_z);
+      meta_data_after : in  meta_data_t;
+      scz_before      : in  reg_sin_cos_z;
+      scz_after       : in  reg_sin_cos_z);
   end component Cordic_Interm_monitor;
 
 end package Cordic_package;
