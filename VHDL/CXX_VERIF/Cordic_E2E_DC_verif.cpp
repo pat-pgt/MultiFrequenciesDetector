@@ -50,8 +50,21 @@ template<typename T>stats<T>::stats():
   the_min( numeric_limits<T>::max() ),
   the_max( numeric_limits<T>::min() ),
   offset( 0.0 ),
-  normalize( 1.0 )
+  normalize( 1.0 )  //,
+  // avg_ratios_between_stats( nullopt )
 {}
+/** @brief stats class constructor
+ *
+ */
+template<typename T>stats<T>::stats(T* avg_ratios_between_stats):
+  nbre_points( 0 ),
+  the_sum_avg( 0 ),the_sum_stddev( 0 ),the_sum_skew( 0 ),the_sum_kurt( 0 ),
+  the_min( numeric_limits<T>::max() ),
+  the_max( numeric_limits<T>::min() ),
+  offset( 0.0 ),
+  normalize( 1.0 ),
+  avg_ratios_between_stats( avg_ratios_between_stats )
+  {}
 
 /** @brief Add a new value for the statistics
  *
@@ -78,7 +91,7 @@ template<typename T>stats<T>&stats<T>::operator+=(const T&input_val)
 }
 
 
-template<typename T>stats<T>::operator string()const
+template<typename T>string stats<T>::Basic_display()
 {
   T the_avg( the_sum_avg / nbre_points );
   T the_stddev =  sqrt( the_sum_stddev / nbre_points - the_avg * the_avg ) ;
@@ -86,9 +99,19 @@ template<typename T>stats<T>::operator string()const
   // TODO find the formula to get the kurtosis and the skew
 
   // TODO improve the display
+  if ( avg_ratios_between_stats )
+	{
+	  if ( *(*avg_ratios_between_stats) == 0.0 )
+		*(*avg_ratios_between_stats) = the_avg;
+	  return format("{: E}, {: E}, {:1.3E}, {: E}",
+					the_max - the_min, the_avg, the_stddev, the_avg / *(*avg_ratios_between_stats) );
+	}
+	else
+	{
+	  return format("{: E}, {: E}, {:1.3E},         ",
+					the_max - the_min, the_avg, the_stddev);
 
-  return format("{: E}, {: E}, {: E}, {:1.3E}",
-				the_min, the_avg, the_max, the_stddev); 
+	}
 }
 
 template<typename T>string stats<T>::Display_without_offset_normalize()const
@@ -100,10 +123,9 @@ template<typename T>string stats<T>::Display_without_offset_normalize()const
 
   // TODO improve the display
 
-  return format("{: E}, {: E}, {: E}, {:1.3E}",
-				the_min * normalize + offset,
+  return format("{: E}, {: E}, {:1.3E}",
+				the_max * normalize + offset - the_min * normalize + offset,
 				the_avg * normalize + offset,
-				the_max * normalize + offset,
 				the_stddev * normalize + offset); 
 }
 
@@ -116,10 +138,10 @@ template<typename T>string stats<T>::Display_arccos_degrees()const
 
   // TODO improve the display
 
-  return format("{: E}, {: E}, {: E}, {:1.3E}",
+  return format("{: E}, {: E}, {:1.3E}",
+				acos( the_max * normalize + offset) * 360.0 / ( 2.0 * numbers::pi ) -
 				acos( the_min * normalize + offset) * 360.0 / ( 2.0 * numbers::pi ),
 				acos( the_avg * normalize + offset) * 360.0 / ( 2.0 * numbers::pi ),
-				acos( the_max * normalize + offset) * 360.0 / ( 2.0 * numbers::pi ),
 				the_stddev * normalize + offset); 
 }
 
@@ -137,7 +159,7 @@ template<typename T>string stats<T>::Display_arccos_Nth_turns()const
 
 template <typename stats_type, typename stats_long_type,typename cxx_reg_type, unsigned short reg_size>
 void SimulDataType<stats_type,stats_long_type,cxx_reg_type,reg_size>::
-Init(const long double&module_vector,
+Init(const stats_long_type&module_vector,
 			  const unsigned short &Z_2_0_stages,const unsigned short&Y_2_0_stages)
 {
   unsigned short ind;
@@ -208,14 +230,15 @@ int main()
    *   is going to make a full spin
    * The value should be at least 2 to run the differences.
    */
-  unsigned short full_cycles_number = 2;
+  unsigned short full_cycles_number = 3;
 
   vector<InitialValueData<int,32>>theInitialData = { 
 	InitialValueData<int,32>( 0x3fffffff, 0 ),
 	InitialValueData<int,32>( 0, 0x3fffffff ),
-	InitialValueData<int,32>( 0xc0000000, 0 ),
-	InitialValueData<int,32>( 0, 0xc0000000 ),
-	InitialValueData<int,32>( 0x3e700000, 0x3e700000 )
+	InitialValueData<int,32>( 0xc0000001, 0 ),
+	InitialValueData<int,32>( 0, 0xc0000001 ),
+	InitialValueData<int,32>( 0x1fffffff, 0x376cf5d0 ),
+	InitialValueData<int,32>( 0x2d4139f6, 0x2d4139f6 )
   };
   vector<SimulDataType<double,long double,int,32>>theSimulData;
   for( auto ind_ID : theInitialData )
@@ -484,7 +507,7 @@ int main()
 						 else
 						   {
 							 // Not found, create the records and initialize the statistics
-							 stats<double>theNewYStats;
+							 stats<double>theNewYStats(&simulData.Y_2_0.avg_ratios_between_stats);
 							 theNewYStats.SetNormalize( pow( 2, dat.GetRegSize() ) / 360 );
 							 // Set the value that should be found
 							 // TODO
@@ -529,17 +552,18 @@ int main()
   cout << "Duration: " << chrono_duration.count() << " mS" << endl;
 
   //TODO explain the results display
+
   
   cout << "Checking the Z to 0 first set of stages" << endl;
   cout << "Number             X,Y module delta from grow                       X,Y module absolute" << endl; 
-  cout << "of points         min average max standard dev                   min average max standard dev" << endl;
+  cout << "of points         max-min average standard dev                   max-min average standard dev" << endl;
   for_each( execution::seq,
 			theSimulData.begin(), theSimulData.end(),
-			[](const auto&dat){
+			[](auto&dat){
 			  if ( dat.GetAndCheck_nbre_points() )
 				{
 				  cout << "  " << *dat.GetAndCheck_nbre_points() << ",  ";
-				  cout << (string)dat.Z_2_0.check_module_constant << "\t\t";
+				  cout << dat.Z_2_0.check_module_constant.Basic_display() << "\t\t";
 				  cout << dat.Z_2_0.check_module_constant.Display_without_offset_normalize() << endl;
 				}
 			  else
@@ -547,14 +571,14 @@ int main()
 			});
   cout << endl;
   cout << "Number                 Z to 0 degrees                                       Z to 0 integer" << endl; 
-  cout << "of points         min average max standard dev                        min average max standard dev" << endl;
+  cout << "of points         max-min average standard dev                        max-min average standard dev" << endl;
 	for_each( execution::seq,
 			theSimulData.begin(), theSimulData.end(),
-			  [](const auto&dat){
+			  [](auto&dat){
 			  if ( dat.GetAndCheck_nbre_points() )
 				{
 				  cout << "  " << *dat.GetAndCheck_nbre_points() << ",  ";
-				  cout << (string)dat.Z_2_0.check_Z_converges << "\t\t";
+				  cout << dat.Z_2_0.check_Z_converges.Basic_display() << "\t\t";
 				  cout << dat.Z_2_0.check_Z_converges.Display_without_offset_normalize() << endl;
 				}
 			  else
@@ -565,16 +589,16 @@ int main()
 	// The number of samples are always minus 1 as they are differences
   for_each( execution::seq,
 			theSimulData.begin(), theSimulData.end(),
-			[](const auto&dat){
+			[](auto&dat){
 
 			for_each( execution::seq,
 					  dat.Z_2_0.check_scalar_prod_per_ON_constant.begin(),
 					  dat.Z_2_0.check_scalar_prod_per_ON_constant.end(),
-					  [](const auto&ON_iter){
+					  [](auto&ON_iter){
 						cout << "O: " << (unsigned short)ON_iter.first.first <<
 						  ", N: " << (unsigned short)ON_iter.first.second << '\t';
 						cout << (unsigned int)ON_iter.second.second << '\t';
-						cout << (string)ON_iter.second.second << "\t\t";
+						cout << ON_iter.second.second.Basic_display() << "\t\t";
 						cout << ON_iter.second.second.Display_arccos_degrees() << "\t\t";
 						cout << ON_iter.second.second.Display_arccos_Nth_turns();
 						cout << endl;
@@ -584,14 +608,14 @@ int main()
   cout << endl;
   cout << "Checking the Y to 0 second set of stages" << endl;
   cout << "Number            X module delta from grow                               X module absolute"<< endl;
-  cout << "of points         min average max standard dev                           min average max standard dev " << endl;
+  cout << "of points         max-min average standard dev                           max-min average standard dev " << endl;
   for_each( execution::seq,
 			theSimulData.begin(), theSimulData.end(),
-			[](const auto&dat){
+			[](auto&dat){
 			  if ( dat.GetAndCheck_nbre_points() )
 				{
 				  cout << "  " << *dat.GetAndCheck_nbre_points() << ",  ";
-				  cout << (string)dat.Y_2_0.check_X_converges << "\t\t";
+				  cout << dat.Y_2_0.check_X_converges.Basic_display() << "\t\t";
 				  cout << dat.Y_2_0.check_X_converges.Display_without_offset_normalize() << endl;
 				}
 			  else
@@ -599,15 +623,15 @@ int main()
 			});
   cout << endl;
   cout << "Number            Y to 0 integer                                    Y to 0 ratio from X"<< endl;
-  cout << "of points         min average max standard dev                      min average max standard dev " << endl;
+  cout << "of points         max-min average standard dev                      max-min average standard dev " << endl;
   for_each( execution::seq,
 			theSimulData.begin(), theSimulData.end(),
-			[](const auto&dat){
+			[](auto&dat){
 			  if ( dat.GetAndCheck_nbre_points() )
 				{
 				  cout << "  " << *dat.GetAndCheck_nbre_points() << ",  ";
 				  cout << dat.Y_2_0.check_Y_converges.Display_without_offset_normalize() << "\t\t";
-				  cout << (string)dat.Y_2_0.check_Y_converges << endl;
+				  cout << dat.Y_2_0.check_Y_converges.Basic_display() << endl;
 				}
 			  else
 				cout << "Problem: the number of points is not the same for all the tests" << endl;
@@ -616,14 +640,14 @@ int main()
   // Now display the octave note specific results
   // The number of samples are always minus 1 as they are differences
   cout << "Number            Z rotation angle degrees                          Z rotation angle integer" << endl; 
-  cout << "of points         min average max standard dev                      min average max standard dev" << endl;
+  cout << "of points         max-min average standard dev                      max-min average standard dev" << endl;
   for_each( execution::seq,
 			theSimulData.begin(), theSimulData.end(),
-			[](const auto&dat){
+			[](auto&dat){
 			for_each( execution::seq,
 					  dat.Y_2_0.check_spin_per_ON_constant.begin(),
 					  dat.Y_2_0.check_spin_per_ON_constant.end(),
-					  [](const auto&ON_iter){
+					  [](auto&ON_iter){
 						if ( ON_iter.first.first != numeric_limits<decltype(ON_iter.first.first)>::max() ||
 							 ON_iter.first.second != numeric_limits<decltype(ON_iter.first.second)>::max() ) {
 						  cout << "O: " << (unsigned short)ON_iter.first.first <<
@@ -631,7 +655,7 @@ int main()
 						}else
 						  cout << "O: /, N: /\t";
 						cout << (unsigned int)ON_iter.second.second << '\t';
-						cout << (string)ON_iter.second.second << "\t\t";
+						cout << ON_iter.second.second.Basic_display() << "\t\t";
 						cout << ON_iter.second.second.Display_without_offset_normalize() << "\t\t";
 						//	cout << ON_iter.second.second.Display_without_offset_normalize() << "\t\t";
 						cout << endl;
@@ -644,7 +668,7 @@ TODO create object and include in the loop above
   set<pair<unsigned char, unsigned char>> check_spin_per_ON_constant_keys;
   for_each( execution::seq,
 			theSimulData.begin(), theSimulData.end(),
-			[&](const auto&dat){
+			[&](auto&dat){
 			  check_spin_per_ON_constant_keys.insert( views::keys(ON_iter.first ));
 			});
   for_each( check_spin_per_ON_constant_keys.begin(), check_spin_per_ON_constant_keys.end(),

@@ -158,10 +158,12 @@ class stats
   T the_sum_avg, the_sum_stddev, the_sum_skew, the_sum_kurt;
   T the_min, the_max;
   T normalize, offset;
+  optional< T* >avg_ratios_between_stats;
 public:
   typedef T value_type;
 
   stats();
+  stats(T* avg_ratios_between_stats);
 
   stats<T>&operator+=(const T&);
   constexpr void SetNormalize(const T&normalize){
@@ -174,7 +176,7 @@ public:
 	  throw invalid_argument("Internal: The offset can NOT be changed after the first value");
 	this -> offset = offset;
   }
-  operator string()const;
+  string Basic_display();
   string Display_without_offset_normalize()const;
   string Display_arccos_degrees()const;
   operator unsigned int()const{return nbre_points;}
@@ -198,19 +200,20 @@ struct SimulDataType
 	const float GetInitAngle()const;
 
 	struct {
-	  stats<long double>check_module_constant;
+	  stats<stats_long_type>check_module_constant;
 	  map< pair< unsigned char, unsigned char >,
-		   pair<XY_Data<cxx_reg_type,reg_size>,stats<long double> > > check_scalar_prod_per_ON_constant;
-	  stats<double>check_Z_converges;
+		   pair<XY_Data<cxx_reg_type,reg_size>,stats<stats_long_type> > > check_scalar_prod_per_ON_constant;
+	  stats<stats_type>check_Z_converges;
 	}  Z_2_0;
 	struct {
-	  stats<double>check_X_converges;
-	  stats<double>check_Y_converges;
+   	  stats_type avg_ratios_between_stats;
+	  stats<stats_type>check_X_converges;
+	  stats<stats_type>check_Y_converges;
 	  map< pair< unsigned char, unsigned char >,
-		   pair<cxx_reg_type, stats<double> > > check_spin_per_ON_constant;
+		   pair<cxx_reg_type, stats<stats_type> > > check_spin_per_ON_constant;
 	}  Y_2_0;
 
-	void Init(const long double&module_vector,
+	void Init(const stats_long_type&module_vector,
 		 const unsigned short &Z_2_0_stages,const unsigned short&Y_2_0_stages);
 	optional<unsigned int> GetAndCheck_nbre_points()const;
 };
