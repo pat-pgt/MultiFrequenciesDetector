@@ -18,7 +18,10 @@ entity Cordic_IntermStage_Z_Selector is
     RST                : in  std_logic;
     reg_sync           : in  std_logic;
     strobe_from_scz_in : in  std_logic;
-    Z_extra_select     : out std_logic_vector(StateNumbers_2_BitsNumbers(extra_shifts + 1) - 1 downto 0);
+    --! Selects which angle internal signal\n
+    --!   and which shift for the sine and the cosine.
+    extra_shift_select : out std_logic_vector(StateNumbers_2_BitsNumbers(extra_shifts + 1) - 1 downto 0);
+    --! Returns the selected slice of the selected angle.
     Z_slice            : out std_logic_vector(arithm_size - 1 downto 0)
     );
 end entity Cordic_IntermStage_Z_Selector;
@@ -28,30 +31,47 @@ architecture arch of Cordic_IntermStage_Z_Selector is
   type Z_data_t is array (extra_shifts + 1 - 1 downto 0) of std_logic_vector(reg_size - 1 downto 0);
 
   signal angle_add_or_subtract : Z_data_t;
-  signal Z_shifts_count        : std_logic_vector(reg_size - 1 downto 0);
+  -- selects the slice inside a given angle
+  -- Keep downto 0 to run the setting to one, see below.
+  signal Z_shifts_count        : std_logic_vector(StateNumbers_2_BitsNumbers(reg_size) - 1 downto 0);
 begin
   populate_Z : for ind in 0 to extra_shifts generate
-    angle_add_or_subtract(ind) <= arctg_2_angle_reg(shifts_calc);
+    angle_add_or_subtract(ind) <= arctg_2_angle_reg(shifts_calc + ind);
   end generate populate_Z;
 
   main_proc : process (CLK) is
+    variable extra_shift_Z_select : natural;
   begin
 
     CLK_IF : if rising_edge(CLK) then
       RST_if : if RST = '0' then
+        if extra_shift_select'length > 0 then
+           extra_shift_Z_select := to_integer(unsigned(extra_shift_select));
+        else
+          extra_shift_Z_select := 0;
+        end if; 
         REGSYNC_IF : if reg_sync = '1' then
-          Z_shifts_count <= (others => '0');
+          Z_shifts_count <= (0 => '1', others => '0');
+          -- The strobe is valid a couple of clock cycles before the register sync.
+          -- In fact, it is valid a couple of clock cycles after the previous register sync.
+          --
+          -- Then, for propagation delays, during the register sync:
+          -- * the Z_extra_select is cleared if the strobe is active,
+          --     or if there is no extra cycles. It is incremented by one otherwise.
+          -- * the low part of the low angle is returned if the strobe is active,
+          --     or if there is no extra cycles. Otherwise, the low part of
+          --     relevant angle is returned before the extra_shift_select is incremented.
           if strobe_from_scz_in = '1' or extra_shifts = 0 then
-            Z_extra_select <= (others => '0');
+            extra_shift_select <= (others => '0');
             Z_slice        <= angle_add_or_subtract(0)
                        (angle_add_or_subtract(0)'low + arithm_size - 1 downto
                         angle_add_or_subtract(0)'low);
-          elsif unsigned(Z_extra_select) /= to_unsigned(extra_shifts, Z_extra_select'length) then
-            Z_extra_select                          <= std_logic_vector(unsigned(Z_extra_select) + 1);
-            if to_integer(unsigned(Z_extra_select)) <= extra_shifts then
+          elsif unsigned(extra_shift_select) /= to_unsigned(extra_shifts, extra_shift_select'length) then
+            extra_shift_select                          <= std_logic_vector(unsigned(extra_shift_select) + 1);
+            if extra_shift_Z_select < extra_shifts then
               -- Since the size may not be a power of 2,
               --   the index is tested against the highest possible index
-              Z_slice <= angle_add_or_subtract(to_integer(unsigned(Z_extra_select)) + 1)
+              Z_slice <= angle_add_or_subtract(extra_shift_Z_select + 1)
                          (angle_add_or_subtract(0)'low + arithm_size - 1 downto
                           angle_add_or_subtract(0)'low);
             else
@@ -64,20 +84,20 @@ begin
             end if;
           end if;
         else
-          Z_shifts_count                          <= std_logic_vector(unsigned(Z_shifts_count) + 1);
-          if to_integer(unsigned(Z_extra_select)) <= extra_shifts then
+          Z_shifts_count                          <= std_logic_vector(unsigned(Z_shifts_count) + arithm_size);
+          if extra_shift_Z_select <= extra_shifts then
             -- Since the size may not be a power of 2,
             --   the index is tested against the highest possible index
-            Z_slice <= angle_add_or_subtract(to_integer(unsigned(Z_extra_select)) + 1)
-                       (angle_add_or_subtract(0)'low + arithm_size - 1 downto
-                        angle_add_or_subtract(0)'low);
+            Z_slice <= angle_add_or_subtract(extra_shift_Z_select)
+                       (angle_add_or_subtract(0)'low + arithm_size + to_integer(unsigned(Z_shifts_count)) - 1 downto
+                        angle_add_or_subtract(0)'low + to_integer(unsigned(Z_shifts_count)));
           else
             -- If it is wrong, the index is the highest possible index.
             -- Since the array is a constant, the compiler should only
             --   handle that in the decoding.
             Z_slice <= angle_add_or_subtract(extra_shifts)
-                       (angle_add_or_subtract(0)'low + arithm_size - 1 downto
-                        angle_add_or_subtract(0)'low);
+                       (angle_add_or_subtract(0)'low + arithm_size + to_integer(unsigned(Z_shifts_count)) - 1 downto
+                        angle_add_or_subtract(0)'low +  to_integer(unsigned(Z_shifts_count)));
           end if;
 
         end if REGSYNC_IF;
@@ -192,7 +212,7 @@ entity Cordic_IntermStage is
   generic (
     Z_not_Y_to_0 : boolean;
     shifts_calc  : integer range 1 to reg_size - 4;
-    extra_shifts : integer range 0 to 7
+    extra_shifts : integer range 0 to 7 := 0
     );
   port (
     CLK           : in  std_logic;
@@ -221,7 +241,6 @@ architecture rtl of Cordic_IntermStage is
   --!   in order to not limit the bandwidth.
   signal remaining_shift_count                  : std_logic_vector(5 downto 0);
   signal is_first                               : std_logic;
-  signal Z_shifts_count                         : std_logic_vector(5 downto 0);
   signal debug_catch_X2_plus_Y2                 : real;
   signal debug_catch_X_sync, debug_catch_Y_sync : reg_type;
   signal debug_catch_Z_sync                     : reg_type;
@@ -234,9 +253,11 @@ architecture rtl of Cordic_IntermStage is
   signal selected_Y_for_arithm                  : std_logic_vector(arithm_size - 1 downto 0);
   --
   signal input_sczin_not_scz_out                : std_logic;
-  signal extra_shifts_counter                   : std_logic_vector(2 downto 0);
   signal mask_init                              : std_logic_vector( arithm_size - 1 downto 0 );
   -- KEEP low to 0
+  signal extra_shift_select                     : std_logic_vector(
+    StateNumbers_2_BitsNumbers(extra_shifts + 1) - 1 downto 0);
+  signal Z_current_slice                        : std_logic_vector( arithm_size - 1 downto 0);
   signal mask_register                          : std_logic_vector( reg_size - 1 downto 0);
 begin
   -- To be improved with automatic size
@@ -298,7 +319,6 @@ begin
           sign_Y                <= scz_in.the_sin(scz_in.the_sin'high);
           meta_data_out         <= meta_data_in;
           remaining_shift_count <= std_logic_vector(to_unsigned(reg_size - shifts_calc, remaining_shift_count'length));
-          Z_shifts_count        <= (others => '0');
           is_first              <= '1';
           if shifts_calc < 4 and false then
             --
@@ -366,24 +386,9 @@ begin
               scz_in.the_sin(scz_in.the_sin'low + arithm_size - 1 + arithm_size * shifts_calc downto
                              scz_in.the_sin'low + arithm_size * shifts_calc);
           end if;
-          -- Extract the constant to be added to or subtracted from Z
-          -- A selector is used, rather than a shift register
-          if (angle_add_or_subtract'low + (to_integer(unsigned (Z_shifts_count)) + arithm_size) - 1) <= angle_add_or_subtract'high then
-            op_C_Z(op_C_Z'high - 1 downto op_C_Z'low) :=
-              angle_add_or_subtract(
-                angle_add_or_subtract'low + (to_integer(unsigned (Z_shifts_count)) + arithm_size) - 1 downto
-                angle_add_or_subtract'low + to_integer(unsigned (Z_shifts_count)));
-          else
-            -- The electronics should always know what to do.
-            -- Then the low bit/group of bits is duplicated in case the shifts
-            -- are grater than the Z constant.
-            -- This should not occur in run mode. It may occur at the end of a reset
-            op_C_Z(op_C_Z'high - 1 downto op_C_Z'low) :=
-              angle_add_or_subtract(
-                angle_add_or_subtract'high downto
-                angle_add_or_subtract'high - arithm_size + 1);
-          end if;
-          Z_shifts_count                                                             <= std_logic_vector(unsigned(Z_shifts_count) + arithm_size);
+          -- Set the Z.
+          -- Its slice is selected in a dedicated component.
+          op_C_Z(op_C_Z'high - 1 downto op_C_Z'low) := Z_current_slice;
           -- Prepare the carry in with a padding in order to add properly
           -- operands of the same size
           carry_in_vector_X(carry_in_vector_X'high downto carry_in_vector_X'low + 1) := (others => '0');
@@ -453,23 +458,41 @@ begin
           is_first <= '0';
         end if REGSYNC_IF;
       else
-        Z_shifts_count        <= (others => '0');
         remaining_shift_count <= (others => '0');
       end if RST_IF;
     end if CLK_IF;
   end process main_proc;
 
+
+Cordic_IntermStage_Z_Selector_instanc : Cordic_IntermStage_Z_Selector
+  generic map (
+      arithm_size  => arithm_size,
+      reg_size     => reg_size,
+      shifts_calc  => shifts_calc,
+      extra_shifts => extra_shifts
+      )
+  port map (
+      CLK,
+      RST,
+      reg_sync,
+      strobe_from_scz_in => meta_data_in.strobe,
+      extra_shift_select => extra_shift_select,
+      Z_slice            => Z_current_slice
+    );
+
+  
   Cordic_IntermStage_ShiftSelector_instanc_X : Cordic_IntermStage_ShiftSelector
     generic map (
-      arithm_size,
-      reg_size,
-      shifts_calc,
-      extra_shifts
+      arithm_size  => arithm_size,
+      reg_size     => reg_size,
+      shifts_calc  => shifts_calc,
+      extra_shifts => extra_shifts
       )
     port map (
       CLK,
       RST,
       reg_sync,
+      selector        => extra_shift_select,
       mask_sign       => mask_register( mask_register'low + shifts_calc + arithm_size - 1 downto
                                         mask_register'low + shifts_calc ),
       sincos_sign     => sign_X,
@@ -485,15 +508,16 @@ begin
 
   Cordic_IntermStage_ShiftSelector_instanc_Y : Cordic_IntermStage_ShiftSelector
     generic map (
-      arithm_size,
-      reg_size,
-      shifts_calc,
-      extra_shifts
+      arithm_size  => arithm_size,
+      reg_size     => reg_size,
+      shifts_calc  => shifts_calc,
+      extra_shifts => extra_shifts
       )
     port map (
       CLK,
       RST,
       reg_sync,
+      selector        => extra_shift_select,
       mask_sign       => mask_register( mask_register'low + shifts_calc + arithm_size - 1 downto
                                         mask_register'low + shifts_calc ),
       sincos_sign     => sign_Y,

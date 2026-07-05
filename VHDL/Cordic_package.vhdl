@@ -190,7 +190,7 @@ package Cordic_package is
       RST                : in  std_logic;
       reg_sync           : in  std_logic;
       strobe_from_scz_in : in  std_logic;
-      Z_extra_select     : out std_logic_vector(StateNumbers_2_BitsNumbers(extra_shifts + 1) - 1 downto 0);
+      extra_shift_select : out std_logic_vector(StateNumbers_2_BitsNumbers(extra_shifts + 1) - 1 downto 0);
       Z_slice            : out std_logic_vector(arithm_size - 1 downto 0)
     );
   end component Cordic_IntermStage_Z_Selector;
@@ -211,6 +211,7 @@ package Cordic_package is
       CLK                : in  std_logic;
       RST                : in  std_logic;
       reg_sync           : in  std_logic;
+      selector           : in  std_logic_vector(StateNumbers_2_BitsNumbers(extra_shifts + 1) - 1 downto 0);
       mask_sign          : in  std_logic_vector(arithm_size - 1 downto 0);
       sincos_sign        : in  std_logic;
       sincos_in_slice    : in  std_logic_vector(arithm_size - 1 downto 0);
