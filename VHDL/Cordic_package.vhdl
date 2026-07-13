@@ -189,6 +189,7 @@ package Cordic_package is
       CLK                : in  std_logic;
       RST                : in  std_logic;
       reg_sync           : in  std_logic;
+      --! The setup time may be 1 clock cycle before the register sync.
       strobe_from_scz_in : in  std_logic;
       extra_shift_select : out std_logic_vector(StateNumbers_2_BitsNumbers(extra_shifts + 1) - 1 downto 0);
       Z_slice            : out std_logic_vector(arithm_size - 1 downto 0)
@@ -220,7 +221,28 @@ package Cordic_package is
       );
   end component Cordic_IntermStage_ShiftSelector;
 
+  --! @brief Private component for the intermediary stages
+  --!
+  --! It is involved for the second set of stages (Y to 0).
+  --! The documentation is in the implementation.
+  component Cordic_IntermStage_mask_builder is
+    generic (
+      arithm_size  : integer range 1 to 24;
+      reg_size     : integer range 16 to 255;
+      extra_shifts : integer range 0 to 7;
+      shifts_calc  : integer range 1 to reg_size - extra_shifts - arithm_size - 1
+      );
+    port (
+      CLK                : in  std_logic;
+      RST                : in  std_logic;
+      reg_sync           : in  std_logic;
+      --! The setup time is 1 clock cycle before the register sync.
+      strobe_from_scz_in : in  std_logic;
+      mask_sign          : out std_logic_vector(arithm_size - 1 downto 0)
+    );
+  end component Cordic_IntermStage_mask_builder;
 
+  
   --! @brief Monitor one Cordic stage
   --!
   --! This component is called for the stage num_stage

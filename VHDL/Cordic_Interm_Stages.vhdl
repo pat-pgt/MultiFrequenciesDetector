@@ -19,7 +19,8 @@ entity Cordic_IntermStage_Z_Selector is
     reg_sync           : in  std_logic;
     strobe_from_scz_in : in  std_logic;
     --! Selects which angle internal signal\n
-    --!   and which shift for the sine and the cosine.
+    --!   and which shift for the sine and the cosine.\n
+    --! The setup time is 1 clock cycle before the register sync.
     extra_shift_select : out std_logic_vector(StateNumbers_2_BitsNumbers(extra_shifts + 1) - 1 downto 0);
     --! Returns the selected slice of the selected angle.
     Z_slice            : out std_logic_vector(arithm_size - 1 downto 0)
@@ -32,7 +33,7 @@ architecture arch of Cordic_IntermStage_Z_Selector is
 
   signal angle_add_or_subtract : Z_data_t;
   -- selects the slice inside a given angle
-  -- Keep downto 0 to run the setting to one, see below.
+  -- Keep down-to 0 to run the setting to one, see below.
   signal Z_shifts_count        : std_logic_vector(StateNumbers_2_BitsNumbers(reg_size) - 1 downto 0);
 begin
   populate_Z : for ind in 0 to extra_shifts generate
@@ -46,10 +47,10 @@ begin
     CLK_IF : if rising_edge(CLK) then
       RST_if : if RST = '0' then
         if extra_shift_select'length > 0 then
-           extra_shift_Z_select := to_integer(unsigned(extra_shift_select));
+          extra_shift_Z_select := to_integer(unsigned(extra_shift_select));
         else
           extra_shift_Z_select := 0;
-        end if; 
+        end if;
         REGSYNC_IF : if reg_sync = '1' then
           Z_shifts_count <= (0 => '1', others => '0');
           -- The strobe is valid a couple of clock cycles before the register sync.
@@ -63,11 +64,11 @@ begin
           --     relevant angle is returned before the extra_shift_select is incremented.
           if strobe_from_scz_in = '1' or extra_shifts = 0 then
             extra_shift_select <= (others => '0');
-            Z_slice        <= angle_add_or_subtract(0)
+            Z_slice            <= angle_add_or_subtract(0)
                        (angle_add_or_subtract(0)'low + arithm_size - 1 downto
                         angle_add_or_subtract(0)'low);
           elsif unsigned(extra_shift_select) /= to_unsigned(extra_shifts, extra_shift_select'length) then
-            extra_shift_select                          <= std_logic_vector(unsigned(extra_shift_select) + 1);
+            extra_shift_select <= std_logic_vector(unsigned(extra_shift_select) + 1);
             if extra_shift_Z_select < extra_shifts then
               -- Since the size may not be a power of 2,
               --   the index is tested against the highest possible index
@@ -84,7 +85,7 @@ begin
             end if;
           end if;
         else
-          Z_shifts_count                          <= std_logic_vector(unsigned(Z_shifts_count) + arithm_size);
+          Z_shifts_count          <= std_logic_vector(unsigned(Z_shifts_count) + arithm_size);
           if extra_shift_Z_select <= extra_shifts then
             -- Since the size may not be a power of 2,
             --   the index is tested against the highest possible index
@@ -97,7 +98,7 @@ begin
             --   handle that in the decoding.
             Z_slice <= angle_add_or_subtract(extra_shifts)
                        (angle_add_or_subtract(0)'low + arithm_size + to_integer(unsigned(Z_shifts_count)) - 1 downto
-                        angle_add_or_subtract(0)'low +  to_integer(unsigned(Z_shifts_count)));
+                        angle_add_or_subtract(0)'low + to_integer(unsigned(Z_shifts_count)));
           end if;
 
         end if REGSYNC_IF;
@@ -127,18 +128,18 @@ entity Cordic_IntermStage_ShiftSelector is
     shifts_calc  : integer range 1 to reg_size - extra_shifts - arithm_size - 1
     );
   port (
-    CLK      : in std_logic;
-    RST      : in std_logic;
-    reg_sync : in std_logic;
+    CLK                : in  std_logic;
+    RST                : in  std_logic;
+    reg_sync           : in  std_logic;
     --!
-    selector : in std_logic_vector(StateNumbers_2_BitsNumbers(extra_shifts + 1) - 1 downto 0);
+    selector           : in  std_logic_vector(StateNumbers_2_BitsNumbers(extra_shifts + 1) - 1 downto 0);
     --! The switch between the input and the sign bit could have been done
     --!   using counters and comparators.\n
     --! It is done using a shift register.\n
     --! The reason is to not raise more the propagation delay.\n
     --! The extra resources are not that high as more the shifts are high,
     --!   more the shift register to generate the mask is short.
-    mask_sign          : in std_logic_vector(arithm_size - 1 downto 0);
+    mask_sign          : in  std_logic_vector(arithm_size - 1 downto 0);
     --! The sign is used to populate for the cases over the shifts
     sincos_sign        : in  std_logic;
     --! The slice of the first shift is taken from the scz_in
@@ -165,30 +166,133 @@ begin  -- architecture arch
     ", arithm out length: " & integer'image(sincos_out_slice'length)
     severity note;
 
-  WITH_EXTRA: if extra_shifts > 0 generate
-    
-    main_proc: process ( all ) is
-      variable selected_arithm : std_logic_vector( arithm_size - 1 downto 0 );
+  WITH_EXTRA : if extra_shifts > 0 generate
+
+    main_proc : process (all) is
+      variable selected_arithm : std_logic_vector(arithm_size - 1 downto 0);
     begin  -- process main_proc
-      ALL_ZEROS_IF : if or( selector ) = '0' then
+      ALL_ZEROS_IF : if or(selector) = '0' then
         selected_arithm := sincos_in_slice;
       else
-        selected_arithm := sincos_inout_slice( arithm_size - 1 + to_integer(unsigned( selector)) - 1 downto
-                                               0 + to_integer(unsigned( selector)) - 1 );
+        selected_arithm := sincos_inout_slice(arithm_size - 1 + to_integer(unsigned(selector)) - 1 downto
+                                              0 + to_integer(unsigned(selector)) - 1);
       end if ALL_ZEROS_IF;
-      sincos_out_slice <= ( selected_arithm and mask_sign ) or ( sincos_sign and not mask_sign);
+      sincos_out_slice <= (selected_arithm and mask_sign) or (sincos_sign and not mask_sign);
     end process main_proc;
 
   end generate WITH_EXTRA;
 
-  NO_EXTRA: if extra_shifts > 0 generate
-    
-    sincos_out_slice <= ( sincos_in_slice and mask_sign ) or ( sincos_sign and not mask_sign);
+  NO_EXTRA : if extra_shifts = 0 generate
+
+    sincos_out_slice <= (sincos_in_slice and mask_sign) or (sincos_sign and not mask_sign);
 
   end generate NO_EXTRA;
 
-  
+
 end architecture arch;
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.all,
+  ieee.numeric_std.all,
+  work.Utils_pac.StateNumbers_2_BitsNumbers,
+  ieee.math_real.all,
+  work.InterModule_formats.all,
+  work.MultiFreqDetect_package.all,
+  work.Meta_data_package.all,
+  work.Input_modules.all,
+  work.Cordic_package.all;
+
+--! @brief Selector for the shifted operand
+--!
+--! There are many cases with different arithmetic size and extra shifts.
+--! The selector is an explicit component.\n
+--! All the global constants has been redefined here,
+--!   to make the generic atomic test easy.\n
+--! The registers are re-entrant. The current data shifts, the new data
+--!   comes. Regular divisions are made while keeping the high bit.\n
+--! This can be done while keeping somewhere the high bit,
+--!   and switching to it when the new data arrived.\n
+--! If a mask bit is 1, the data is taken from the register by the selector.
+--! If a mask bit is 0, the data is taken from the latched sign bit by the selector.
+
+entity Cordic_IntermStage_mask_builder is
+  generic (
+    arithm_size  : integer range 1 to 24;
+    reg_size     : integer range 16 to 255;
+    extra_shifts : integer range 0 to 7;
+    shifts_calc  : integer range 1 to reg_size - extra_shifts - arithm_size - 1
+    );
+  port (
+    CLK                : in  std_logic;
+    RST                : in  std_logic;
+    reg_sync           : in  std_logic;
+    --! The setup time is 1 clock cycle before the register sync.
+    strobe_from_scz_in : in  std_logic;
+    mask_sign          : out std_logic_vector(arithm_size - 1 downto 0)
+    );
+end entity Cordic_IntermStage_mask_builder;
+
+--! The architecture is shift registers based
+--! It consumes more registers, but fixes all the timing problems.\n
+--! Perhaps, in the future, a choice is going to select
+--!   the counter based or the shift registers based solution.\n
+--! The legacy solution, using a counter, is not usable for all the shifts
+--!   not multiple of the arithmetic size.
+--! That means, a number of counters equal to the arithmetic size is required,
+--!   or one counter and subtractions are required.\n
+--! It is weired with a large arithmetic size.\n
+--! The shift registers are weired with a small arithmetic size.\n
+--! However, the extra shifts (in the Y to 0 part) reduces
+--!   the number of stages.\n
+--! Also the number of shifts is reduced stage after stage.\n
+--! TODO write a software to calculate the resource consumption.
+architecture arch of Cordic_IntermStage_mask_builder is
+  signal mask_register : std_logic_vector(StateNumbers_2_BitsNumbers(reg_size - shifts_calc) - 1 downto 0);
+  signal starting_mask : std_logic_vector(StateNumbers_2_BitsNumbers(extra_shifts + 1) downto 0);
+begin
+  mask_sign <= mask_register(mask_register'low + mask_sign'length - 1 downto mask_register'low);
+
+  main_proc : process (CLK) is
+    variable ind_reg : integer;
+  begin
+    if rising_edge(CLK) then
+      if reg_sync = '1' then
+        if strobe_from_scz_in = '1' or extra_shifts = 0 then
+          mask_register <= ( others => '1' );
+          starting_mask <= ( '0', others => '1' );
+        else
+          mask_register <= ( starting_mask, others => '1' );
+          starting_mask( starting_mask'high - 1 downto starting_mask'low ) <=
+            starting_mask( starting_mask'high downto starting_mask'low + 1 );
+          starting_mask( starting_mask'high ) <= '0';
+        end if;
+      else
+        -- Shift down the register by arithmetic size.
+        -- Don't forget, the length of this register is or is not a multiple
+        -- of the arithmetic size.
+        arithmetic_loop : for ind in 0 to arithm_size - 1 loop
+          ind_reg := 0;
+          regtype_loop : loop
+            if mask_register'high - ind - arithm_size - ind_reg * arithm_size >= mask_register'low  then
+              mask_register( mask_register'high - ind - arithm_size - ind_reg * arithm_size) <=
+                mask_register( mask_register'high - ind - ind_reg * arithm_size );
+            else
+              -- We can leave everything here as if the index is lower than
+              -- the lowest index, is it going to be lower as well
+              --   with higher ind values
+              exit arithmetic_loop;
+            end if;
+          ind_reg := ind_reg + 1;
+          end loop regtype_loop;
+        end loop arithmetic_loop;
+        -- and populate the top with zeros
+        mask_register( mask_register'high downto mask_register'high - arithm_size + 1 ) <= ( others => '0' );
+      end if;
+    end if;
+  end process main_proc;
+
+end architecture arch;
+
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
@@ -253,12 +357,11 @@ architecture rtl of Cordic_IntermStage is
   signal selected_Y_for_arithm                  : std_logic_vector(arithm_size - 1 downto 0);
   --
   signal input_sczin_not_scz_out                : std_logic;
-  signal mask_init                              : std_logic_vector( arithm_size - 1 downto 0 );
   -- KEEP low to 0
-  signal extra_shift_select                     : std_logic_vector(
+  signal extra_shift_select : std_logic_vector(
     StateNumbers_2_BitsNumbers(extra_shifts + 1) - 1 downto 0);
-  signal Z_current_slice                        : std_logic_vector( arithm_size - 1 downto 0);
-  signal mask_register                          : std_logic_vector( reg_size - 1 downto 0);
+  signal Z_current_slice : std_logic_vector(arithm_size - 1 downto 0);
+  signal mask_register   : std_logic_vector(arithm_size - 1 downto 0);
 begin
   -- To be improved with automatic size
   assert reg_size < 2**remaining_shift_count'length report "Internal error" severity failure;
@@ -388,7 +491,7 @@ begin
           end if;
           -- Set the Z.
           -- Its slice is selected in a dedicated component.
-          op_C_Z(op_C_Z'high - 1 downto op_C_Z'low) := Z_current_slice;
+          op_C_Z(op_C_Z'high - 1 downto op_C_Z'low)                                  := Z_current_slice;
           -- Prepare the carry in with a padding in order to add properly
           -- operands of the same size
           carry_in_vector_X(carry_in_vector_X'high downto carry_in_vector_X'low + 1) := (others => '0');
@@ -464,23 +567,38 @@ begin
   end process main_proc;
 
 
-Cordic_IntermStage_Z_Selector_instanc : Cordic_IntermStage_Z_Selector
-  generic map (
+  Cordic_IntermStage_Z_Selector_instanc : Cordic_IntermStage_Z_Selector
+    generic map (
       arithm_size  => arithm_size,
       reg_size     => reg_size,
       shifts_calc  => shifts_calc,
       extra_shifts => extra_shifts
       )
-  port map (
+    port map (
       CLK,
       RST,
       reg_sync,
       strobe_from_scz_in => meta_data_in.strobe,
       extra_shift_select => extra_shift_select,
       Z_slice            => Z_current_slice
-    );
+      );
 
-  
+  Cordic_IntermStage_mask_builder_instanc : Cordic_IntermStage_mask_builder
+    generic map(
+    arithm_size ,
+    reg_size    ,
+    extra_shifts,
+    shifts_calc
+    )
+  port map(
+      CLK,
+      RST,
+      reg_sync,
+      strobe_from_scz_in => meta_data_in.strobe,
+      mask_sign => mask_register
+      );
+
+
   Cordic_IntermStage_ShiftSelector_instanc_X : Cordic_IntermStage_ShiftSelector
     generic map (
       arithm_size  => arithm_size,
@@ -493,8 +611,7 @@ Cordic_IntermStage_Z_Selector_instanc : Cordic_IntermStage_Z_Selector
       RST,
       reg_sync,
       selector        => extra_shift_select,
-      mask_sign       => mask_register( mask_register'low + shifts_calc + arithm_size - 1 downto
-                                        mask_register'low + shifts_calc ),
+      mask_sign       => mask_register,
       sincos_sign     => sign_X,
       sincos_in_slice => scz_in.the_cos(scz_in.the_cos'low + shifts_calc + arithm_size - 1 downto
                                         scz_in.the_cos'low + shifts_calc),
@@ -518,8 +635,7 @@ Cordic_IntermStage_Z_Selector_instanc : Cordic_IntermStage_Z_Selector
       RST,
       reg_sync,
       selector        => extra_shift_select,
-      mask_sign       => mask_register( mask_register'low + shifts_calc + arithm_size - 1 downto
-                                        mask_register'low + shifts_calc ),
+      mask_sign       => mask_register,
       sincos_sign     => sign_Y,
       sincos_in_slice => scz_in.the_sin(scz_in.the_sin'low + shifts_calc + arithm_size - 1 downto
                                         scz_in.the_sin'low + shifts_calc),
@@ -531,14 +647,13 @@ Cordic_IntermStage_Z_Selector_instanc : Cordic_IntermStage_Z_Selector
       sincos_out_slice => selected_Y_for_arithm
       );
 
-
-  assert false
+  assert true
     report "the_cos( "& integer'image(scz_in.the_cos'low + shifts_calc + arithm_size - 1) &
     " downto " &
     integer'image(scz_in.the_cos'low + shifts_calc) &
     ")"
     severity note;
-  assert false
+  assert true
     report "the_cos( "& integer'image(scz_out.the_cos'low + shifts_calc + arithm_size - 1 + extra_shifts - 1 + 1) &
     " downto " &
     integer'image(scz_in.the_cos'low + shifts_calc + 1) &
