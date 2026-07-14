@@ -1,0 +1,11 @@
+The repository software has a previewer for the .txt files.
+The files can be viewed directly or raw downloaded.
+
+The repository software does not have any previewer for the .gv files.
+The files have to be raw downloaded and a dot software, from the Graphviz bundle, has to be ran.
+The Makefile is provided.
+
+The repository software does not have any previewer for the .ps files.
+The files have to be raw downloaded. Many computers identify (correctly) as a PostScript file. The files can be opened directly.
+Otherwise, an explicit run of a PS viewer, such as GhostScript, opens the file.
+ 
