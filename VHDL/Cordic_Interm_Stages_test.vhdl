@@ -63,11 +63,14 @@ end entity Cordic_Interm_stages_test;
 --!   and to send them with error patterns between every one.
 
 architecture arch of Cordic_Interm_stages_test is
-  signal CLK          : std_logic := '0';
+  signal CLK           : std_logic := '0';
+  signal RST           : std_logic_vector( 10 downto 0 ) := (others => '1');
   --! Number of runs
-  constant run_nbre   : positive := reg_size / arithm_size;
-  signal run_val      : integer  := 0;
-  signal reg_sync     : std_logic:= '0';
+  signal clk_sync_ran  : integer := 0;
+  constant clk_sync_to_run  : positive := reg_size / arithm_size;
+  signal sync_ran      : integer := 0;
+  constant sync_to_run : integer := 100;
+  signal reg_sync      : std_logic:= '0';
   signal odd_even     : bit;
   signal meta_data_in : meta_data_t;
   signal scz_in       : reg_sin_cos_z;
@@ -82,22 +85,39 @@ architecture arch of Cordic_Interm_stages_test is
 begin
 
   main_proc : process
-
   begin
-
-    wait;
+    if sync_ran < sync_to_run then
+      if CLK = '1' then
+        if clk_sync_ran < clk_sync_to_run then
+          reg_sync <= '0';
+          RST( RST'high - 1 downto RST'low ) <= RST( RST'high downto RST'low + 1 );
+          RST( RST'high ) <= '0';
+          
+          clk_sync_ran <= clk_sync_ran + 1;
+        else
+          reg_sync <= '1';
+          sync_ran <= sync_ran + 1;
+          clk_sync_ran <= -1;
+        end if;
+      end if;
+      CLK <= not CLK;
+      wait for 1 ps;
+    else
+      assert false report "Simulation is over" severity note;
+      wait;
+    end if;
   end process main_proc;
 
 Cordic_IntermStage_instanc : Cordic_IntermStage
   generic map (
     Z_not_Y_to_0 => false,
     shifts_calc  => 5,
-    extra_shifts => 3
+    extra_shifts => 0
     )
   port map (
     CLK           => CLK,
     RST           => '0',
-    reg_sync      => '0',
+    reg_sync      => reg_sync,
     meta_data_in  => meta_data_in,
     meta_data_out => open,
     scz_in        => scz_in,

@@ -62,7 +62,7 @@ begin
           -- * the low part of the low angle is returned if the strobe is active,
           --     or if there is no extra cycles. Otherwise, the low part of
           --     relevant angle is returned before the extra_shift_select is incremented.
-          if strobe_from_scz_in = '1' or extra_shifts = 0 then
+          IN_STROBE_IF : if strobe_from_scz_in = '1' or extra_shifts = 0 then
             extra_shift_select <= (others => '0');
             Z_slice            <= angle_add_or_subtract(0)
                        (angle_add_or_subtract(0)'low + arithm_size - 1 downto
@@ -83,7 +83,7 @@ begin
                          (angle_add_or_subtract(0)'low + arithm_size - 1 downto
                           angle_add_or_subtract(0)'low);
             end if;
-          end if;
+          end if IN_STROBE_IF;
         else
           Z_shifts_count          <= std_logic_vector(unsigned(Z_shifts_count) + arithm_size);
           if extra_shift_Z_select <= extra_shifts then
@@ -247,7 +247,7 @@ end entity Cordic_IntermStage_mask_builder;
 --! Also the number of shifts is reduced stage after stage.\n
 --! TODO write a software to calculate the resource consumption.
 architecture arch of Cordic_IntermStage_mask_builder is
-  signal mask_register : std_logic_vector(StateNumbers_2_BitsNumbers(reg_size - shifts_calc) - 1 downto 0);
+  signal mask_register : std_logic_vector(reg_size - shifts_calc - 1 downto 0);
   signal starting_mask : std_logic_vector(StateNumbers_2_BitsNumbers(extra_shifts + 1) downto 0);
 begin
   mask_sign <= mask_register(mask_register'low + mask_sign'length - 1 downto mask_register'low);
@@ -465,6 +465,8 @@ begin
           --   for the next value.
           -- After the counter reached its end, the data is supplied with the sign bit
           --   stored at the reg sync
+          ROLLBACK_NOT_NEW : if 1 = 2 then
+            -- Switch to the new module, while keeping a rollback option 
           if unsigned(remaining_shift_count) = to_unsigned(0, remaining_shift_count'length) then
             --All the arithmetic blocs are over, loop on the sign bit
             op_S_X(op_S_X'high - 1 downto op_S_X'low) := (others => sign_X);
@@ -489,6 +491,10 @@ begin
               scz_in.the_sin(scz_in.the_sin'low + arithm_size - 1 + arithm_size * shifts_calc downto
                              scz_in.the_sin'low + arithm_size * shifts_calc);
           end if;
+          else
+            op_S_X(op_S_X'high - 1 downto op_S_X'low) := selected_X_for_arithm;
+            op_S_Y(op_S_Y'high - 1 downto op_S_Y'low) := selected_Y_for_arithm;
+          end if ROLLBACK_NOT_NEW;
           -- Set the Z.
           -- Its slice is selected in a dedicated component.
           op_C_Z(op_C_Z'high - 1 downto op_C_Z'low)                                  := Z_current_slice;
