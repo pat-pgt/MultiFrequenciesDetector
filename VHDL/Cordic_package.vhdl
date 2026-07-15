@@ -92,7 +92,10 @@ package Cordic_package is
       meta_data_in  : in  meta_data_t;
       meta_data_out : out meta_data_t;
       scz_in        : in  reg_sin_cos_z;
-      scz_out       : out reg_sin_cos_z
+      scz_out       : out reg_sin_cos_z;
+      --! Checks if the strobe is stable at least one clock cycle
+      --!   before the register sync
+      strobe_stable : out std_logic
       );
   end component Cordic_IntermStage;
 
@@ -116,7 +119,8 @@ package Cordic_package is
       scz_in        : in  reg_sin_cos_z;
       scz_out       : out reg_sin_cos_z;
       report_in     : in  std_logic;
-      report_out    : out std_logic);
+      report_out    : out std_logic;
+      strobe_stable : out std_logic);
   end component Cordic_Bundle_Z_to_0;
 
 --! @brief Cordic Y to 0 first stage
@@ -171,7 +175,8 @@ package Cordic_package is
       scz_in        : in  reg_sin_cos_z;
       scz_out       : out reg_sin_cos_z;
       report_in     : in  std_logic;
-      report_out    : out std_logic);
+      report_out    : out std_logic;
+      strobe_stable : out std_logic);
   end component Cordic_Bundle_Y_to_0;
 
   --! @brief Private component for the intermediary stages

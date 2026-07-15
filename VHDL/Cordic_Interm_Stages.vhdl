@@ -160,7 +160,7 @@ end entity Cordic_IntermStage_ShiftSelector;
 architecture arch of Cordic_IntermStage_ShiftSelector is
 
 begin  -- architecture arch
-  assert false
+  assert true
     report "scz_in length: " & integer'image(sincos_in_slice'length) &
     ", scz_out length: " & integer'image(sincos_inout_slice'length) &
     ", arithm out length: " & integer'image(sincos_out_slice'length)
@@ -258,13 +258,13 @@ begin
     if rising_edge(CLK) then
       if reg_sync = '1' then
         if strobe_from_scz_in = '1' or extra_shifts = 0 then
-          mask_register <= ( others => '1' );
-          starting_mask <= ( '0', others => '1' );
+          mask_register <= (others      => '1');
+          starting_mask <= ('0', others => '1');
         else
-          mask_register <= ( starting_mask, others => '1' );
-          starting_mask( starting_mask'high - 1 downto starting_mask'low ) <=
-            starting_mask( starting_mask'high downto starting_mask'low + 1 );
-          starting_mask( starting_mask'high ) <= '0';
+          mask_register <= (starting_mask, others => '1');
+          starting_mask(starting_mask'high - 1 downto starting_mask'low) <=
+            starting_mask(starting_mask'high downto starting_mask'low + 1);
+          starting_mask(starting_mask'high) <= '0';
         end if;
       else
         -- Shift down the register by arithmetic size.
@@ -273,20 +273,20 @@ begin
         arithmetic_loop : for ind in 0 to arithm_size - 1 loop
           ind_reg := 0;
           regtype_loop : loop
-            if mask_register'high - ind - arithm_size - ind_reg * arithm_size >= mask_register'low  then
-              mask_register( mask_register'high - ind - arithm_size - ind_reg * arithm_size) <=
-                mask_register( mask_register'high - ind - ind_reg * arithm_size );
+            if mask_register'high - ind - arithm_size - ind_reg * arithm_size >= mask_register'low then
+              mask_register(mask_register'high - ind - arithm_size - ind_reg * arithm_size) <=
+                mask_register(mask_register'high - ind - ind_reg * arithm_size);
             else
               -- We can leave everything here as if the index is lower than
               -- the lowest index, is it going to be lower as well
               --   with higher ind values
               exit arithmetic_loop;
             end if;
-          ind_reg := ind_reg + 1;
+            ind_reg := ind_reg + 1;
           end loop regtype_loop;
         end loop arithmetic_loop;
         -- and populate the top with zeros
-        mask_register( mask_register'high downto mask_register'high - arithm_size + 1 ) <= ( others => '0' );
+        mask_register(mask_register'high downto mask_register'high - arithm_size + 1) <= (others => '0');
       end if;
     end if;
   end process main_proc;
@@ -325,7 +325,8 @@ entity Cordic_IntermStage is
     meta_data_in  : in  meta_data_t;
     meta_data_out : out meta_data_t;
     scz_in        : in  reg_sin_cos_z;
-    scz_out       : out reg_sin_cos_z
+    scz_out       : out reg_sin_cos_z;
+    strobe_stable : out std_logic
     );
 end entity Cordic_IntermStage;
 
@@ -358,10 +359,13 @@ architecture rtl of Cordic_IntermStage is
   --
   signal input_sczin_not_scz_out                : std_logic;
   -- KEEP low to 0
-  signal extra_shift_select : std_logic_vector(
+  signal extra_shift_select                     : std_logic_vector(
     StateNumbers_2_BitsNumbers(extra_shifts + 1) - 1 downto 0);
-  signal Z_current_slice : std_logic_vector(arithm_size - 1 downto 0);
-  signal mask_register   : std_logic_vector(arithm_size - 1 downto 0);
+  signal Z_current_slice                        : std_logic_vector(arithm_size - 1 downto 0);
+  signal mask_register                          : std_logic_vector(arithm_size - 1 downto 0);
+  type meta_data_array_t is array (extra_shifts + 1 downto 0) of meta_data_t;
+  signal meta_data_array                        : meta_data_array_t;
+  signal last_clk_cycle_strobe                  : std_logic;
 begin
   -- To be improved with automatic size
   assert reg_size < 2**remaining_shift_count'length report "Internal error" severity failure;
@@ -395,7 +399,9 @@ begin
 
   scz_out <= scz_out_s;
 
-
+  meta_data_out <= meta_data_array( meta_data_array'low );
+  meta_data_array( meta_data_array'high ) <= meta_data_in;
+  
   main_proc : process(CLK)
     variable carry_in_vector_X            : std_logic_vector(arithm_size downto 0);
     variable carry_in_vector_Y            : std_logic_vector(arithm_size downto 0);
@@ -414,13 +420,22 @@ begin
           if Z_not_Y_to_0 then
             -- If Z is negative, the vector should spin CW
             CCW_not_CW <= not scz_in.angle_z(scz_in.angle_z'high);
-          else
+          elsif extra_shifts = 0 or meta_data_in.strobe = '1' then
             -- If Y is negative, the vector should spin CCW
             CCW_not_CW <= scz_in.the_sin(scz_in.the_sin'high);
+          else
+            -- If Y is negative, the vector should spin CCW
+            CCW_not_CW <= scz_out.the_sin(scz_in.the_sin'high);
           end if;
-          sign_X                <= scz_in.the_cos(scz_in.the_cos'high);
-          sign_Y                <= scz_in.the_sin(scz_in.the_sin'high);
-          meta_data_out         <= meta_data_in;
+          if Z_not_Y_to_0 or extra_shifts = 0 or meta_data_in.strobe = '1' then
+            sign_X                <= scz_in.the_cos(scz_in.the_cos'high);
+            sign_Y                <= scz_in.the_sin(scz_in.the_sin'high);
+          else
+            sign_X                <= scz_out.the_cos(scz_out.the_cos'high);
+            sign_Y                <= scz_out.the_sin(scz_out.the_sin'high);
+          end if;
+          meta_data_array(meta_data_array'high - 1 downto meta_data_array'low) <=
+            meta_data_array(meta_data_array'high downto meta_data_array'low + 1);
           remaining_shift_count <= std_logic_vector(to_unsigned(reg_size - shifts_calc, remaining_shift_count'length));
           is_first              <= '1';
           if shifts_calc < 4 and false then
@@ -438,6 +453,7 @@ begin
           --to_integer( signed( scz_in.the_cos( scz_in.the_cos'high downto scz_in.the_cos'high - 14) ))**2,
           --X2_plus_Y2'length ));
           end if;
+          strobe_stable <= not ( meta_data_in.strobe xor last_clk_cycle_strobe );
         else
           -- We need to negate the bits for the subtractions
           -- however, we should not negate the "spare" bit on the left
@@ -452,12 +468,21 @@ begin
           op_C_Z(op_C_Z'high)                            := '0';
           -- Extract the normal operands
           -- that are going to be added to or subtracted from
-          op_N_X(op_N_X'high - 1 downto op_N_X'low) :=
-            scz_in.the_cos(scz_in.the_cos'low + arithm_size - 1 downto scz_in.the_cos'low);
-          op_N_Y(op_N_Y'high - 1 downto op_N_Y'low) :=
-            scz_in.the_sin(scz_in.the_sin'low + arithm_size - 1 downto scz_in.the_sin'low);
-          op_N_Z(op_N_Z'high - 1 downto op_N_Z'low) :=
-            scz_in.angle_z(scz_in.angle_z'low + arithm_size - 1 downto scz_in.angle_z'low);
+          SCZ_IN_OUT_select : if extra_shifts = 0 or or(extra_shift_select) = '0' then
+            op_N_X(op_N_X'high - 1 downto op_N_X'low) :=
+              scz_in.the_cos(scz_in.the_cos'low + arithm_size - 1 downto scz_in.the_cos'low);
+            op_N_Y(op_N_Y'high - 1 downto op_N_Y'low) :=
+              scz_in.the_sin(scz_in.the_sin'low + arithm_size - 1 downto scz_in.the_sin'low);
+            op_N_Z(op_N_Z'high - 1 downto op_N_Z'low) :=
+              scz_in.angle_z(scz_in.angle_z'low + arithm_size - 1 downto scz_in.angle_z'low);
+          else
+            op_N_X(op_N_X'high - 1 downto op_N_X'low) :=
+              scz_out.the_cos(scz_out.the_cos'low + arithm_size - 1 downto scz_out.the_cos'low);
+            op_N_Y(op_N_Y'high - 1 downto op_N_Y'low) :=
+              scz_out.the_sin(scz_out.the_sin'low + arithm_size - 1 downto scz_out.the_sin'low);
+            op_N_Z(op_N_Z'high - 1 downto op_N_Z'low) :=
+              scz_out.angle_z(scz_out.angle_z'low + arithm_size - 1 downto scz_out.angle_z'low);
+          end if SCZ_IN_OUT_select;
           -- Extract the shifted operands that are going to be added or subtracted
           -- The division is performed by a classic shift register
           --   with a loop on the MSB.
@@ -467,30 +492,30 @@ begin
           --   stored at the reg sync
           ROLLBACK_NOT_NEW : if 1 = 2 then
             -- Switch to the new module, while keeping a rollback option 
-          if unsigned(remaining_shift_count) = to_unsigned(0, remaining_shift_count'length) then
-            --All the arithmetic blocs are over, loop on the sign bit
-            op_S_X(op_S_X'high - 1 downto op_S_X'low) := (others => sign_X);
-            op_S_Y(op_S_Y'high - 1 downto op_S_Y'low) := (others => sign_Y);
-          elsif unsigned(remaining_shift_count) < to_unsigned(arithm_size, remaining_shift_count'length) then
-            remaining_shift_count <= (others => '0');
-          -- Remaining low bits come from the shift register,
-          -- high bits are populated with stored the carry
-          -- This should never happened if the arithmetic size is 1
-          --
-          -- Of course, we can NOT do that
-          -- assert arithm_size = 1 report "Internal error" severity error;
-          -- For now, there is an assert at the beginning
-          else
-            remaining_shift_count <=
-              std_logic_vector(unsigned(remaining_shift_count) - to_unsigned(arithm_size, remaining_shift_count'length));
-            -- Not yet, fill up the calculation bloc with the <arithm_size> low bits
-            op_S_X(op_S_X'high - 1 downto op_S_X'low) :=
-              scz_in.the_cos(scz_in.the_cos'low + arithm_size - 1 + arithm_size * shifts_calc downto
-                             scz_in.the_cos'low + arithm_size * shifts_calc);
-            op_S_Y(op_S_Y'high - 1 downto op_S_Y'low) :=
-              scz_in.the_sin(scz_in.the_sin'low + arithm_size - 1 + arithm_size * shifts_calc downto
-                             scz_in.the_sin'low + arithm_size * shifts_calc);
-          end if;
+            if unsigned(remaining_shift_count) = to_unsigned(0, remaining_shift_count'length) then
+              --All the arithmetic blocs are over, loop on the sign bit
+              op_S_X(op_S_X'high - 1 downto op_S_X'low) := (others => sign_X);
+              op_S_Y(op_S_Y'high - 1 downto op_S_Y'low) := (others => sign_Y);
+            elsif unsigned(remaining_shift_count) < to_unsigned(arithm_size, remaining_shift_count'length) then
+              remaining_shift_count <= (others => '0');
+            -- Remaining low bits come from the shift register,
+            -- high bits are populated with stored the carry
+            -- This should never happened if the arithmetic size is 1
+            --
+            -- Of course, we can NOT do that
+            -- assert arithm_size = 1 report "Internal error" severity error;
+            -- For now, there is an assert at the beginning
+            else
+              remaining_shift_count <=
+                std_logic_vector(unsigned(remaining_shift_count) - to_unsigned(arithm_size, remaining_shift_count'length));
+              -- Not yet, fill up the calculation bloc with the <arithm_size> low bits
+              op_S_X(op_S_X'high - 1 downto op_S_X'low) :=
+                scz_in.the_cos(scz_in.the_cos'low + arithm_size - 1 + arithm_size * shifts_calc downto
+                               scz_in.the_cos'low + arithm_size * shifts_calc);
+              op_S_Y(op_S_Y'high - 1 downto op_S_Y'low) :=
+                scz_in.the_sin(scz_in.the_sin'low + arithm_size - 1 + arithm_size * shifts_calc downto
+                               scz_in.the_sin'low + arithm_size * shifts_calc);
+            end if;
           else
             op_S_X(op_S_X'high - 1 downto op_S_X'low) := selected_X_for_arithm;
             op_S_Y(op_S_Y'high - 1 downto op_S_Y'low) := selected_Y_for_arithm;
@@ -569,6 +594,7 @@ begin
       else
         remaining_shift_count <= (others => '0');
       end if RST_IF;
+      last_clk_cycle_strobe <= meta_data_in.strobe;
     end if CLK_IF;
   end process main_proc;
 
@@ -591,17 +617,17 @@ begin
 
   Cordic_IntermStage_mask_builder_instanc : Cordic_IntermStage_mask_builder
     generic map(
-    arithm_size ,
-    reg_size    ,
-    extra_shifts,
-    shifts_calc
-    )
-  port map(
+      arithm_size,
+      reg_size,
+      extra_shifts,
+      shifts_calc
+      )
+    port map(
       CLK,
       RST,
       reg_sync,
       strobe_from_scz_in => meta_data_in.strobe,
-      mask_sign => mask_register
+      mask_sign          => mask_register
       );
 
 

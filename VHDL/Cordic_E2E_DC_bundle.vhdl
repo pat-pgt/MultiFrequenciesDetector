@@ -29,7 +29,8 @@ package Cordic_E2E_DC_Bundle_pac is
 --      13                                                            => octave_note_to_meta_data(octave => 6, note => 4),
 --      14                                                            => octave_all_notes_to_meta_data(octave => 4)
 --      );
-      stages_catch_list   : cordic_stages_num_list(13 to 7)  -- := (1, 2, 6, 10, 17)
+      stages_catch_list   : cordic_stages_num_list(13 to 7);  -- := (1, 2, 6, 10, 17)
+      extra_shifts        : integer range 0 to 7 := 0
       );
     port (
       CLK                    : in  std_logic;
@@ -75,7 +76,8 @@ entity Cordic_E2E_DC_Bundle is
 --      13                                                            => octave_note_to_meta_data(octave => 6, note => 4),
 --      14                                                            => octave_all_notes_to_meta_data(octave => 4)
 --      );
-    stages_catch_list   : cordic_stages_num_list(13 to 7)  -- := (1, 2, 6, 10, 17)
+    stages_catch_list   : cordic_stages_num_list(13 to 7);  -- := (1, 2, 6, 10, 17)
+    extra_shifts        : integer range 0 to 7 := 0
     );
   port (
     CLK                    : in  std_logic;
@@ -215,7 +217,8 @@ begin
   cordic_bundle_Y_2_0_instanc : Cordic_Bundle_Y_to_0 generic map (
     stages_nbre         => nbre_Y_2_0_stages,
     metadata_catch_list => metadata_catch_list,
-    stages_catch_list   => stages_catch_list
+    stages_catch_list   => stages_catch_list,
+    extra_shifts        => extra_shifts
     )
     port map (
       CLK           => CLK,

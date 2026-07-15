@@ -21,7 +21,8 @@ entity Cordic_E2E_DC_FPGA_test is
     nbre_Z_2_0_stages   : integer range 4 to reg_size             := 18;
     nbre_Y_2_0_stages   : integer range 4 to reg_size             := 18;
     metadata_catch_list : meta_data_list_t(15 to 14);
-    stages_catch_list   : cordic_stages_num_list(13 to 7)  -- := (1, 2, 6, 10, 17)
+    stages_catch_list   : cordic_stages_num_list(13 to 7);  -- := (1, 2, 6, 10, 17)
+    extra_shifts        : integer range 0 to 7 := 0
     );
   port (
     CLK                 : in std_logic := '0';
@@ -148,7 +149,8 @@ begin
       metadata_catch_list => metadata_catch_list,
       nbre_Z_2_0_stages   => nbre_Z_2_0_stages,
       nbre_Y_2_0_stages   => nbre_Y_2_0_stages,
-      stages_catch_list   => stages_catch_list
+      stages_catch_list   => stages_catch_list,
+      extra_shifts        => extra_shifts
       )
     port map(
       CLK                    ,

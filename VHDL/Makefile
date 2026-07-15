@@ -99,10 +99,10 @@ $(BUILDDIR)Cordic_E2E_DC_CXX_compiled : $(BUILDDIR)packages_compiled $(SCRDIR)Co
 $(SYNTHDESTDIR)Cordic_E2E_DC_CXX_noDS.cpp : $(BUILDDIR)Cordic_E2E_DC_CXX_compiled
 	$(YOSYS_PROG) -m ghdl -p '$(GHDL_PROG) $(VFLAGS) -gwith_downsampling=0 Cordic_E2E_DC_CXX_test; write_cxxrtl  -namespace Cordic_E2E_DC_0 $(SYNTHDESTDIR)Cordic_E2E_DC_CXX_noDS.cpp' 2>&1 |tee $(SYNTHDESTDIR)Cordic_E2E_DC_0.synth.out.txt
 
-$(SYNTHDESTDIR)Cordic_E2E_DC_CXX_DS_1.cpp : $(BUILDDIR)Cordic_E2E_DC_CXX_compiled
-	$(YOSYS_PROG) -m ghdl -p '$(GHDL_PROG) $(VFLAGS) -gwith_downsampling=1 Cordic_E2E_DC_CXX_test; write_cxxrtl  -namespace Cordic_E2E_DC_1 $(SYNTHDESTDIR)Cordic_E2E_DC_CXX_DS1.cpp' 2>&1 |tee $(SYNTHDESTDIR)Cordic_E2E_DC_1.synth.out.txt
+$(SYNTHDESTDIR)Cordic_E2E_DC_CXX_DS1.cpp : $(BUILDDIR)Cordic_E2E_DC_CXX_compiled
+	$(YOSYS_PROG) -m ghdl -p '$(GHDL_PROG) $(VFLAGS) -gwith_downsampling=1 -gextra_shifts=2 Cordic_E2E_DC_CXX_test; write_cxxrtl  -namespace Cordic_E2E_DC_1 $(SYNTHDESTDIR)Cordic_E2E_DC_CXX_DS1.cpp' 2>&1 |tee $(SYNTHDESTDIR)Cordic_E2E_DC_1.synth.out.txt
 
-$(SYNTHDESTDIR)Cordic_E2E_DC_CXX_DS_2.cpp : $(BUILDDIR)Cordic_E2E_DC_CXX_compiled
+$(SYNTHDESTDIR)Cordic_E2E_DC_CXX_DS2.cpp : $(BUILDDIR)Cordic_E2E_DC_CXX_compiled
 	$(YOSYS_PROG) -m ghdl -p '$(GHDL_PROG) $(VFLAGS) -gwith_downsampling=2 Cordic_E2E_DC_CXX_test; write_cxxrtl  -namespace Cordic_E2E_DC_2 $(SYNTHDESTDIR)Cordic_E2E_DC_CXX_DS2.cpp' 2>&1 |tee $(SYNTHDESTDIR)Cordic_E2E_DC_2.synth.out.txt
 
 $(CXXVERIFDIR)Cordic_E2E_DC_verif_noDS : $(SYNTHDESTDIR)Cordic_E2E_DC_CXX_noDS.cpp $(CXXVERIFDIR)Cordic_E2E_DC_verif.cpp $(CXXVERIFDIR)Cordic_E2E_DC_verif.hxx
@@ -153,7 +153,7 @@ synth_AnglesGene	: $(BUILDDIR)packages_compiled
 
 # cm225 tq144
 
-synth_Cordic_E2E_DC_FPGA	: $(BUILDDIR)packages_compiled
+synth_Cordic_E2E_DC_FPGA	: $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_E2E_DC_bundle.vhdl $(SRCDIR)Cordic_E2E_DC_FPGA_test.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_IO_Stages.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_Interm_Stages.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_Bundle_Stages.vhdl
@@ -162,13 +162,13 @@ synth_Cordic_E2E_DC_FPGA	: $(BUILDDIR)packages_compiled
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_E2E_DC_bundle.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SRCDIR)Cordic_E2E_DC_FPGA_test.vhdl
 	mkdir -p $(SYNTHDESTDIR)
-#	$(YOSYS_PROG) -m ghdl -p '$(GHDL_PROG) $(VFLAGS) -gnbre_Z_2_0_stages=18 -gnbre_Y_2_0_stages=15 Cordic_E2E_DC_FPGA_test; synth_ice40 -json $(SYNTHDESTDIR)Cordic.ice40.json' 2>&1 |tee $(SYNTHDESTDIR)Cordic.synth.out.txt
-#	$(NEXTPNR-ICE40_PROG) --hx4k --package tq144 --freq 30.00 --top Cordic_E2E_DC_FPGA_test --asc $(SYNTHDESTDIR)Cordic.asc --json $(SYNTHDESTDIR)Cordic.ice40.json --placed-svg $(SYNTHDESTDIR)Cordic.placed.svg --routed-svg $(SYNTHDESTDIR)Cordic.routed.svg --report $(SYNTHDESTDIR)Cordic.report.json 2>&1 |tee $(SYNTHDESTDIR)Cordic.P_and_R.out.txt
-#	$(ICEPACK) $(SYNTHDESTDIR)Cordic.asc $(SYNTHDESTDIR)Cordic.bin 2>&1 |tee $(SYNTHDESTDIR)Cordic.pack.out.txt
+	$(YOSYS_PROG) -m ghdl -p '$(GHDL_PROG) $(VFLAGS) -gextra_shifts=3 -gnbre_Z_2_0_stages=18 -gnbre_Y_2_0_stages=20 Cordic_E2E_DC_FPGA_test; synth_ice40 -json $(SYNTHDESTDIR)Cordic.ice40.json' 2>&1 |tee $(SYNTHDESTDIR)Cordic.synth.out.txt
+	$(NEXTPNR-ICE40_PROG) --hx4k --package tq144 --freq 30.00 --top Cordic_E2E_DC_FPGA_test --asc $(SYNTHDESTDIR)Cordic.asc --json $(SYNTHDESTDIR)Cordic.ice40.json --placed-svg $(SYNTHDESTDIR)Cordic.placed.svg --routed-svg $(SYNTHDESTDIR)Cordic.routed.svg --report $(SYNTHDESTDIR)Cordic.report.json 2>&1 |tee $(SYNTHDESTDIR)Cordic.P_and_R.out.txt
+	$(ICEPACK) $(SYNTHDESTDIR)Cordic.asc $(SYNTHDESTDIR)Cordic.bin 2>&1 |tee $(SYNTHDESTDIR)Cordic.pack.out.txt
 
-	$(YOSYS_PROG) -m ghdl -p '$(GHDL_PROG) $(VFLAGS) -gnbre_Z_2_0_stages=18 -gnbre_Y_2_0_stages=15 Cordic_E2E_DC_FPGA_test; synth_ecp5 -json $(SYNTHDESTDIR)Cordic.ecp5.json' 2>&1 |tee $(SYNTHDESTDIR)Cordic.synth.out.txt
-	$(NEXTPNR-ECP5_PROG) --12k --freq 30.00 --top Cordic_E2E_DC_FPGA_test --textcfg $(SYNTHDESTDIR)Cordic.txtcfg --json $(SYNTHDESTDIR)Cordic.ecp5.json --placed-svg $(SYNTHDESTDIR)Cordic.placed.svg --routed-svg $(SYNTHDESTDIR)Cordic.routed.svg --report $(SYNTHDESTDIR)Cordic.report.json 2>&1 |tee $(SYNTHDESTDIR)Cordic.P_and_R.out.txt
-	ecppack --svf $(SYNTHDESTDIR)Cordic.svf $(SYNTHDESTDIR)Cordic.txtcfg
+#	$(YOSYS_PROG) -m ghdl -p '$(GHDL_PROG) $(VFLAGS) -gnbre_Z_2_0_stages=18 -gnbre_Y_2_0_stages=15 Cordic_E2E_DC_FPGA_test; synth_ecp5 -json $(SYNTHDESTDIR)Cordic.ecp5.json' 2>&1 |tee $(SYNTHDESTDIR)Cordic.synth.out.txt
+#	$(NEXTPNR-ECP5_PROG) --12k --freq 30.00 --top Cordic_E2E_DC_FPGA_test --package TQFP144 --textcfg $(SYNTHDESTDIR)Cordic.txtcfg --json $(SYNTHDESTDIR)Cordic.ecp5.json --placed-svg $(SYNTHDESTDIR)Cordic.placed.svg --routed-svg $(SYNTHDESTDIR)Cordic.routed.svg --report $(SYNTHDESTDIR)Cordic.report.json 2>&1 |tee $(SYNTHDESTDIR)Cordic.P_and_R.out.txt
+#	ecppack --svf $(SYNTHDESTDIR)Cordic.svf $(SYNTHDESTDIR)Cordic.txtcfg
 
 synth_Prefilter	: $(BUILDDIR)packages_compiled
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Prefilter_stages.vhdl
