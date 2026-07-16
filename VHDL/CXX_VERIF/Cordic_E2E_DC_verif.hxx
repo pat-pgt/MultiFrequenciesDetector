@@ -183,7 +183,45 @@ public:
   string Display_arccos_Nth_turns()const;
 };
 
-
+/** @brief Stores the data to count the number of times a vector passes the origin.
+ *
+ * The assume is the spin, at each iteration, is always less than PI.
+ * The last high bit is stored. If it was 1 and now it is 0,
+ *   the counter is incremented
+ */
+template<typename cxx_reg_type,unsigned short reg_size>
+class Axis_counter
+{
+  const cxx_reg_type high_bit_mask;
+  bool last_sign;
+  unsigned long the_counter;
+public:
+  // TODO TODO TODO set the bit properly  in order to run with other sizes than 32
+  Axis_counter():high_bit_mask(0x80000000),last_sign(false),the_counter(0){}
+  constexpr Axis_counter<cxx_reg_type,reg_size>&operator+=(const cxx_reg_type&the_input){
+	bool this_sign;
+	if ( ( the_input & high_bit_mask ) == 0 )
+	  this_sign = false;
+	else
+	  this_sign = true;
+	if ( this_sign == false && last_sign == true )
+	  the_counter += 1;
+	last_sign = this_sign;
+	return*this;
+ }
+  constexpr operator const unsigned long()const{return the_counter;}
+};
+/** @brief Holds the last angle, the statistics and the number of X axis passes
+ */
+template <typename stats_type, typename cxx_reg_type, unsigned short reg_size>
+struct Z_spin_data
+{
+  cxx_reg_type last_Z;
+  stats<stats_type> the_stats;
+  Axis_counter<cxx_reg_type,reg_size> the_X_counter;
+  Z_spin_data()=delete;
+  Z_spin_data(const cxx_reg_type&last_Z,const stats<stats_type>&the_stats): last_Z(last_Z),the_stats(the_stats){}
+};
 /** @brief Stores the result of all the verifications
  *
  * The types are hard-coded.\n
@@ -210,7 +248,7 @@ struct SimulDataType
 	  stats<stats_type>check_X_converges;
 	  stats<stats_type>check_Y_converges;
 	  map< pair< unsigned char, unsigned char >,
-		   pair<cxx_reg_type, stats<stats_type> > > check_spin_per_ON_constant;
+		   Z_spin_data< stats_type, cxx_reg_type, reg_size > > check_spin_per_ON_constant;
 	}  Y_2_0;
 
 	void Init(const stats_long_type&module_vector,

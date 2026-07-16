@@ -1,5 +1,7 @@
 #include "Cordic_E2E_DC_verif.hxx"
 
+#include <getopt.h>
+
 /** @file Cordic_E2E_DC_verif.hxx
  * @brief Run a formal verification
  *
@@ -203,24 +205,17 @@ GetAndCheck_nbre_points()const
 }
 
 
-
-
-
-int main()
+void PrintHelp()
 {
-  /** In some cases, the same result is expected for different initial values.
-   *  A statistic (of the statistic) displays one time. TODO TODO
-   * However, the detail can be displayed
-   */
-  const bool display_details = true;
 
-  cout << "--------------------------------------------------------------------------------------------" << endl;
-  cout << "All the results issued here, are with a minimum explanations to reduce the number of lines." << endl;
-  cout << "The documentation is inside the code, especially after this paragraph." << endl;
-  cout << "--------------------------------------------------------------------------------------------" << endl;
-  cout << "The tests results are displayed as for each test for each initial data do it" << endl;
-  cout << "If something is wrong in a test, it is irrelevant to go future." << endl; 
-  cout << "--------------------------------------------------------------------------------------------" << endl;
+}
+
+extern char*optarg;
+
+int main(int argc,char*argv[])
+{
+  int opt;
+  bool has_hv = false;
 
   /** Full cycles number
    * 
@@ -231,15 +226,73 @@ int main()
    * The value should be at least 2 to run the differences.
    */
   unsigned short full_cycles_number = 3;
+  unsigned short nbre_initial_vextors = 7;
 
-  vector<InitialValueData<int,32>>theInitialData = { 
+  while((opt = getopt( argc,argv,"l:n:hv"))!=EOF)
+	switch( opt)
+	  {
+	  case 'n':
+		nbre_initial_vextors = atoi(optarg);
+		break;
+	  case 'l':
+		full_cycles_number = atoi(optarg);
+		break;
+	  case 'h':
+		PrintHelp();
+		has_hv = true;
+		break;
+	  case 'v':
+		cout << "Cordic_E2E_DC_verif  v1.0RC1" << endl;
+		has_hv = true;
+		break;
+	  }
+
+  /** Initial data list
+   * The 4 axis vectors are tested. It tests well the pre-processing
+   * The PI/4 are tested only for the first and the second quadrant
+   * The PI/8 and 3.PI/8 are tested once
+   */
+  vector<InitialValueData<int,32>>theInitialDataCandidates = { 
 	InitialValueData<int,32>( 0x3fffffff, 0 ),
 	InitialValueData<int,32>( 0, 0x3fffffff ),
 	InitialValueData<int,32>( 0xc0000001, 0 ),
 	InitialValueData<int,32>( 0, 0xc0000001 ),
+	InitialValueData<int,32>( 0x2d4139f6, 0x2d4139f6 ),
+	InitialValueData<int,32>( 0xd2bec60a, 0x2d4139f6 ),
 	InitialValueData<int,32>( 0x1fffffff, 0x376cf5d0 ),
-	InitialValueData<int,32>( 0x2d4139f6, 0x2d4139f6 )
+	InitialValueData<int,32>( 0x376cf5d0, 0x1fffffff )
   };
+
+  if ( has_hv )
+	return -1;
+  if ( full_cycles_number < 2 )
+	{
+	  cout << "-l The number of full cycles should not be lower then 2" << endl;
+	  return -2;
+	}
+  if( nbre_initial_vextors < 1 || nbre_initial_vextors > theInitialDataCandidates.size() )
+	{
+	  cout << "-n Wrong number of initial vectors" << endl;
+	  return -2;
+	}
+  /** In some cases, the same result is expected for different initial values.
+   *  A statistic (of the statistic) displays one time. TODO TODO
+   * However, the detail can be displayed
+   */
+  const bool display_details = true;
+
+  cout << "--------------------------------------------------------------------------------------------" << endl;
+  cout << "All the results issued here, are with a minimum explanations to reduce the number of lines." << endl;
+  cout << "The documentation is inside the code, especially after this paragraph." << endl;
+  cout << "--------------------------------------------------------------------------------------------" << endl;
+  cout << "The tests results are displayed as: for each test, for each initial data, do it" << endl;
+  cout << "If something is wrong in a test, it is irrelevant to go future." << endl; 
+  cout << "--------------------------------------------------------------------------------------------" << endl;
+
+  vector<InitialValueData<int,32>>theInitialData;
+  for ( unsigned short indniv; indniv < nbre_initial_vextors; indniv++ )
+	theInitialData.push_back(theInitialDataCandidates[ indniv ]);
+
   vector<SimulDataType<double,long double,int,32>>theSimulData;
   for( auto ind_ID : theInitialData )
 	theSimulData.push_back(SimulDataType<double,long double,int,32>());
@@ -491,16 +544,17 @@ int main()
 						 if ( simulData.Y_2_0.check_spin_per_ON_constant.contains(key_ON_Y_2_0) )
 						   {
 							 // Found, then process the diff, replace the old value and add the diff in the statistics
-							 pair<int, stats<double>>&data_info =
+							 Z_spin_data<double, int, 32>&data_info =
 							   simulData.Y_2_0.check_spin_per_ON_constant.find( key_ON_Y_2_0 )->second;
 							 if ( octave_Y_2_0 != numeric_limits<decltype(octave_Y_2_0)>::max() ||
 								  note_Y_2_0 != numeric_limits<decltype(note_Y_2_0)>::max() ) {
-							   data_info.second += (double)((unsigned int)Z_Y_2_0 - (unsigned int)data_info.first);
-							   data_info.first = Z_Y_2_0;
+							   data_info.the_stats += (double)((unsigned int)Z_Y_2_0 - (unsigned int)data_info.last_Z);
+							   data_info.last_Z = Z_Y_2_0;
+							   data_info.the_X_counter += Z_Y_2_0;
 							 }else
 							   {
-								 data_info.second += 0.0;
-								 data_info.first = 0;
+								 data_info.the_stats += 0.0;
+								 data_info.last_Z = 0;
 							   }
 							 //cout << 'y';
 						   }
@@ -514,7 +568,7 @@ int main()
 							 simulData.
 							   Y_2_0.
 							   check_spin_per_ON_constant.
-							   insert(make_pair(key_ON_Y_2_0,make_pair(Z_Y_2_0,theNewYStats)));
+							   insert(make_pair(key_ON_Y_2_0,Z_spin_data<double, int, 32>(Z_Y_2_0,theNewYStats)));
 							 //cout << 'Y';
 						   }
 					   } // top.p_reg__sync.get<bool>() == true
@@ -551,8 +605,9 @@ int main()
   auto chrono_duration = chrono::duration_cast<chrono::milliseconds>(chrono_end-chrono_start);
   cout << "Duration: " << chrono_duration.count() << " mS" << endl;
 
-  //TODO explain the results display
-
+  /********************************************************************************************/
+  /*                          Now display all the structures                                  */
+  /********************************************************************************************/
   
   cout << "Checking the Z to 0 first set of stages" << endl;
   cout << "Number             X,Y module delta from grow                       X,Y module absolute" << endl; 
@@ -654,10 +709,11 @@ int main()
 							", N: " << (unsigned short)ON_iter.first.second << '\t';
 						}else
 						  cout << "O: /, N: /\t";
-						cout << (unsigned int)ON_iter.second.second << '\t';
-						cout << ON_iter.second.second.Basic_display() << "\t\t";
-						cout << ON_iter.second.second.Display_without_offset_normalize() << "\t\t";
+						cout << (unsigned int)ON_iter.second.the_stats << '\t';
+						cout << ON_iter.second.the_stats.Basic_display() << "\t\t";
+						cout << ON_iter.second.the_stats.Display_without_offset_normalize() << "\t\t";
 						//	cout << ON_iter.second.second.Display_without_offset_normalize() << "\t\t";
+						cout << (unsigned long)ON_iter.second.the_X_counter;
 						cout << endl;
 					  });
 			cout << endl;
@@ -677,4 +733,5 @@ TODO create object and include in the loop above
 			});
   cout << endl;
   */
+  return 0;
 }
