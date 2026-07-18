@@ -16,7 +16,7 @@ NEXTPNR-ECP5_PROG?=nextpnr-ecp5
 ICEPACK?=icepack
 
 
-$(BUILDDIR)packages_compiled : $(SCRDIR)Utils_package.vhdl $(SCRDIR)InterModule_package.vhdl $(SCRDIR)Metadata_package.vhdl $(SCRDIR)Frequencies_package.vhdl $(SCRDIR)Input_package.vhdl $(SCRDIR)MFD_package.vhdl $(SCRDIR)DataMonitor_package.vhdl $(SCRDIR)Cordic_package.vhdl $(SCRDIR)Prefilter_package.vhdl
+$(BUILDDIR)packages_compiled : $(SCRDIR)Utils_package.vhdl $(SCRDIR)InterModule_package.vhdl $(SCRDIR)Metadata_package.vhdl $(SCRDIR)Frequencies_package.vhdl $(SCRDIR)Input_package.vhdl $(SCRDIR)MFD_package.vhdl $(SCRDIR)DataMonitor_package.vhdl $(SCRDIR)Cordic_package.vhdl $(SCRDIR)Prefilter_package.vhdl $(SCRDIR)Downsampling_package.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Utils_package.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)InterModule_package.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Metadata_package.vhdl
@@ -26,6 +26,7 @@ $(BUILDDIR)packages_compiled : $(SCRDIR)Utils_package.vhdl $(SCRDIR)InterModule_
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)DataMonitor_package.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_package.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Prefilter_package.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Downsampling_package.vhdl
 	touch $(BUILDDIR)packages_compiled
 
 
@@ -38,13 +39,14 @@ simul_AnglesGene : $(BUILDDIR)packages_compiled $(SCRDIR)AnglesGene.vhdl $(SCRDI
 	echo "The wav file is NOT an audio file, it can be opened, for instance, using gtk-wave" > $(WAVDESTDIR)README.important
 
 
-simul_Cordic_E2E_DC_spin_angles : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages.vhdl $(SCRDIR)Cordic_Interm_Stages.vhdl $(SCRDIR)Cordic_Bundle_Stages.vhdl $(SCRDIR)DataMonitor.vhdl $(SCRDIR)Cordic_E2E_DC_test.vhdl
+simul_Cordic_E2E_DC_spin_angles : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages.vhdl $(SCRDIR)Cordic_Interm_Stages.vhdl $(SCRDIR)Cordic_Bundle_Stages.vhdl $(SCRDIR)AnglesGene.vhdl $(SCRDIR)DataMonitor.vhdl $(SCRDIR)Cordic_E2E_DC_test.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_IO_Stages.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_Interm_Stages.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_Bundle_Stages.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)AnglesGene.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)DataMonitor.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_Monitor.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Downsampling.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_E2E_DC_bundle.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_E2E_DC_test.vhdl
 	$(GHDL_PROG) -e $(VFLAGS) Cordic_bundle_test_Z_to_0_Y_to_0
@@ -59,13 +61,14 @@ simul_Cordic_E2E_DC_spin_angles : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_I
 	$(GHDL_PROG) -r $(VFLAGS) Cordic_bundle_test_Z_to_0_Y_to_0 -gnbre_Y_2_0_stages=14 -gnbre_Z_2_0_stages=16 -gwith_4_angles_test=false -gwith_angles_vs_MD=true --vcd=$(WAVDESTDIR)Cordic_E2E_dc_spin_angles.wav --read-wave-opt=$(BUILDDIR)GHDL_wave_opt_toplevel 2>&1 | tee $(DESTDIR)Cordic.out.txt
 	echo "The wav file is ***NOT*** an audio file, it can be opened, for instance, using gtk-wave" > $(WAVDESTDIR)README.important
 
-simul_Cordic_E2E_DC_four_inits : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages.vhdl $(SCRDIR)Cordic_Interm_Stages.vhdl $(SCRDIR)Cordic_Bundle_Stages.vhdl $(SCRDIR)DataMonitor.vhdl $(SCRDIR)Cordic_E2E_DC_test.vhdl
+simul_Cordic_E2E_DC_four_inits : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages.vhdl $(SCRDIR)Cordic_Interm_Stages.vhdl $(SCRDIR)Cordic_Bundle_Stages.vhdl $(SCRDIR)AnglesGene.vhdl $(SCRDIR)DataMonitor.vhdl $(SCRDIR)Cordic_E2E_DC_test.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_IO_Stages.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_Interm_Stages.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_Bundle_Stages.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)AnglesGene.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)DataMonitor.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_Monitor.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Downsampling.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_E2E_DC_bundle.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_E2E_DC_test.vhdl
 	$(GHDL_PROG) -e $(VFLAGS) Cordic_bundle_test_Z_to_0_Y_to_0
@@ -83,14 +86,13 @@ simul_Cordic_E2E_DC_four_inits : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO
 	$(GHDL_PROG) -r $(VFLAGS) Cordic_bundle_test_Z_to_0_Y_to_0 -gnbre_Y_2_0_stages=14 -gnbre_Z_2_0_stages=16 -gwith_4_angles_test=true -gwith_angles_vs_MD=false --vcd=$(WAVDESTDIR)Cordic_E2E_DC_four_inits.wav --read-wave-opt=$(BUILDDIR)GHDL_wave_opt_toplevel 2>&1 | tee $(DESTDIR)Cordic.out.txt
 	echo "The wav file is ***NOT*** an audio file, it can be opened, for instance, using gtk-wave" > $(WAVDESTDIR)README.important
 
-$(BUILDDIR)Cordic_E2E_DC_CXX_compiled : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages.vhdl $(SCRDIR)Cordic_Interm_Stages.vhdl $(SCRDIR)Cordic_Bundle_Stages.vhdl $(SCRDIR)DataMonitor.vhdl $(SCRDIR)Downsampling_package.vhdl $(SCRDIR)Downsampling.vhdl $(SCRDIR)Cordic_E2E_DC_CXX_test.vhdl $(SCRDIR)Cordic_E2E_DC_bundle.vhdl 
+$(BUILDDIR)Cordic_E2E_DC_CXX_compiled : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages.vhdl $(SCRDIR)Cordic_Interm_Stages.vhdl $(SCRDIR)Cordic_Bundle_Stages.vhdl $(SCRDIR)AnglesGene.vhdl $(SCRDIR)DataMonitor.vhdl $(SCRDIR)Downsampling.vhdl $(SCRDIR)Cordic_E2E_DC_CXX_test.vhdl $(SCRDIR)Cordic_E2E_DC_bundle.vhdl 
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_IO_Stages.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_Interm_Stages.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_Bundle_Stages.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)AnglesGene.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)DataMonitor.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_Monitor.vhdl
-	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Downsampling_package.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Downsampling.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_E2E_DC_bundle.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_E2E_DC_CXX_test.vhdl

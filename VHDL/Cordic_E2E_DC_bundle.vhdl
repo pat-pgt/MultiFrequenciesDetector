@@ -21,15 +21,8 @@ package Cordic_E2E_DC_Bundle_pac is
       -- 1         : downsampling without extra rate
       -- 2 or more : downsampling with N extra rate
       with_downsampling   : natural := 0;
-      metadata_catch_list : meta_data_list_t(15 to 14);      --  := (
       nbre_Z_2_0_stages   : natural;
       nbre_Y_2_0_stages   : natural;
---      11                                                            => octave_note_to_meta_data(octave => 0, note => 0),
---      12                                                            => octave_note_to_meta_data(octave => 3, note => 2),
---      13                                                            => octave_note_to_meta_data(octave => 6, note => 4),
---      14                                                            => octave_all_notes_to_meta_data(octave => 4)
---      );
-      stages_catch_list   : cordic_stages_num_list(13 to 7);  -- := (1, 2, 6, 10, 17)
       extra_shifts        : integer range 0 to 7 := 0
       );
     port (
@@ -43,7 +36,8 @@ package Cordic_E2E_DC_Bundle_pac is
       SCZ_out_Y_2_0          : out reg_sin_cos_z;
       report_cordic_bundle_1 : in  std_logic;
       meta_data_Z_2_0_out    : out meta_data_t;
-      meta_data_Y_2_0_out    : out meta_data_t
+      meta_data_Y_2_0_out    : out meta_data_t;
+      strobe_stable          : out std_logic
       );
   end component Cordic_E2E_DC_Bundle;
 
@@ -68,15 +62,8 @@ entity Cordic_E2E_DC_Bundle is
     --! 0         : no downsampling
     --! 1 or more : downsampling without or with N extra rate
     with_downsampling   : natural := 0;
-    metadata_catch_list : meta_data_list_t(15 to 14);      --  := (
     nbre_Z_2_0_stages   : natural;
     nbre_Y_2_0_stages   : natural;
---      11                                                            => octave_note_to_meta_data(octave => 0, note => 0),
---      12                                                            => octave_note_to_meta_data(octave => 3, note => 2),
---      13                                                            => octave_note_to_meta_data(octave => 6, note => 4),
---      14                                                            => octave_all_notes_to_meta_data(octave => 4)
---      );
-    stages_catch_list   : cordic_stages_num_list(13 to 7);  -- := (1, 2, 6, 10, 17)
     extra_shifts        : integer range 0 to 7 := 0
     );
   port (
@@ -90,7 +77,8 @@ entity Cordic_E2E_DC_Bundle is
     SCZ_out_Y_2_0          : out reg_sin_cos_z;
     report_cordic_bundle_1 : in  std_logic;
     meta_data_Z_2_0_out    : out meta_data_t;
-    meta_data_Y_2_0_out    : out meta_data_t
+    meta_data_Y_2_0_out    : out meta_data_t;
+    strobe_stable          : out std_logic
     );
 end entity Cordic_E2E_DC_Bundle;
 
@@ -108,6 +96,8 @@ architecture arch of Cordic_E2E_DC_Bundle is
   signal report_cordic_bundle_2 : std_logic := '0';
   signal xy_is_neg              : std_logic_vector(1 downto 0);
   constant null_vector          : std_logic_vector(0 downto 1) := "";
+  constant stages_catch_list    : cordic_stages_num_list(1 to 0) := (others => 1);  -- 0 length
+  constant metadata_catch_list  : meta_data_list_t(1 to 0) := (others => octave_note_to_meta_data(0,0));      -- 0 length
 begin
 
   angle_gene_instanc : AngleGene
@@ -229,7 +219,8 @@ begin
       meta_data_out => meta_data_Y_2_0_out,
       scz_in        => scz_3,
       scz_out       => SCZ_out_Y_2_0,
-      report_in     => report_cordic_bundle_2);
+      report_in     => report_cordic_bundle_2,
+      strobe_stable => strobe_stable);
 
   
 end architecture arch;

@@ -102,6 +102,8 @@ package Cordic_package is
   --! @brief Cordic Bundle Z to 0
   --!
   --! Instantiate and connect the intermediary stages
+  --! ...
+  --! There is no strobe stable, the strobe is ignored in all the components of the Z to 0 part 
   component Cordic_Bundle_Z_to_0 is
     generic (
       --! Number of stages with shifts, some warnings applies, see in the code
@@ -119,8 +121,7 @@ package Cordic_package is
       scz_in        : in  reg_sin_cos_z;
       scz_out       : out reg_sin_cos_z;
       report_in     : in  std_logic;
-      report_out    : out std_logic;
-      strobe_stable : out std_logic);
+      report_out    : out std_logic);
   end component Cordic_Bundle_Z_to_0;
 
 --! @brief Cordic Y to 0 first stage

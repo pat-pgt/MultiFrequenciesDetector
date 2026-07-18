@@ -24,8 +24,6 @@ entity Cordic_E2E_DC_CXX_test is
     with_downsampling   : natural := 1;
     nbre_Z_2_0_stages   : integer range 4 to reg_size := 24;
     nbre_Y_2_0_stages   : integer range 4 to reg_size := 24;
-    metadata_catch_list : meta_data_list_t(15 to 14);
-    stages_catch_list   : cordic_stages_num_list(13 to 7);  -- := (1, 2, 6, 10, 17)
     extra_shifts        : integer range 0 to 7 := 0
     );
   port (
@@ -48,7 +46,8 @@ entity Cordic_E2E_DC_CXX_test is
     metadata_Z_2_0_octave : out std_logic_vector(StateNumbers_2_BitsNumbers(N_octaves) - 1  downto 0);
     metadata_Y_2_0_note   : out std_logic_vector(StateNumbers_2_BitsNumbers(N_notes) - 1 downto 0);
     metadata_Y_2_0_octave : out std_logic_vector(StateNumbers_2_BitsNumbers(N_octaves) - 1  downto 0);
-    metadata_Y_2_0_strobe : out std_logic
+    metadata_Y_2_0_strobe : out std_logic;
+    strobe_stable         : out std_logic
     );
 end entity Cordic_E2E_DC_CXX_test;
 
@@ -93,10 +92,8 @@ begin
       --! 0         : no down-sampling
       --! 1 or more : down-sampling without or with N extra rate
       with_downsampling,
-      metadata_catch_list => metadata_catch_list,
       nbre_Z_2_0_stages   => nbre_Z_2_0_stages,
       nbre_Y_2_0_stages   => nbre_Y_2_0_stages,
-      stages_catch_list   => stages_catch_list,
       extra_shifts        => extra_shifts
       )
     port map(
@@ -110,7 +107,8 @@ begin
       SCZ_out_Y_2_0          => SCZ_out_Y_2_0,
       report_cordic_bundle_1 => report_cordic_bundle,
       meta_data_Z_2_0_out    => meta_data_Z_2_0_out,
-      meta_data_Y_2_0_out    => meta_data_Y_2_0_out
+      meta_data_Y_2_0_out    => meta_data_Y_2_0_out,
+      strobe_stable          => strobe_stable
       );
 
 

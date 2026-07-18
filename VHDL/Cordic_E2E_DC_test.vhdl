@@ -54,14 +54,7 @@ entity Cordic_bundle_test_Z_to_0_Y_to_0 is
     nbre_Z_2_0_stages   : natural                                 := 18;
     --! Number of second set of stages,
     --! see in the Tek_and_gene folder for more information.
-    nbre_Y_2_0_stages   : natural                                 := 23;
-    metadata_catch_list : meta_data_list_t(15 to 14);      --  := (
---      11                                                            => octave_note_to_meta_data(octave => 0, note => 0),
---      12                                                            => octave_note_to_meta_data(octave => 3, note => 2),
---      13                                                            => octave_note_to_meta_data(octave => 6, note => 4),
---      14                                                            => octave_all_notes_to_meta_data(octave => 4)
---      );
-    stages_catch_list   : cordic_stages_num_list(13 to 7)  -- := (1, 2, 6, 10, 17)
+    nbre_Y_2_0_stages   : natural                                 := 23
     );
 end entity Cordic_bundle_test_Z_to_0_Y_to_0;
 
@@ -113,41 +106,33 @@ architecture rtl of Cordic_bundle_test_Z_to_0_Y_to_0 is
   signal reg_sync              : std_logic;
   signal RST_monitor_Z_2_0     : natural                               := nbre_Z_2_0_stages + 5;
   signal RST_monitor_Y_2_0     : natural                               := nbre_Y_2_0_stages + 5;
-  signal main_counter          : unsigned(5 downto 0)                  := (others => '0');
+  signal main_counter          : unsigned(3 downto 0)                  := (others => '0');
   -- Use the copy paste to allow to view using the VCD format
   -- This project does not yet supports the GHW
   signal X_out_Z_2_0_000       : reg_type;
   signal Y_out_Z_2_0_000       : reg_type;
   signal Z_out_Z_2_0_000       : reg_type;
-  signal Z_Z_2_0_expon_out_000 : std_logic_vector(5 downto 0);
   signal X_out_Y_2_0_000       : reg_type;
   signal Y_out_Y_2_0_000       : reg_type;
   signal Z_out_Y_2_0_000       : reg_type;
-  signal Y_Y_2_0_expon_out_000 : std_logic_vector(5 downto 0);
   signal X_out_Z_2_0_090       : reg_type;
   signal Y_out_Z_2_0_090       : reg_type;
   signal Z_out_Z_2_0_090       : reg_type;
-  signal Z_Z_2_0_expon_out_090 : std_logic_vector(5 downto 0);
   signal X_out_Y_2_0_090       : reg_type;
   signal Y_out_Y_2_0_090       : reg_type;
   signal Z_out_Y_2_0_090       : reg_type;
-  signal Y_Y_2_0_expon_out_090 : std_logic_vector(5 downto 0);
   signal X_out_Z_2_0_180       : reg_type;
   signal Y_out_Z_2_0_180       : reg_type;
   signal Z_out_Z_2_0_180       : reg_type;
-  signal Z_Z_2_0_expon_out_180 : std_logic_vector(5 downto 0);
   signal X_out_Y_2_0_180       : reg_type;
   signal Y_out_Y_2_0_180       : reg_type;
   signal Z_out_Y_2_0_180       : reg_type;
-  signal Y_Y_2_0_expon_out_180 : std_logic_vector(5 downto 0);
   signal X_out_Z_2_0_240       : reg_type;
   signal Y_out_Z_2_0_240       : reg_type;
   signal Z_out_Z_2_0_240       : reg_type;
-  signal Z_Z_2_0_expon_out_240 : std_logic_vector(5 downto 0);
   signal X_out_Y_2_0_240       : reg_type;
   signal Y_out_Y_2_0_240       : reg_type;
   signal Z_out_Y_2_0_240       : reg_type;
-  signal Y_Y_2_0_expon_out_240 : std_logic_vector(5 downto 0);
   
   constant input_hi2_plus_low2 : real := (
     real(to_integer(signed(input_hi)))**2+real(to_integer(signed(input_low)))**2);
@@ -198,8 +183,8 @@ begin
           main_counter <= main_counter + 1;
           if main_counter(main_counter'low + 1 downto main_counter'low) = "11" then
             report "Progress " &
-              integer'image(to_integer(main_counter(main_counter'high downto main_counter'low + 3))) &
-              "/" & integer'image(2** (main_counter'length - 3) - 2)
+              integer'image(to_integer(main_counter(main_counter'high downto main_counter'low + 2))) &
+              "/" & integer'image(2** (main_counter'length - 2) - 2)
               severity note;
           end if;
         end if;
@@ -368,10 +353,8 @@ begin
 
   Cordic_E2E_DC_Bundle_instanc_000 : Cordic_E2E_DC_Bundle
     generic map(
-      metadata_catch_list => metadata_catch_list,
       nbre_Z_2_0_stages   => nbre_Z_2_0_stages,
-      nbre_Y_2_0_stages   => nbre_Y_2_0_stages,
-      stages_catch_list   => stages_catch_list
+      nbre_Y_2_0_stages   => nbre_Y_2_0_stages
       )
     port map(
       CLK                    => CLK,
@@ -393,10 +376,8 @@ begin
   three_other_angles : if with_4_angles_test generate
     Cordic_E2E_DC_Bundle_instanc_090 : Cordic_E2E_DC_Bundle
       generic map(
-        metadata_catch_list => metadata_catch_list,
         nbre_Z_2_0_stages   => nbre_Z_2_0_stages,
-        nbre_Y_2_0_stages   => nbre_Y_2_0_stages,
-        stages_catch_list   => stages_catch_list
+        nbre_Y_2_0_stages   => nbre_Y_2_0_stages
         )
       port map(
         CLK                    => CLK,
@@ -417,10 +398,8 @@ begin
 
     Cordic_E2E_DC_Bundle_instanc_180 : Cordic_E2E_DC_Bundle
       generic map(
-        metadata_catch_list => metadata_catch_list,
         nbre_Z_2_0_stages   => nbre_Z_2_0_stages,
-        nbre_Y_2_0_stages   => nbre_Y_2_0_stages,
-        stages_catch_list   => stages_catch_list
+        nbre_Y_2_0_stages   => nbre_Y_2_0_stages
         )
       port map(
         CLK                    => CLK,
@@ -441,10 +420,8 @@ begin
 
     Cordic_E2E_DC_Bundle_instanc_240 : Cordic_E2E_DC_Bundle
       generic map(
-        metadata_catch_list => metadata_catch_list,
         nbre_Z_2_0_stages   => nbre_Z_2_0_stages,
-        nbre_Y_2_0_stages   => nbre_Y_2_0_stages,
-        stages_catch_list   => stages_catch_list
+        nbre_Y_2_0_stages   => nbre_Y_2_0_stages
         )
       port map(
         CLK                    => CLK,

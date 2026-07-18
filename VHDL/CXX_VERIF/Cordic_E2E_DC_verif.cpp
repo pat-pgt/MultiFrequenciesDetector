@@ -308,6 +308,8 @@ int main(int argc,char*argv[])
 			 theSimulData.begin(),
 			 [&](const InitialValueData<int,32>&dat) {
 
+			   unsigned long long strobe_stable_1=0, strobe_stable_0=0;
+
 #ifdef Cordic_E2E_DC_CXX_noDS
 			   Cordic_E2E_DC_0::p_Cordic__E2E__DC__CXX__test top;
 			   const unsigned char with_downsampling = 0;
@@ -416,6 +418,11 @@ int main(int argc,char*argv[])
 					 top.step();
 					 top.p_CLK.set<bool>(false);
 					 top.step();
+
+					 if ( top.p_strobe__stable.get<bool>() )
+					   strobe_stable_1 +=1;
+					 else
+					   strobe_stable_1 +=0;
 
 					 if ( top.p_reg__sync.get<bool>() == true )
 					   {
@@ -596,6 +603,8 @@ int main(int argc,char*argv[])
 				 } // Main for loop
 
 			   cout << endl;
+
+			   cout << "Strobe stable was " << strobe_stable_1 << " times '1', and " << strobe_stable_0 << " times '0'" << endl; 
 
 			   return simulData;
 

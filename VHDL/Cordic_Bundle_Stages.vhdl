@@ -23,8 +23,7 @@ entity Cordic_Bundle_Z_to_0 is
     scz_in        : in  reg_sin_cos_z;
     scz_out       : out reg_sin_cos_z;
     report_in     : in  std_logic;
-    report_out    : out std_logic;
-    strobe_stable : out std_logic);
+    report_out    : out std_logic);
 end entity Cordic_Bundle_Z_to_0;
 
 
@@ -88,7 +87,7 @@ begin
         meta_data_out => meta_data_array(ind),
         scz_in        => scz_array(ind - 1),
         scz_out       => scz_array(ind),
-        strobe_stable => strobe_stable);
+        strobe_stable => open);
   end generate gene_interm;
 
 end architecture rtl;
