@@ -107,13 +107,13 @@ $(SYNTHDESTDIR)Cordic_E2E_DC_CXX_DS1.cpp : $(BUILDDIR)Cordic_E2E_DC_CXX_compiled
 $(SYNTHDESTDIR)Cordic_E2E_DC_CXX_DS2.cpp : $(BUILDDIR)Cordic_E2E_DC_CXX_compiled
 	$(YOSYS_PROG) -m ghdl -p '$(GHDL_PROG) $(VFLAGS) -gwith_downsampling=2 Cordic_E2E_DC_CXX_test; write_cxxrtl  -namespace Cordic_E2E_DC_2 $(SYNTHDESTDIR)Cordic_E2E_DC_CXX_DS2.cpp' 2>&1 |tee $(SYNTHDESTDIR)Cordic_E2E_DC_2.synth.out.txt
 
-$(CXXVERIFDIR)Cordic_E2E_DC_verif_noDS : $(SYNTHDESTDIR)Cordic_E2E_DC_CXX_noDS.cpp $(CXXVERIFDIR)Cordic_E2E_DC_verif.cpp $(CXXVERIFDIR)Cordic_E2E_DC_verif.hxx
+$(CXXVERIFDIR)Cordic_E2E_DC_verif_noDS : $(SYNTHDESTDIR)Cordic_E2E_DC_CXX_noDS.cpp $(CXXVERIFDIR)Cordic_E2E_DC_verif.cpp $(CXXVERIFDIR)Cordic_E2E_DC_verif.hxx $(CXXVERIFDIR)Utils_CXX_verif.hxx $(CXXVERIFDIR)Utils_CXX_verif.cpp
 	$(GCC_PROG) $(CXXFLAGS) $(CXXVERIFDIR)Cordic_E2E_DC_verif.cpp -DCordic_E2E_DC_CXX_noDS -o $(CXXVERIFDIR)Cordic_E2E_DC_verif_noDS -I$(SYNTHDESTDIR) -I/usr/local/share/yosys/include/backends/cxxrtl/runtime
 
-$(CXXVERIFDIR)Cordic_E2E_DC_verif_DS1 : $(SYNTHDESTDIR)Cordic_E2E_DC_CXX_DS1.cpp $(CXXVERIFDIR)Cordic_E2E_DC_verif.cpp $(CXXVERIFDIR)Cordic_E2E_DC_verif.hxx
+$(CXXVERIFDIR)Cordic_E2E_DC_verif_DS1 : $(SYNTHDESTDIR)Cordic_E2E_DC_CXX_DS1.cpp $(CXXVERIFDIR)Cordic_E2E_DC_verif.cpp $(CXXVERIFDIR)Cordic_E2E_DC_verif.hxx $(CXXVERIFDIR)Utils_CXX_verif.hxx $(CXXVERIFDIR)Utils_CXX_verif.cpp
 	$(GCC_PROG) $(CXXFLAGS) $(CXXVERIFDIR)Cordic_E2E_DC_verif.cpp -DCordic_E2E_DC_CXX_DS1 -o $(CXXVERIFDIR)Cordic_E2E_DC_verif_DS1 -I$(SYNTHDESTDIR) -I/usr/local/share/yosys/include/backends/cxxrtl/runtime
 
-$(CXXVERIFDIR)Cordic_E2E_DC_verif_DS2 : $(SYNTHDESTDIR)Cordic_E2E_DC_CXX_DS2.cpp $(CXXVERIFDIR)Cordic_E2E_DC_verif.cpp $(CXXVERIFDIR)Cordic_E2E_DC_verif.hxx
+$(CXXVERIFDIR)Cordic_E2E_DC_verif_DS2 : $(SYNTHDESTDIR)Cordic_E2E_DC_CXX_DS2.cpp $(CXXVERIFDIR)Cordic_E2E_DC_verif.cpp $(CXXVERIFDIR)Cordic_E2E_DC_verif.hxx $(CXXVERIFDIR)Utils_CXX_verif.hxx $(CXXVERIFDIR)Utils_CXX_verif.cpp
 	$(GCC_PROG) $(CXXFLAGS) $(CXXVERIFDIR)Cordic_E2E_DC_verif.cpp -DCordic_E2E_DC_CXX_DS2 -o $(CXXVERIFDIR)Cordic_E2E_DC_verif_DS2 -I$(SYNTHDESTDIR) -I/usr/local/share/yosys/include/backends/cxxrtl/runtime
 
 $(CXXVERIFDIR)Cordic_E2E_DC_verif_all : $(CXXVERIFDIR)Cordic_E2E_DC_verif_noDS $(CXXVERIFDIR)Cordic_E2E_DC_verif_DS1 $(CXXVERIFDIR)Cordic_E2E_DC_verif_DS2
