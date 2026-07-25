@@ -122,24 +122,32 @@ $(CXXVERIFDIR)Cordic_E2E_DC_verif_all : $(CXXVERIFDIR)Cordic_E2E_DC_verif_noDS $
 
 simul_Prefilter_Storage : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages.vhdl $(SCRDIR)Cordic_Interm_Stages.vhdl $(SCRDIR)Cordic_Bundle_Stages.vhdl $(SCRDIR)DataMonitor.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Prefilter_stages.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Prefilter_storage.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Prefilter_Bundle.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Prefilter_storage_test.vhdl
 	$(GHDL_PROG) -e $(VFLAGS) Prefilter_Storage_Test
 	$(GHDL_PROG) -r $(VFLAGS) Prefilter_Storage_Test --vcd=$(WAVDESTDIR)PrefilterStorage.wav 2>&1 | tee $(DESTDIR)PrefilterStorage.out.txt
 
 simul_Prefilter_Stages_debug2 : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages.vhdl $(SCRDIR)Cordic_Interm_Stages.vhdl $(SCRDIR)Cordic_Bundle_Stages.vhdl $(SCRDIR)DataMonitor.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Prefilter_stages.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Prefilter_storage.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Prefilter_Bundle.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Prefilter_test.vhdl
 	$(GHDL_PROG) -e $(VFLAGS) Prefilter_Stages_test_debug2
 	$(GHDL_PROG) -r $(VFLAGS) Prefilter_Stages_test_debug2 --vcd=$(WAVDESTDIR)PrefilterStagesTestDebug2.wav 2>&1 | tee $(DESTDIR)PrefilterStagesTestDebug2.out.txt
 
 simul_Prefilter_Stages_debug1 : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages.vhdl $(SCRDIR)Cordic_Interm_Stages.vhdl $(SCRDIR)Cordic_Bundle_Stages.vhdl $(SCRDIR)DataMonitor.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Prefilter_stages.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Prefilter_storage.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Prefilter_Bundle.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Prefilter_test.vhdl
 	$(GHDL_PROG) -e $(VFLAGS) Prefilter_Stages_test_debug1
 	$(GHDL_PROG) -r $(VFLAGS) Prefilter_Stages_test_debug1 --vcd=$(WAVDESTDIR)PrefilterStagesTestDebug1.wav 2>&1 | tee $(DESTDIR)PrefilterStagesTestDebug1.out.txt
 
 simul_Prefilter_Stages_debug3 : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages.vhdl $(SCRDIR)Cordic_Interm_Stages.vhdl $(SCRDIR)Cordic_Bundle_Stages.vhdl $(SCRDIR)DataMonitor.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Prefilter_stages.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Prefilter_storage.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Prefilter_Bundle.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Prefilter_test.vhdl
 	$(GHDL_PROG) -e $(VFLAGS) Prefilter_Stages_test_debug3
 	$(GHDL_PROG) -r $(VFLAGS) Prefilter_Stages_test_debug3 --vcd=$(WAVDESTDIR)PrefilterStagesTestDebug3.wav 2>&1 | tee $(DESTDIR)PrefilterStagesTestDebug3.out.txt
@@ -174,6 +182,8 @@ synth_Cordic_E2E_DC_FPGA	: $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_E2E_DC_b
 
 synth_Prefilter	: $(BUILDDIR)packages_compiled
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Prefilter_stages.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Prefilter_storage.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Prefilter_Bundle.vhdl
 	mkdir -p $(SYNTHDESTDIR)
 	$(YOSYS_PROG) -m ghdl -p '$(GHDL_PROG) $(VFLAGS) Prefilter_Storage; synth_ice40 -json $(SYNTHDESTDIR)Prefilter.ice40.json' 2>&1 |tee $(SYNTHDESTDIR)Prefilter.synth.out.txt
 	$(NEXTPNR-ICE40_PROG) --hx4k --package cm225 --freq 30.00 --top Prefilter_Storage --asc $(SYNTHDESTDIR)Prefilter.asc --json $(SYNTHDESTDIR)Prefilter.ice40.json --placed-svg $(SYNTHDESTDIR)Prefilter.placed.svg --routed-svg $(SYNTHDESTDIR)Prefilter.routed.svg --report $(SYNTHDESTDIR)Prefilter.report.json 2>&1 |tee $(SYNTHDESTDIR)Prefilter.P_and_R.out.txt

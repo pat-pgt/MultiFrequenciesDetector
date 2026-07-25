@@ -3,6 +3,7 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
   ieee.math_real.all,
+  work.Utils_pac.StateNumbers_2_BitsNumbers,
   work.MultiFreqDetect_package.all,
   work.InterModule_formats.all,
   work.Meta_data_package.all,
@@ -11,11 +12,11 @@ use IEEE.STD_LOGIC_1164.all,
 --! @brief Pre-filter 
 --!
 --! This computes the prefilter
---!   to remove high frequencies with a minimum of resources.\n
---! There are first order infinite impulse response filters
---!   using 1/2**N as a coefficient.\n
+--! to remove high frequencies with a minimum of resources.\n
+--! They are first order infinite impulse response filters
+--! using 1/2**N as a coefficient.\n
 --! Since the final filtering is very low (against the sampling rate),
---!   a down-sampling follows.\n
+--! a down-sampling follows.\n
 --! That reduces the final filtering resources because
 --! * the low pass frequency is closer than the sampling rate,
 --!   that reduces the requested number of bits of the operands.
@@ -26,20 +27,24 @@ use IEEE.STD_LOGIC_1164.all,
 --! * To validate the shifts "detection" and execution *
 --! ****************************************************
 package PreFilter_package is
---! In most of the ASIC generators, the RAM data size is what one wants.
---! For the FPGA the standard libraries are, in general, 1, 2, 4, 8, 16. 
+
   constant ram_data_size : positive := 16;
 
---! @brief Data structure for the 2**N division in the IIR pre-filter
---!
---! Since the arithmetic operations are done on an arithm_size bloc at a time,
---!   and since a counter may be inadequate (propagation too long),
---!   the detailed type may change during the design.
+  --! @brief Data structure for the 2**N division in the IIR pre-filter
+  --!
+  --! The pre-filter uses a 2 multiple coefficient.
+  --! That means N shifts down has to be done.
+  --! The highest frequency, then the lowest shifts are hard-coded
+  --!   according with the sample rate and the project characteristics.
+  --! The lowest frequency, then the highest shifts are deduced
+  --!   from the highest frequency and the number of octaves.
+  --! Since the thresholds are often in an octave,
+  --!   one more is required at the top the the highest frequency.
   type shifts_IIR_data is record
-    the_shifts : std_logic_vector(4 downto 0);
+    the_shifts : std_logic_vector(StateNumbers_2_BitsNumbers(N_octaves + 1) - 1 downto 0);
   end record shifts_IIR_data;
 
---! @brief Pre-filter meta-data to coeff compute
+--! @brief Pre-filter meta-data to required shifts compute
 --!
 --! This entity computes:
 --! * The delay of the metadata to through out.
@@ -104,23 +109,14 @@ package PreFilter_package is
       data_out         : out reg_type
       );
   end component Prefilter_IIR_stage_diff;
---! @brief Pre-filter IIR compute the shifts, OBSOLETE, see details
---!
---! The project was (wrongly) designed to shift dynamically from 0 to reg_size.\n
---! The target is many channels in a limited number of octave.
---! Since it is a prefilter, the shifts are limited.\n
---! For arithm_size equal to 1 and a number of octave equal to 10,
---!   That make a shitch among 10 bits.\n
---! However, this piece of code remain a part of the project
---!   TO BE FINISHED in case the new implementation is tricky.
---! The cases are a large product number of octaves per arithm_size.\n\n
+--! @brief Pre-filter IIR compute the shifts
 --!
 --! This component computes the shift
 --!   to divide by 2**N.\n
 --! It may need, in the future a configure statement
 --!   to switch different architectures
 --!   for different groups of configuration.
---!   See in the bundle entity documentation.\n
+--!   See in the entity documentation.\n
 --! For more information about the calculation,
 --!   see Prefilter_IIR_stage_dummy.
   component Prefilter_IIR_stage_shift is
@@ -133,16 +129,7 @@ package PreFilter_package is
       data_out         : out reg_type
       );
   end component Prefilter_IIR_stage_shift;
---! @brief Pre-filter IIR compute the add, OBSOLETE, see details
---!
---! The project was (wrongly) designed to shift dynamically from 0 to reg_size.\n
---! The target is many channels in a limited number of octave.
---! Since it is a prefilter, the shifts are limited.\n
---! For arithm_size equal to 1 and a number of octave equal to 10,
---!   That make a shitch among 10 bits.\n
---! However, this piece of code remain a part of the project
---!   TO BE FINISHED in case the new implementation is tricky.
---! The cases are a large product number of octaves per arithm_size.\n\n
+--! @brief Pre-filter IIR compute the add
 --!
 --! This component computes the final addition.\n
 --! The result is the output and the new state variable
@@ -154,51 +141,62 @@ package PreFilter_package is
       CLK                : in  std_logic;
       RST                : in  std_logic;
       reg_sync           : in  std_logic;
-      -- This signal has to be delayed by 2 (reg_size + 1)
-      -- for the latency of the diff and the shift
+      -- This signal has to be delayed
+      -- the latency of the diff and the shift
       state_var_in       : in  reg_type;
       data_in            : in  reg_type;
       state_var_data_out : out reg_type
       );
   end component Prefilter_IIR_stage_add;
 
---! @brief Pre-filter IIR compute the shifts and the final addition
---!
---! This component is intended for a low number of octaves
---!   and/or a low number of bit processed at a time.
---! In such case, for a 8 octaves set and a 1 arithmetic size,
---!   it requires a 8 to 1 switch.
---! For more, the shifts has to be split in 2 (or more).
---! An entity is going to make a limited number of shifts.
---! This entity should be used as the final shifts (and additions).
---! See in the bundle entity documentation.\n
---! By definition of the pre-filter, the cut off frequency
---!   should be at least a certain value.
---! According to the frequencies (sample rate, shift etc...),
---!   there is a note 
---! This part is similar to the shifts of the Cordic,
---!   but this time, the N is a variable, not a compile time value.\n\n
---! The second part computes the final addition.\n
---! The bundle should provide a delayed old state variable.
---! It is 1 reg_cycle for a stand alone usage.
---! Additional shifts entities in use (see above) increases this delay.  
---! The result is the output and the new state variable
---!   to be stored into the RAM.\n
---! For more information about the calculation,
---!   see Prefilter_IIR_stage_dummy.
-  component Prefilter_IIR_stage_shift_and_add is
+  --! @brief FIFO based storage
+  --!
+  --! This component is a safe one, probably only tested by proof reading.
+  --! It is intended for 2 usages:\n
+  --! * Since the state variable is used to be subtracted by the input value
+  --!   and added to the shifted result, there is a need to delay it.\n
+  --! * For an ASIC implementation, a shift register based may or may not
+  --!   better than a RAM based.
+  component Prefilter_Delay is
+    generic(
+      latency : positive );
     port (
-      CLK                : in  std_logic;
-      RST                : in  std_logic;
-      reg_sync           : in  std_logic;
-      shifts_calc        : in  shifts_IIR_data;
-      -- This signal has to be delayed by 1 (reg_size + 1)
-      -- for the latency of the diff and shift
-      state_var_in       : in  reg_type;
-      data_diffed_in     : in  reg_type;
-      state_var_data_out : out reg_type
+      CLK           : in  std_logic;
+      RST           : in  std_logic;
+      reg_sync      : in  std_logic;
+      scz_in        : in  reg_sin_cos_z;
+      scz_out       : out reg_sin_cos_z
       );
-  end component Prefilter_IIR_stage_shift_and_add;
+  end component Prefilter_Delay;
+
+  --! @brief Direct access state variable storage
+  --!
+  --! This is ONLY intended for the Cordic_E2E_lightFilter.
+  --! It should NOT be used for any other application.\n
+  --! From the pre-filter view, the data arrives always
+  --!   in the same order (1st note to last note containing
+  --!   lowest octave to highest octave).
+  --! Then a simple sequencer is enough for all the modes.\n
+  --! From the filter, after the down-sampling, the data arrives
+  --!   in a pseudo random mode.
+  --! Then the meta data is used as an address of the memory.
+  component Prefilter_Direct_Storage is
+    generic(
+      memory_size : positive );
+    port (
+      CLK           : in  std_logic;
+      RST           : in  std_logic;
+      reg_sync      : in  std_logic;
+      --! The meta data of which state variable should be read
+      meta_data_in  : in  meta_data_t;
+      --! The meta data of which state variable should be written back.
+      meta_data_out : in  meta_data_t;
+      --! Data to be written back
+      scz_in        : in  reg_sin_cos_z;
+      --! Data to be read
+      scz_out       : out reg_sin_cos_z
+      );
+  end component Prefilter_Direct_Storage;
 
 --! @brief Pre-filter state variable storage
 --!
@@ -230,22 +228,6 @@ package PreFilter_package is
       SV_cos_out : out reg_type
       );
   end component Prefilter_Storage;
-  --! @brief Prefilter delay line
-  --!
-  --! The Prefilter subtraction, and, in some case, the prefilter shift
-  --! Introduces a latency.
-  --! This component takes the state value, delays it, and provide it for the addition
-  component Prefilter_Delay is
-    generic(
-      latency : positive );
-    port (
-      CLK           : in  std_logic;
-      RST           : in  std_logic;
-      reg_sync      : in  std_logic;
-      scz_in        : in  reg_sin_cos_z;
-      scz_out       : out reg_sin_cos_z
-      );
-  end component Prefilter_Delay;
 --! @brief Prefilter stage
 --!
 --! This is a pair of sine and cosine calculation
@@ -342,7 +324,7 @@ package PreFilter_package is
   function Meta_data_2_prefilter_coeff_real(constant cutoff_ratio : real) return real;
 
 
-  constant CLK_cycles_per_sample : positive := ((reg_size / arithm_size + 1) * N_notes * N_octaves);
+  constant CLK_cycles_per_sample : positive := ((reg_size + 1) * N_notes * N_octaves);
 
 
 --  function Prefilter_cnv_metadata_2_shifts(signal metadata_in : meta_data_t; constant ratiofrom_cuttoff : real)
