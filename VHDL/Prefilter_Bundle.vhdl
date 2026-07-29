@@ -11,8 +11,7 @@ use IEEE.STD_LOGIC_1164.all,
 --! delay for the metadata.
 entity Prefilter_stage is
   generic (
-    the_stage_offset : real                 := 1.0;
-    debug_level      : integer range 0 to 2 := 0
+    the_stage_offset : real := 1.0
     );
   port (
     CLK           : in  std_logic;
@@ -34,17 +33,21 @@ architecture arch of Prefilter_stage is
   signal meta_data_diff            : meta_data_t;
   -- Is nice for testing with 3 frequencies
   --   separately from the RAM test
-  signal temporary_RAM             : reg_sin_cos_z;
+  signal output_from_RAM           : reg_sin_cos_z;
+  -- Do not touch
   constant prefilter_diff_latency  : positive := 1;
+  -- In case of a large number of octaves
+  --   the shift can take more steps.
   constant prefilter_shift_latency : positive := 1;
+  -- Do not touch
   constant prefilter_add_latency   : positive := 1;
+  constant prefilter_all_latency   : positive := prefilter_diff_latency +
+                                               prefilter_shift_latency +
+                                               prefilter_add_latency;
   -- The latency of the diff module is already handled
   --   in the shift "detector" component
-  signal meta_data_delay : meta_data_list_t(prefilter_diff_latency - 1 +
-                                            prefilter_shift_latency +
-                                            prefilter_add_latency downto 1);
-  signal scz_delayed               : reg_sin_cos_z;
-  constant prefilter_all_latency : positive := prefilter_diff_latency + prefilter_shift_latency;
+  signal meta_data_delay : meta_data_list_t(prefilter_all_latency - 1 downto 1);
+  signal scz_delayed     : reg_sin_cos_z;
 begin
   meta_data_out <= meta_data_delay(meta_data_delay'low);
 
@@ -52,7 +55,7 @@ begin
 --    report "Internal error, the delay should be at least 2 reg_sync"
 --    severity failure;
 
-  
+
   main_proc : process (CLK) is
   begin
     CLK_IF : if rising_edge(CLK) then
@@ -60,54 +63,49 @@ begin
         -- The metadata is transferred using parallel mode
         meta_data_delay(meta_data_delay'high - 1 downto meta_data_delay'low) <=
           meta_data_delay(meta_data_delay'high downto meta_data_delay'low + 1);
-        meta_data_delay(meta_data_delay'high)     <= meta_data_diff;
-        -- The state variable delay line has nothing to do during the sync
-        -- only load
---        state_var_delay_s(state_var_delay_s'high) <= temporary_RAM_S;
---        state_var_delay_c(state_var_delay_c'high) <= temporary_RAM_C;
+        meta_data_delay(meta_data_delay'high) <= meta_data_diff;
+      -- The state variable delay line has nothing to do during the sync
+      -- only load
+--        state_var_delay_s(state_var_delay_s'high) <= output_from_RAM_S;
+--        state_var_delay_c(state_var_delay_c'high) <= output_from_RAM_C;
       end if REGSYNC_IF;
     end if CLK_if;
   end process main_proc;
 
-  --! The full service mode
-  --! There are no restriction on the number of notes nor octaves
-  --normal_RAM_mode : if debug_level = 0 generate
-  assert debug_level /= 0 report "Sorry not yet implemented" severity failure;
-  --end generate normal_RAM_mode;
 
-  --! The RAM is replaced by a loop-back
-  --! This is to verify the filter itself without the RAM
-  --! The number of notes and octaves should restrict to 3 data.
-  force_RAM_3_values : if debug_level = 1 generate
-    temporary_RAM <= scz_out;
-  end generate force_RAM_3_values;
-
---! The highest debug level
-  --! The output of the RAM is forced to 0
-  --!   in order to check the input goes to the output with
-  --!   some right shifts
-  --! There are no restriction on the number of notes nor octaves
-  force_RAM_to_0 : if debug_level = 2 generate
-    temporary_RAM.the_sin <= (others => '0');
-    temporary_RAM.the_cos <= (others => '0');
-  end generate force_RAM_to_0;
+  selected_storage : Prefilter_RAM_Storage
+    generic map (
+      Prefilter_latency => prefilter_all_latency)
+    port map (
+      CLK,
+      RST,
+      reg_sync,
+      -- Out for the filter, then in for the storage
+      meta_data_in  => meta_data_out,
+      -- Out for the filter, then in for the storage
+      meta_data_out => meta_data_in,
+      -- Out for the filter, then in for the storage
+      scz_in        => scz_out,
+      -- Out for the filter, then in for the storage
+      scz_out       => output_from_RAM
+      );
 
   delay_IIR : Prefilter_Delay generic map (
-    latency => prefilter_all_latency
+    latency => prefilter_all_latency - 1
     )
     port map (
-      CLK           => CLK,
-      RST           => RST,
-      reg_sync      => reg_sync,
-      scz_in        => temporary_RAM,
-      scz_out       => scz_delayed
-    );
-  
+      CLK      => CLK,
+      RST      => RST,
+      reg_sync => reg_sync,
+      scz_in   => output_from_RAM,
+      scz_out  => scz_delayed
+      );
+
   sine_IIR_diff : Prefilter_IIR_stage_diff port map(
     CLK           => CLK,
     RST           => RST,
     reg_sync      => reg_sync,
-    state_var_in  => temporary_RAM.the_sin,
+    state_var_in  => output_from_RAM.the_sin,
     data_out      => sin_diff_shift,
     data_input_in => scz_in.the_sin);
 
@@ -131,7 +129,7 @@ begin
     CLK           => CLK,
     RST           => RST,
     reg_sync      => reg_sync,
-    state_var_in  => temporary_RAM.the_cos,
+    state_var_in  => output_from_RAM.the_cos,
     data_out      => cos_diff_shift,
     data_input_in => scz_in.the_cos);
 
@@ -175,8 +173,8 @@ use IEEE.STD_LOGIC_1164.all,
 entity Prefilter_bundle is
   generic (
     --! Defines the number of stages and their offsets ratios
-    stages_offsets : prefilter_stages_offset_list;
-    debug_level    : integer range 0 to 2 := 0);
+    stages_offsets : prefilter_stages_offset_list
+    );
   port (
     CLK           : in  std_logic;
     RST           : in  std_logic;
@@ -193,6 +191,7 @@ architecture arch of Prefilter_bundle is
   signal meta_data_interm : meta_data_list_t(stages_offsets'length downto 0);
 begin
   assert stages_offsets'length > 0 report "The number of pre-filter stages should not be 0" severity failure;
+  assert false report "Instanciating " & integer'image(stages_offsets'length) & " Pre filters stages" severity note;
 
   meta_data_interm(meta_data_interm'high) <= meta_data_in;
   meta_data_out                           <= meta_data_interm(meta_data_interm'low);
@@ -201,8 +200,7 @@ begin
 
   Prefilter_generate : for ind in 0 to stages_offsets'length - 1 generate
     bundle_elem : Prefilter_stage generic map (
-      the_stage_offset => stages_offsets(stages_offsets'low - ind),
-      debug_level      => debug_level)
+      the_stage_offset => stages_offsets(stages_offsets'low - ind))
       port map (
         CLK           => CLK,
         RST           => RST,
@@ -212,5 +210,82 @@ begin
         scz_in        => scz_interm(scz_interm'low + ind + 1),
         scz_out       => scz_interm(scz_interm'low + ind));
   end generate Prefilter_generate;
-  
+
 end architecture arch;
+
+
+
+
+configuration Prefilter_stage_Dummy_storage of Prefilter_stage is
+
+  for arch
+    for selected_storage : Prefilter_RAM_Storage
+      use entity work.Prefilter_Dummy_storage(arch);
+    end for;
+  end for;
+
+end configuration Prefilter_stage_Dummy_storage;
+
+configuration Prefilter_bundle_Dummy_storage of Prefilter_bundle is
+
+  for arch
+    for Prefilter_generate
+      for bundle_elem : Prefilter_stage
+        use configuration work.Prefilter_stage_Dummy_storage;
+      end for;
+    end for;
+  end for;
+
+end configuration Prefilter_bundle_Dummy_storage;
+
+
+
+
+configuration Prefilter_stage_Direct_storage of Prefilter_stage is
+
+  for arch
+    for selected_storage : Prefilter_RAM_Storage
+      use entity work.Prefilter_Direct_storage(arch);
+    end for;
+  end for;
+
+end configuration Prefilter_stage_Direct_storage;
+
+configuration Prefilter_bundle_Direct_storage of Prefilter_bundle is
+
+  for arch
+    for Prefilter_generate
+      for bundle_elem : Prefilter_stage
+        use configuration work.Prefilter_stage_Direct_storage;
+      end for;
+    end for;
+  end for;
+
+end configuration Prefilter_bundle_Direct_storage;
+
+
+
+
+configuration Prefilter_stage_Barrel_shifter_storage of Prefilter_stage is
+
+  for arch
+    for selected_storage : Prefilter_RAM_Storage
+      use entity work.Prefilter_Barrel_shifter_storage(arch);
+    end for;
+  end for;
+
+end configuration Prefilter_stage_Barrel_shifter_storage;
+
+configuration Prefilter_bundle_Barrel_shifter_storage of Prefilter_bundle is
+
+  for arch
+    for Prefilter_generate
+      for all : Prefilter_stage
+        use configuration work.Prefilter_stage_Barrel_shifter_storage;
+      end for;
+    end for;
+  end for;
+
+end configuration Prefilter_bundle_Barrel_shifter_storage;
+
+

@@ -584,10 +584,8 @@ end architecture arch;
 
 configuration Prefilter_Stages_test_debug1 of Prefilter_Stages_test is
   for arch
-    for all : Prefilter_bundle
-      use entity work.Prefilter_bundle(arch)
-        generic map (debug_level    => 2,
-                     stages_offsets => offsets_list);
+    for DUT_instanc : Prefilter_bundle
+      use configuration work.Prefilter_bundle_Dummy_storage;
     end for;
     for sin_gene_pattern_instanc : Prefilter_stages_gen_pattern
       use entity work.Prefilter_stages_gen_pattern(Patterns_RAM_tied_0)
@@ -607,10 +605,8 @@ end configuration Prefilter_Stages_test_debug1;
 
 configuration Prefilter_Stages_test_debug2 of Prefilter_Stages_test is
   for arch
-    for all : Prefilter_bundle
-      use entity work.Prefilter_bundle(arch)
-        generic map (debug_level    => 2,
-                     stages_offsets => offsets_list);
+    for DUT_instanc : Prefilter_bundle
+      use configuration work.Prefilter_bundle_Dummy_storage;
     end for;
     for sin_gene_pattern_instanc : Prefilter_stages_gen_pattern
       use entity work.Prefilter_stages_gen_pattern(Patterns_RAM_tied_0)
@@ -630,10 +626,8 @@ end configuration Prefilter_Stages_test_debug2;
 
 configuration Prefilter_Stages_test_debug3 of Prefilter_Stages_test is
   for arch
-    for all : Prefilter_bundle
-      use entity work.Prefilter_bundle(arch)
-        generic map (debug_level    => 1,
-                     stages_offsets => offsets_list);
+    for DUT_instanc : Prefilter_bundle
+      use configuration work.Prefilter_bundle_Barrel_shifter_storage;
     end for;
     for all : Prefilter_stages_gen_pattern
       use entity work.Prefilter_stages_gen_pattern(Patterns_1_RAM_light);

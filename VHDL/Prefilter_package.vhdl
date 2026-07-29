@@ -82,8 +82,8 @@ package PreFilter_package is
   --! * The shifted signal is added to the state variable
   component Prefilter_IIR_stage_dummy is
     port (
-      CLK              : in  std_logic;
-      state_var_in     : in  reg_type
+      CLK          : in std_logic;
+      state_var_in : in reg_type
       );
   end component Prefilter_IIR_stage_dummy;
 
@@ -101,12 +101,12 @@ package PreFilter_package is
 --!   see Prefilter_IIR_stage_dummy.
   component Prefilter_IIR_stage_diff is
     port (
-      CLK              : in  std_logic;
-      RST              : in  std_logic;
-      reg_sync         : in  std_logic;
-      state_var_in     : in  reg_type;
-      data_input_in    : in  reg_type;
-      data_out         : out reg_type
+      CLK           : in  std_logic;
+      RST           : in  std_logic;
+      reg_sync      : in  std_logic;
+      state_var_in  : in  reg_type;
+      data_input_in : in  reg_type;
+      data_out      : out reg_type
       );
   end component Prefilter_IIR_stage_diff;
 --! @brief Pre-filter IIR compute the shifts
@@ -121,12 +121,12 @@ package PreFilter_package is
 --!   see Prefilter_IIR_stage_dummy.
   component Prefilter_IIR_stage_shift is
     port (
-      CLK              : in  std_logic;
-      RST              : in  std_logic;
-      reg_sync         : in  std_logic;
-      shifts_calc      : in  shifts_IIR_data;
-      data_in          : in  reg_type;
-      data_out         : out reg_type
+      CLK         : in  std_logic;
+      RST         : in  std_logic;
+      reg_sync    : in  std_logic;
+      shifts_calc : in  shifts_IIR_data;
+      data_in     : in  reg_type;
+      data_out    : out reg_type
       );
   end component Prefilter_IIR_stage_shift;
 --! @brief Pre-filter IIR compute the add
@@ -159,15 +159,72 @@ package PreFilter_package is
   --!   better than a RAM based.
   component Prefilter_Delay is
     generic(
-      latency : positive );
+      latency : positive);
+    port (
+      CLK      : in  std_logic;
+      RST      : in  std_logic;
+      reg_sync : in  std_logic;
+      scz_in   : in  reg_sin_cos_z;
+      scz_out  : out reg_sin_cos_z
+      );
+  end component Prefilter_Delay;
+
+--! @brief Pre-filter RAM state variable storage
+--!
+--! Stores in a RAM based barrel shifter two state variables
+--!
+  component Prefilter_RAM_Storage is
+    generic (
+      --! ram_locations_size : positive := N_notes * N_octaves - 3;
+      --! N_notes * N_octaves is the number of IIR filters involved\n
+      --! multiplied by 2 because there is the sine and the cosine to handle\n
+      --! multiplied by ram_bloc_size because reg_size is lower than ram_data_size,
+      --! then there are multiple reads and writes.\n
+      --! minus the number of pipe-lined process of the pre-filter.
+      --! By default, it is 3 but in saome cases the shitfs can introduce more latencies.
+      Prefilter_latency : positive
+      );
     port (
       CLK           : in  std_logic;
       RST           : in  std_logic;
       reg_sync      : in  std_logic;
-      scz_in        : in  reg_sin_cos_z;
+      --! Void as it runs as a barrel shifter
+      meta_data_in  : in  meta_data_t;
+      --! Void as it runs as a barrel shifter
+      meta_data_out : in  meta_data_t;
+      --! The photo is taken during the register sync
+      scz_in     : in  reg_sin_cos_z;
+      --! Output cosine register.\n
+      --! To keep a standard inter-modules interface, thees reg_type registers
+      --! are shifted by arithm size between the reg_sync (active)
       scz_out       : out reg_sin_cos_z
       );
-  end component Prefilter_Delay;
+  end component Prefilter_RAM_Storage;
+--! @brief Pre-filter Dummy state variable storage
+--!
+--! Test ONLY.\n
+--! Sends 0 as a state variable to test the input pattern
+--!   is output after a division
+  component Prefilter_Dummy_Storage is
+    generic (
+      --! Void as the result is a constant
+      Prefilter_latency : positive;
+      default_value     : reg_type := (others => '0')
+      );
+    port (
+      CLK           : in  std_logic;
+      RST           : in  std_logic;
+      reg_sync      : in  std_logic;
+      --! Void as the output is a constant
+      meta_data_in  : in  meta_data_t;
+      --! Void as the output is a constant
+      meta_data_out : in  meta_data_t;
+      --! Void
+      scz_in        : in  reg_sin_cos_z;
+      --! Data (constant) to be sent
+      scz_out       : out reg_sin_cos_z
+      );
+  end component Prefilter_Dummy_Storage;
 
   --! @brief Direct access state variable storage
   --!
@@ -181,8 +238,10 @@ package PreFilter_package is
   --!   in a pseudo random mode.
   --! Then the meta data is used as an address of the memory.
   component Prefilter_Direct_Storage is
-    generic(
-      memory_size : positive );
+    generic (
+      --! Void as it is not a barrel shifter
+      Prefilter_latency : positive
+      );
     port (
       CLK           : in  std_logic;
       RST           : in  std_logic;
@@ -197,46 +256,42 @@ package PreFilter_package is
       scz_out       : out reg_sin_cos_z
       );
   end component Prefilter_Direct_Storage;
-
---! @brief Pre-filter state variable storage
---!
---! Stores in a RAM based barrel shifter two state variables
---!
-  component Prefilter_Storage is
+  --! @brief Barrel shifter storage
+  --!
+  --! It is an alternative to the RAM storage.\n
+  --! * it can help the debug as it is an half trivial implementatio.\n
+  --! * according to the technology in an ASIC or a FPGA implementation,
+  --!   this one or the RAM based is better.\n
+  --! It can be used only in a prefilter (not in a test final filter)
+  --!   as the meta data is ignored.
+  component Prefilter_Barrel_shifter_Storage is
     generic (
-      --! ram_locations_size : positive := N_notes * N_octaves - 3;
-      --! N_notes * N_octaves is the number of IIR filters involved\n
-      --! multiplied by 2 because there is the sine and the cosine to handle\n
-      --! multiplied by ram_bloc_size because reg_size is lower than ram_data_size,
-      --! then there are multiple reads and writes.\n
-      --! minus 3 because 3 values are in the pipe-lined process of the pre-filter.
-      ram_locations_size : positive := 29
+      --! Void as it is not a barrel shifter
+      Prefilter_latency : positive
       );
     port (
-      CLK        : in  std_logic;
-      RST        : in  std_logic;
-      reg_sync   : in  std_logic;
-      SV_sin_in  : in  reg_type;
-      SV_cos_in  : in  reg_type;
-      --! Output sine register.\n
-      --! To keep a standard inter-modules interface, thees reg_type registers
-      --! are shifted by arithm size between the reg_sync (active)
-      SV_sin_out : out reg_type;
-      --! Output cosine register.\n
-      --! To keep a standard inter-modules interface, thees reg_type registers
-      --! are shifted by arithm size between the reg_sync (active)
-      SV_cos_out : out reg_type
+      CLK           : in  std_logic;
+      RST           : in  std_logic;
+      reg_sync      : in  std_logic;
+      --! Void
+      meta_data_in  : in  meta_data_t;
+      --! Void
+      meta_data_out : in  meta_data_t;
+      --! Data to be written back
+      scz_in        : in  reg_sin_cos_z;
+      --! Data to be read
+      scz_out       : out reg_sin_cos_z
       );
-  end component Prefilter_Storage;
---! @brief Prefilter stage
---!
---! This is a pair of sine and cosine calculation
---! with their associated memory storage and
---! delay for the meta-data.
+  end component Prefilter_Barrel_shifter_Storage;
+  
+  --! @brief Prefilter stage
+  --!
+  --! This is a pair of sine and cosine calculation
+  --! with their associated memory storage and
+  --! delay for the meta-data.
   component Prefilter_stage is
     generic (
-      the_stage_offset : real := 1.0;
-      debug_level : integer range 0 to 2 := 0
+      the_stage_offset : real                 := 1.0
       );
     port (
       CLK           : in  std_logic;
@@ -254,8 +309,7 @@ package PreFilter_package is
   component Prefilter_bundle is
     generic (
       --! Defines the number of stages and their offsets ratios
-      stages_offsets : prefilter_stages_offset_list;
-      debug_level : integer range 0 to 2 := 0);
+      stages_offsets : prefilter_stages_offset_list);
     port (
       CLK           : in  std_logic;
       RST           : in  std_logic;
@@ -382,8 +436,8 @@ package body PreFilter_package is
     assert cutoff_ratio <= 3.0
                            report "Cut-off ratio " & real'image(cutoff_ratio) & " bigger than 3 is a non sense"
                            severity warning;
-    
+
     return 1.0 - exp(- 2.0 * 3.1415926 * cutoff_bandwidth_A00 * real(CLK_cycles_per_sample)/ CLK_freq);
   end function Meta_data_2_prefilter_coeff_real;
-  
+
 end package body PreFilter_package;

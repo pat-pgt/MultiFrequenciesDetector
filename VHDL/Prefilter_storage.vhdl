@@ -1,39 +1,38 @@
 
+
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
   work.InterModule_formats.all,
+  work.Meta_data_package.all,
   work.Prefilter_package.all;
 --! @brief Pre-filter state variable storage
 --!
 --! Stores in a RAM based barrel shifter two state variables
 --!
-entity Prefilter_Storage is
+entity Prefilter_RAM_Storage is
   generic (
-    --! Size of the RAM = N_notes * N_octaves - 3 in run mode.
-    --! Set arbitrary to 29 for debug and and alone mode.
-    ram_locations_size : positive := 29
+    --! Size of the RAM = N_notes * N_octaves - the latency in run mode.
+      Prefilter_latency : positive
     );
   port (
-    CLK        : in  std_logic;
-    RST        : in  std_logic;
-    reg_sync   : in  std_logic;
-    SV_sin_in  : in  reg_type;
-    SV_cos_in  : in  reg_type;
-                                        --! Sine output.\n
-                                        --! After the rising edge of the master clock:
-                                        --! * when the reg_sync is high, the data is valid in parallel mode.
-                                        --! * when the reg_sync is low, the data is shifted by arithm_size.
-                                        --! the MSB is filled up with '-'
-    SV_sin_out : out reg_type;
-                                        --! Cosine output.\n
-                                        --! After the rising edge of the master clock:
-                                        --! * when the reg_sync is high, the data is valid in parallel mode.
-                                        --! * when the reg_sync is low, the data is shifted by arithm_size.
-                                        --! the MSB is filled up with '-'
-    SV_cos_out : out reg_type
+    CLK           : in  std_logic;
+    RST           : in  std_logic;
+    reg_sync      : in  std_logic;
+    --! Void as it runs as a barrel shifter
+    meta_data_in  : in  meta_data_t;
+    --! Void as it runs as a barrel shifter
+    meta_data_out : in  meta_data_t;
+    --! The photo is taken during the register sync.\n
+    --! BE CAREFULL it should be connected to the input side of the filter
+    scz_in     : in  reg_sin_cos_z;
+    --! Output cosine register.\n
+    --! To keep a standard inter-modules interface, thees reg_type registers
+    --! are shifted by arithm size between the reg_sync (active).\n
+    --! BE CAREFULL it should be connected to the output side of the filter
+    scz_out       : out reg_sin_cos_z
     );
-end entity Prefilter_Storage;
+end entity Prefilter_RAM_Storage;
 
 --! This architecture manages the multiplexing
 --! of reg_size bits of sine and reg_size bits of cosine into
@@ -45,7 +44,7 @@ end entity Prefilter_Storage;
 --! another architecture can be written.\n
 --! To keep a standard inter-modules interface, we build reg_type registers
 --! shifted by arithm size between the reg_sync (active)
-architecture arch of Prefilter_Storage is
+architecture arch of Prefilter_RAM_Storage is
   --! Is the number of blocs of ram_data_size to store an arithm_size vector.\n
   --! The reg_size may not be a multiple of the ram_data_size.
   --! Then the number of blocs should be celled, in the case of a non integer.
@@ -75,7 +74,7 @@ architecture arch of Prefilter_Storage is
 begin
   assert false report "for the prefilter, a RAM " & integer'image(2**ram_addr_size) & "X" & integer'image(ram_data_size) & " has been built"
     severity note;
-  assert 2**ram_addr_size >= 2 * ram_locations_size * ram_bloc_size report "Internal error" severity failure;
+  assert 2**ram_addr_size >= 2 * ( N_octaves * N_notes - Prefilter_latency ) * ram_bloc_size report "Internal error" severity failure;
   assert ram_data_size * ram_bloc_size >= reg_size report "Internal error" severity failure;
 
   main_proc : process(CLK)
@@ -84,28 +83,28 @@ begin
       RST_IF : if RST = '0' then
         REGSYNC_IF : if reg_sync = '1' then
           -- Load the internal registers from the input
-          sc_io_regs(sc_io_regs'low + reg_size - 1 downto sc_io_regs'low) <= SV_sin_in;
+          sc_io_regs(sc_io_regs'low + reg_size - 1 downto sc_io_regs'low) <= scz_in.the_sin;
           sc_io_regs(sc_io_regs'low + sc_io_regs'length / 2 + reg_size - 1 downto
-                     sc_io_regs'low + sc_io_regs'length / 2) <= SV_cos_in;
+                     sc_io_regs'low + sc_io_regs'length / 2) <= scz_in.the_cos;
           -- Load the output shift registers from the internal registers
-          SV_sin_out <= sc_io_regs(sc_io_regs'low + reg_size - 1 downto sc_io_regs'low);
-          SV_cos_out <= sc_io_regs(sc_io_regs'low + sc_io_regs'length / 2 + reg_size - 1 downto
+          scz_out.the_sin <= sc_io_regs(sc_io_regs'low + reg_size - 1 downto sc_io_regs'low);
+          scz_out.the_cos <= sc_io_regs(sc_io_regs'low + sc_io_regs'length / 2 + reg_size - 1 downto
                                      sc_io_regs'low + sc_io_regs'length / 2);
           multiplex_state <= (others => '0');
         else
           -- Shift the output registers
-          SV_sin_out(SV_sin_out'high - arithm_size downto SV_sin_out'low) <=
-            SV_sin_out(SV_sin_out'high downto SV_sin_out'low + arithm_size);
-          SV_cos_out(SV_cos_out'high - arithm_size downto SV_sin_out'low) <=
-            SV_cos_out(SV_cos_out'high downto SV_sin_out'low + arithm_size);
+          scz_out.the_sin(scz_out.the_sin'high - arithm_size downto scz_out.the_sin'low) <=
+            scz_out.the_sin(scz_out.the_sin'high downto scz_out.the_sin'low + arithm_size);
+          scz_out.the_cos(scz_out.the_cos'high - arithm_size downto scz_out.the_sin'low) <=
+            scz_out.the_cos(scz_out.the_cos'high downto scz_out.the_sin'low + arithm_size);
           -- No new data is coming using a serial mode
           -- The new data is loaded using parallel mode on the reg_sync
           -- Please note, the client can NOT use the reg_sync to set some
           -- variables such as the sign
           -- However, it is not a problem as this entity is intended
           -- to the IIR filter only
-          SV_sin_out(SV_sin_out'high downto SV_sin_out'high - arithm_size + 1) <= (others => '-');
-          SV_cos_out(SV_cos_out'high downto SV_cos_out'high - arithm_size + 1) <= (others => '-');
+          scz_out.the_sin(scz_out.the_sin'high downto scz_out.the_sin'high - arithm_size + 1) <= (others => '-');
+          scz_out.the_cos(scz_out.the_cos'high downto scz_out.the_cos'high - arithm_size + 1) <= (others => '-');
           -- There are ram_bloc_state read_modify write to do    
           -- * 2 as there is 2 RAM addr, data and enable states
           -- * 2 as there is the sin and the cosine
@@ -124,7 +123,7 @@ begin
               sc_io_regs(sc_io_regs'high downto sc_io_regs'high - ram_data_size + 1) <=
                 sc_io_regs(sc_io_regs'low + ram_data_size - 1 downto sc_io_regs'low);
 
-              if unsigned(ram_pos) = to_unsigned(2 * ram_bloc_size * ram_locations_size - 1, ram_pos'length) then
+              if unsigned(ram_pos) = to_unsigned(2 * ram_bloc_size * ( N_octaves * N_notes - Prefilter_latency ) - 1, ram_pos'length) then
                 ram_pos <= (others => '0');
               else
                 ram_pos <= std_logic_vector(unsigned(ram_pos) + 1);
@@ -154,4 +153,172 @@ begin
 --    din               => din,
 --    dout              => dout
 --    );
+end architecture arch;
+
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.all,
+  ieee.numeric_std.all,
+  work.InterModule_formats.all,
+  work.Meta_data_package.all;
+
+entity Prefilter_Dummy_Storage is
+    generic (
+      --! Void as the result is a constant
+      Prefilter_latency : positive;
+      default_value     : reg_type := ( others => '0' )
+      );
+    port (
+      CLK           : in  std_logic;
+      RST           : in  std_logic;
+      reg_sync      : in  std_logic;
+      --! Void
+      meta_data_in  : in  meta_data_t;
+      meta_data_out : in  meta_data_t;
+      --! Void
+      scz_in        : in  reg_sin_cos_z;
+      --! Data (constant) to be sent
+      scz_out       : out reg_sin_cos_z
+      );
+end entity Prefilter_Dummy_Storage;
+
+
+architecture arch of Prefilter_Dummy_Storage is
+
+begin  -- architecture arch
+
+  scz_out.the_sin <= default_value;
+  scz_out.the_cos <= default_value;
+
+end architecture arch;
+
+
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.all,
+  ieee.numeric_std.all,
+  work.InterModule_formats.all,
+  work.Meta_data_package.all;
+
+
+entity Prefilter_Direct_Storage is
+  generic (
+    --! Void as it is not a barrel shifter
+    Prefilter_latency : positive
+    );
+  port (
+    CLK           : in  std_logic;
+    RST           : in  std_logic;
+    reg_sync      : in  std_logic;
+    --! The meta data of which state variable should be read
+    meta_data_in  : in  meta_data_t;
+    --! The meta data of which state variable should be written back.
+    meta_data_out : in  meta_data_t;
+    --! Data to be written back
+    scz_in        : in  reg_sin_cos_z;
+    --! Data to be read
+    scz_out       : out reg_sin_cos_z
+    );
+end entity Prefilter_Direct_Storage;
+
+architecture arch of Prefilter_Direct_Storage is
+  type mem_array is array (0 to N_octaves * N_notes - 1) of reg_type;
+  signal sine_memory : mem_array;
+  signal cosine_memory : mem_array;
+begin  -- architecture arch of Prefilter_Direct_Storage
+  main_proc : process(CLK)
+  begin
+    CLK_IF : if rising_edge(CLK) then
+      RST_IF : if RST = '0' then
+        REGSYNC_IF : if reg_sync = '1' then
+          scz_out.the_sin <=
+            sine_memory( to_integer( unsigned( meta_data_in.note )) * N_octaves +
+                         to_integer( unsigned( meta_data_in.octave )) );
+          scz_out.the_cos <=
+            cosine_memory( to_integer( unsigned( meta_data_in.note )) * N_octaves +
+                         to_integer( unsigned( meta_data_in.octave )) );
+          sine_memory( to_integer( unsigned( meta_data_out.note )) * N_octaves +
+                         to_integer( unsigned( meta_data_out.octave )) ) <=
+            scz_out.the_sin;
+          cosine_memory( to_integer( unsigned( meta_data_out.note )) * N_octaves +
+                         to_integer( unsigned( meta_data_out.octave )) ) <=
+            scz_out.the_cos;
+        else
+          scz_out.the_sin(scz_out.the_sin'high - arithm_size downto scz_out.the_sin'low ) <=
+          scz_out.the_sin(scz_out.the_sin'high downto scz_out.the_sin'low + arithm_size);
+          scz_out.the_cos(scz_out.the_cos'high - arithm_size downto scz_out.the_cos'low ) <=
+          scz_out.the_cos(scz_out.the_cos'high downto scz_out.the_cos'low + arithm_size);
+        end if REGSYNC_IF;
+      end if RST_IF;
+    end if CLK_IF;
+  end process main_proc;
+end architecture arch;
+
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.all,
+  ieee.numeric_std.all,
+  work.InterModule_formats.all,
+  work.Meta_data_package.all;
+
+entity Prefilter_Barrel_shifter_storage is
+    generic (
+      Prefilter_latency : positive
+      );
+    port (
+      CLK           : in  std_logic;
+      RST           : in  std_logic;
+      reg_sync      : in  std_logic;
+      --! Void
+      meta_data_in  : in  meta_data_t;
+      meta_data_out : in  meta_data_t;
+      --! Void
+      scz_in        : in  reg_sin_cos_z;
+      --! Data (constant) to be sent
+      scz_out       : out reg_sin_cos_z
+      );
+end entity Prefilter_Barrel_shifter_storage;
+
+architecture arch of Prefilter_Barrel_shifter_storage is
+  type BS_type is array (N_notes * N_octaves - Prefilter_latency - 1 downto 0) of reg_type;
+  signal sin_BS : BS_type;
+  signal cos_BS : BS_type;
+begin  -- architecture arch
+  assert N_notes * N_octaves - Prefilter_latency > 1
+    report "The prodcut of the number of note by the number of octaves minus the prefilter latency ("&
+    integer'image(N_notes * N_octaves - Prefilter_latency ) &
+    ") should be at least 2"
+    severity failure;
+
+  scz_out.the_sin <= sin_BS( sin_BS'low );
+  scz_out.the_cos <= cos_BS( cos_BS'low );
+  main_proc : process(CLK)
+    variable temp : reg_type;
+  begin
+    CLK_IF : if rising_edge(CLK) then
+      RST_IF : if RST = '0' then
+        REGSYNC_IF : if reg_sync = '1' then
+            sin_BS( sin_BS'high - 1 downto sin_BS'low ) <=
+              sin_BS( sin_BS'high downto sin_BS'low + 1 );
+            cos_BS( cos_BS'high - 1 downto cos_BS'low ) <=
+              cos_BS( cos_BS'high downto cos_BS'low + 1 );
+          sin_BS( sin_BS'high ) <= scz_in.the_sin;
+          cos_BS( cos_BS'high ) <= scz_in.the_cos;
+        else
+          temp := sin_BS( sin_BS'low );
+          temp( temp'high - 1 downto temp'low ) :=
+            temp( temp'high downto temp'low + 1 );
+          sin_BS( sin_BS'low ) <= temp;
+          temp := cos_BS( cos_BS'low );
+          temp( temp'high - 1 downto temp'low ) :=
+            temp( temp'high downto temp'low + 1 );
+          cos_BS( cos_BS'low ) <= temp;
+        end if REGSYNC_IF;
+      else
+        sin_BS <= ( others => ( others => '0' ));
+        cos_BS <= ( others => ( others => '0' ));
+      end if RST_IF;
+    end if CLK_IF;
+  end process main_proc;
+  
 end architecture arch;
