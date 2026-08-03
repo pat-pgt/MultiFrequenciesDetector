@@ -119,6 +119,25 @@ $(CXXVERIFDIR)Cordic_E2E_DC_verif_DS2 : $(SYNTHDESTDIR)Cordic_E2E_DC_CXX_DS2.cpp
 $(CXXVERIFDIR)Cordic_E2E_DC_verif_all : $(CXXVERIFDIR)Cordic_E2E_DC_verif_noDS $(CXXVERIFDIR)Cordic_E2E_DC_verif_DS1 $(CXXVERIFDIR)Cordic_E2E_DC_verif_DS2
 
 
+$(BUILDDIR)Cordic_E2E_lightfilter_CXX_compiled : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages.vhdl $(SCRDIR)Cordic_Interm_Stages.vhdl $(SCRDIR)Cordic_Bundle_Stages.vhdl $(SCRDIR)AnglesGene.vhdl $(SCRDIR)DataMonitor.vhdl $(SCRDIR)Downsampling.vhdl $(SCRDIR)Cordic_E2E_lightfilter_CXX_test.vhdl $(SCRDIR)Cordic_E2E_lightfilter_bundle.vhdl 
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_IO_Stages.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_Interm_Stages.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_Bundle_Stages.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)AnglesGene.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)DataMonitor.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_Monitor.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Prefilter_storage.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Prefilter_stages.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Prefilter_Bundle.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Downsampling.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_E2E_lightfilter_bundle.vhdl
+	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Cordic_E2E_lightfilter_CXX_test.vhdl
+	touch $(BUILDDIR)Cordic_E2E_lightfilter_CXX_compiled
+
+$(SYNTHDESTDIR)Cordic_E2E_lightfilter_CXX_DS1.cpp : $(BUILDDIR)Cordic_E2E_lightfilter_CXX_compiled
+	$(YOSYS_PROG) -m ghdl -p '$(GHDL_PROG) $(VFLAGS) -gwith_downsampling=1 -gextra_shifts=2 Cordic_E2E_lightfilter_CXX_test; write_cxxrtl  -namespace Cordic_E2E_lightfilter_1 $(SYNTHDESTDIR)Cordic_E2E_lightfilter_CXX_DS1.cpp' 2>&1 |tee $(SYNTHDESTDIR)Cordic_E2E_lightfilter_1.synth.out.txt
+
+
 
 simul_Prefilter_Storage : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages.vhdl $(SCRDIR)Cordic_Interm_Stages.vhdl $(SCRDIR)Cordic_Bundle_Stages.vhdl $(SCRDIR)DataMonitor.vhdl
 	$(GHDL_PROG) -a $(VFLAGS) $(SCRDIR)Prefilter_stages.vhdl
