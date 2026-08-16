@@ -15,7 +15,42 @@
 
 using namespace std;
 
-/* @brief Holds an X and a Y value
+/** @brief
+ */ 
+template <typename cxx_reg_type, unsigned short reg_size>
+class Value_Data
+{
+  cxx_reg_type value_init;
+public:
+  Value_Data() = delete;
+  Value_Data(const cxx_reg_type&value_init);
+  operator cxx_reg_type()const{ return value_init; }
+  /** @brief Get_Positive_Negative_Value
+   *
+   * Used by the end to end light-filter,
+   *   this functions return the value 
+   */
+  cxx_reg_type Get_Positive_Negative_Value(const bool&isNeg)const{
+	if ( isNeg )
+	  // the value of the 2'nd complement are in in the interval -2**N to (2**N)-1
+	  // Trying to take minus -2**N would have cause wrong result (-2**N again).
+	  // Since the number are checked to be in the -max/2 and +max/2 mask,
+	  //   there is no risk.
+	  return -value_init;
+	else
+	  return value_init;
+  } 
+  /** Two divided validation
+   * Since the Cordic algorithm grows the values, the input is divided by 2.
+   * The Python emulations validate that, for the 3 first stages done "by hand".\n
+   * Functions are provided for standard IT formats and for the vector size in VHDL
+   * (CXXRTL expects the unused bits are 0).\n
+   * It is a template instantiation. However, for now, it is specific instantiations.
+   */
+  void TwoDividedValidation()const;
+};
+
+/** @brief Holds an X and a Y value
  *
  * The second template member looks like redundant.
  * Since the interface between the C++ test software and the C++ VHDL emulator
@@ -25,16 +60,20 @@ template <typename cxx_reg_type, unsigned short reg_size>
 class XY_Data
 {
 protected:
-  cxx_reg_type X_init;
-  cxx_reg_type Y_init;
+  Value_Data<cxx_reg_type, reg_size> X_init;
+  Value_Data<cxx_reg_type, reg_size> Y_init;
 public:
   XY_Data() = delete;
-  XY_Data(const int&X_init,const int&Y_init);
+  XY_Data(const cxx_reg_type&X_init,const cxx_reg_type&Y_init);
 
   XY_Data&operator=(const XY_Data&a){
 	X_init=a.X_init;
 	Y_init=a.Y_init;
 	return*this;
+  }
+  constexpr void TwoDividedValidation()const{
+	X_init.TwoDividedValidation();
+	Y_init.TwoDividedValidation();
   }
 
   constexpr cxx_reg_type value_type()const{};
@@ -44,12 +83,12 @@ public:
    *
    * @return the value
    */
-  constexpr int Get_X_full()const{ return X_init; }
+  constexpr cxx_reg_type Get_X()const{ return X_init; }
 /** @brief Get the Y value based on a standard it format
    *
    * @return the value
    */
-  constexpr int Get_Y_full()const{ return Y_init; }
+  constexpr cxx_reg_type Get_Y()const{ return Y_init; }
 
 /** @brief Get the module squared
  *
@@ -77,38 +116,13 @@ public:
   string string_light()const{
 	return format("{: 4},{: 4}\t",X_init/1000000,Y_init/1000000);
   }
-};
-/* @brief Holds the initial values
- *
- * Since the Cordic algorithm grows the values, the input is divided by 2.
- * The Python emulations validate that, for the 3 first stages done "by hand".\n
- * Functions are provided for standard IT formats and for the vector size in VHDL
- * (CXXRTL expects the unused bits are 0).\n
- * It is a template instantiation. However, for now, it is specific instantiations.
- */ 
-  template <typename cxx_reg_type, unsigned short reg_size>
-  class InitialValueData : public XY_Data<cxx_reg_type, reg_size>
-{
-public:
-  InitialValueData() = delete;
-  InitialValueData(const int&X_init,const int&Y_init);
-
-  long double module_value_type()const;
-  /** @brief Get the X value for the VHDL
-   *
-   * @return the value
-   */
-  constexpr cxx_reg_type Get_X_init_2divided()const;
-/** @brief Get the Y value for the VHDL
-   *
-   * @return the value
-   */
-  constexpr cxx_reg_type Get_Y_init_2divided()const;
   /** @brief Get size to compare with the VHDL
    *
    * This function returns the number of BITS.
    */
   const unsigned char GetRegSize()const{ return reg_size;}
+
+  long double module_value_type()const;
 };
 
 /** @brief Computes the statistics of the results

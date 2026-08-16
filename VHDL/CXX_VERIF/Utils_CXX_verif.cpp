@@ -4,10 +4,9 @@
  * There is no more documentation, for future information, see the .hxx file documentation
  */
 
-
 template <typename cxx_reg_type, unsigned short reg_size>
-XY_Data<cxx_reg_type,reg_size>::XY_Data(const int&X_init,const int&Y_init):
-  X_init(X_init),Y_init(Y_init)
+Value_Data<cxx_reg_type,reg_size>::Value_Data(const cxx_reg_type&value_init):
+  value_init(value_init)
 {};
 
 /** @brief InitialValueData constructor
@@ -16,27 +15,18 @@ XY_Data<cxx_reg_type,reg_size>::XY_Data(const int&X_init,const int&Y_init):
  * Other sizes are not yet supported, see in the .hxx file
  */
 template <>
-InitialValueData<int,32>::InitialValueData(const int&X_init,const int&Y_init):
-  XY_Data(X_init,Y_init)
+void Value_Data<int,32>::TwoDividedValidation()const
 {
   // Check if the numbers are 31 bits
-  if ( ( X_init & 0xc0000000 ) == 0x80000000 || ( X_init & 0xc0000000 ) == 0x40000000 )
+  if ( ( value_init & 0xc0000000 ) == 0x80000000 || ( value_init & 0xc0000000 ) == 0x40000000 )
 	throw length_error("The initial X value is out of range, should be signed 31 bits ");
-  if ( ( Y_init & 0xc0000000 ) == 0x80000000 || ( Y_init & 0xc0000000 ) == 0x40000000 )
-	throw length_error("The initial Y value is out of range, should be signed 31 bits ");
 }
 
+template <typename cxx_reg_type, unsigned short reg_size>
+XY_Data<cxx_reg_type,reg_size>::XY_Data(const cxx_reg_type&X_init,const cxx_reg_type&Y_init):
+  X_init(X_init),Y_init(Y_init)
+{};
 
-template <>
-int InitialValueData<int,32>::Get_X_init_2divided()const
-{
-  return X_init & 0x7fffffff;
-}
-template <>
-int InitialValueData<int,32>::Get_Y_init_2divided()const
-{
-  return Y_init & 0x7fffffff;
-}
 
 
 /** @brief stats class constructor
@@ -122,9 +112,9 @@ template<typename T>string stats<T>::Display_without_offset_normalize()const
   // TODO improve the display
 
   return format("{: E}, {: E}, {:1.3E}",
-				the_max * normalize + offset - the_min * normalize + offset,
+				the_max * normalize + offset - ( the_min * normalize + offset ),
 				the_avg * normalize + offset,
-				the_stddev * normalize + offset); 
+				the_stddev * normalize ); 
 }
 
 template<typename T>string stats<T>::Display_arccos_degrees()const

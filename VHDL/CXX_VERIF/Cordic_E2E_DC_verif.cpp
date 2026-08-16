@@ -110,15 +110,15 @@ int main(int argc,char*argv[])
    * The PI/4 are tested only for the first and the second quadrant
    * The PI/8 and 3.PI/8 are tested once
    */
-  vector<InitialValueData<int,32>>theInitialDataCandidates = { 
-	InitialValueData<int,32>( 0x3fffffff, 0 ),
-	InitialValueData<int,32>( 0, 0x3fffffff ),
-	InitialValueData<int,32>( 0xc0000001, 0 ),
-	InitialValueData<int,32>( 0, 0xc0000001 ),
-	InitialValueData<int,32>( 0x2d4139f6, 0x2d4139f6 ),
-	InitialValueData<int,32>( 0xd2bec60a, 0x2d4139f6 ),
-	InitialValueData<int,32>( 0x1fffffff, 0x376cf5d0 ),
-	InitialValueData<int,32>( 0x376cf5d0, 0x1fffffff )
+  vector<XY_Data<int,32>>theInitialDataCandidates = { 
+	XY_Data<int,32>( 0x3fffffff, 0 ),
+	XY_Data<int,32>( 0, 0x3fffffff ),
+	XY_Data<int,32>( 0xc0000001, 0 ),
+	XY_Data<int,32>( 0, 0xc0000001 ),
+	XY_Data<int,32>( 0x2d4139f6, 0x2d4139f6 ),
+	XY_Data<int,32>( 0xd2bec60a, 0x2d4139f6 ),
+	XY_Data<int,32>( 0x1fffffff, 0x376cf5d0 ),
+	XY_Data<int,32>( 0x376cf5d0, 0x1fffffff )
   };
 
   if ( has_hv )
@@ -147,7 +147,7 @@ int main(int argc,char*argv[])
   cout << "If something is wrong in a test, it is irrelevant to go future." << endl; 
   cout << "--------------------------------------------------------------------------------------------" << endl;
 
-  vector<InitialValueData<int,32>>theInitialData;
+  vector<XY_Data<int,32>>theInitialData;
   for ( unsigned short indniv; indniv < nbre_initial_vextors; indniv++ )
 	theInitialData.push_back(theInitialDataCandidates[ indniv ]);
 
@@ -164,7 +164,9 @@ int main(int argc,char*argv[])
   transform( execution::par,
 			 theInitialData.begin(), theInitialData.end(),
 			 theSimulData.begin(),
-			 [&](const InitialValueData<int,32>&dat) {
+			 [&](const XY_Data<int,32>&dat) {
+
+			   dat.TwoDividedValidation();
 
 			   unsigned long long strobe_stable_1=0, strobe_stable_0=0;
 
@@ -207,10 +209,10 @@ int main(int argc,char*argv[])
 			   /** Set the DC value for all the simulation.
 				* The Y is used for this test as well, even if in the run mode it is set to 0
 				*/
-			   top.p_input__X.set<decltype(dat.value_type())>(dat.Get_X_init_2divided());
-			   top.p_input__Y.set<decltype(dat.value_type())>(dat.Get_Y_init_2divided());
+			   top.p_input__X.set<decltype(dat.value_type())>(dat.Get_X());
+			   top.p_input__Y.set<decltype(dat.value_type())>(dat.Get_Y());
 
-			   cout << '(' << dat.Get_X_full() << ',' << dat.Get_Y_full() << ")\t";  
+			   cout << '(' << dat.Get_X() << ',' << dat.Get_Y() << ")\t";  
 
 			   cout << "Running until the reset and the input values propagated to the output ..." << endl;
 			   cout.flush();
