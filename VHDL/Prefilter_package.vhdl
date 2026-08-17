@@ -52,6 +52,11 @@ package PreFilter_package is
 --! * The number of shifts needed.
 --! It is a separate one as it is required only once for the sine and the cosine.
   component Prefilter_metadata_and_shifts_compute is
+    generic (
+      the_stage_offset          : real;
+      prefilter_not_lightfilter : boolean := true;
+      latency                   : positive
+      );
     port (
       CLK           : in  std_logic;
       RST           : in  std_logic;
@@ -181,7 +186,7 @@ package PreFilter_package is
       --! multiplied by ram_bloc_size because reg_size is lower than ram_data_size,
       --! then there are multiple reads and writes.\n
       --! minus the number of pipe-lined process of the pre-filter.
-      --! By default, it is 3 but in saome cases the shitfs can introduce more latencies.
+      --! By default, it is 3 but in some cases the shifts can introduce more latencies.
       Prefilter_latency : positive
       );
     port (
@@ -193,7 +198,7 @@ package PreFilter_package is
       --! Void as it runs as a barrel shifter
       meta_data_out : in  meta_data_t;
       --! The photo is taken during the register sync
-      scz_in     : in  reg_sin_cos_z;
+      scz_in        : in  reg_sin_cos_z;
       --! Output cosine register.\n
       --! To keep a standard inter-modules interface, thees reg_type registers
       --! are shifted by arithm size between the reg_sync (active)
@@ -259,7 +264,7 @@ package PreFilter_package is
   --! @brief Barrel shifter storage
   --!
   --! It is an alternative to the RAM storage.\n
-  --! * it can help the debug as it is an half trivial implementatio.\n
+  --! * it can help the debug as it is an half trivial implementation.\n
   --! * according to the technology in an ASIC or a FPGA implementation,
   --!   this one or the RAM based is better.\n
   --! It can be used only in a prefilter (not in a test final filter)
@@ -283,7 +288,7 @@ package PreFilter_package is
       scz_out       : out reg_sin_cos_z
       );
   end component Prefilter_Barrel_shifter_Storage;
-  
+
   --! @brief Prefilter stage
   --!
   --! This is a pair of sine and cosine calculation
@@ -291,7 +296,8 @@ package PreFilter_package is
   --! delay for the meta-data.
   component Prefilter_stage is
     generic (
-      the_stage_offset : real                 := 1.0
+      the_stage_offset : real := 1.0;
+      prefilter_not_lightfilter : boolean := true
       );
     port (
       CLK           : in  std_logic;
@@ -309,16 +315,18 @@ package PreFilter_package is
   component Prefilter_bundle is
     generic (
       --! Defines the number of stages and their offsets ratios
-      stages_offsets : prefilter_stages_offset_list);
-    port (
-      CLK           : in  std_logic;
-      RST           : in  std_logic;
-      reg_sync      : in  std_logic;
-      meta_data_in  : in  meta_data_t;
-      meta_data_out : out meta_data_t;
-      scz_in        : in  reg_sin_cos_z;
-      scz_out       : out reg_sin_cos_z
+      stages_offsets            : prefilter_stages_offset_list;
+      prefilter_not_lightfilter : boolean := true
       );
+      port (
+        CLK           : in  std_logic;
+        RST           : in  std_logic;
+        reg_sync      : in  std_logic;
+        meta_data_in  : in  meta_data_t;
+        meta_data_out : out meta_data_t;
+        scz_in        : in  reg_sin_cos_z;
+        scz_out       : out reg_sin_cos_z
+        );
   end component Prefilter_bundle;
 
 

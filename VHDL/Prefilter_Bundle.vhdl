@@ -11,7 +11,8 @@ use IEEE.STD_LOGIC_1164.all,
 --! delay for the metadata.
 entity Prefilter_stage is
   generic (
-    the_stage_offset : real := 1.0
+    the_stage_offset          : real    := 1.0;
+    prefilter_not_lightfilter : boolean := true
     );
   port (
     CLK           : in  std_logic;
@@ -149,13 +150,18 @@ begin
     data_in            => cos_shift_add,
     state_var_data_out => scz_out.the_cos);
 
-  meta_data_compute : Prefilter_metadata_and_shifts_compute port map (
-    CLK           => CLK,
-    RST           => RST,
-    reg_sync      => reg_sync,
-    meta_data_in  => meta_data_in,
-    meta_data_out => meta_data_diff,
-    shifts_calc   => shifts_calc);
+  meta_data_compute : Prefilter_metadata_and_shifts_compute generic map (
+    the_stage_offset,
+    prefilter_not_lightfilter,
+    latency => prefilter_all_latency
+    )
+    port map (
+      CLK           => CLK,
+      RST           => RST,
+      reg_sync      => reg_sync,
+      meta_data_in  => meta_data_in,
+      meta_data_out => meta_data_diff,
+      shifts_calc   => shifts_calc);
 
 end architecture arch;
 
@@ -173,7 +179,8 @@ use IEEE.STD_LOGIC_1164.all,
 entity Prefilter_bundle is
   generic (
     --! Defines the number of stages and their offsets ratios
-    stages_offsets : prefilter_stages_offset_list
+    stages_offsets            : prefilter_stages_offset_list;
+    prefilter_not_lightfilter : boolean := true
     );
   port (
     CLK           : in  std_logic;
@@ -199,8 +206,11 @@ begin
   scz_out                                 <= scz_interm(scz_interm'low);
 
   Prefilter_generate : for ind in 0 to stages_offsets'length - 1 generate
-    bundle_elem : Prefilter_stage generic map (
-      the_stage_offset => stages_offsets(stages_offsets'low - ind))
+    bundle_elem : Prefilter_stage
+      generic map (
+        the_stage_offset          => stages_offsets(stages_offsets'low - ind),
+        prefilter_not_lightfilter => prefilter_not_lightfilter
+      )
       port map (
         CLK           => CLK,
         RST           => RST,
