@@ -30,20 +30,6 @@ package PreFilter_package is
 
   constant ram_data_size : positive := 16;
 
-  --! @brief Data structure for the 2**N division in the IIR pre-filter
-  --!
-  --! The pre-filter uses a 2 multiple coefficient.
-  --! That means N shifts down has to be done.
-  --! The highest frequency, then the lowest shifts are hard-coded
-  --!   according with the sample rate and the project characteristics.
-  --! The lowest frequency, then the highest shifts are deduced
-  --!   from the highest frequency and the number of octaves.
-  --! Since the thresholds are often in an octave,
-  --!   one more is required at the top the the highest frequency.
-  type shifts_IIR_data is record
-    the_shifts : std_logic_vector(StateNumbers_2_BitsNumbers(N_octaves + 1) - 1 downto 0);
-  end record shifts_IIR_data;
-
 --! @brief Pre-filter meta-data to required shifts compute
 --!
 --! This entity computes:
@@ -64,7 +50,7 @@ package PreFilter_package is
       --
       meta_data_in  : in  meta_data_t;
       meta_data_out : out meta_data_t;
-      shifts_calc   : out shifts_IIR_data);
+      shifts_calc   : out std_logic_vector);
   end component Prefilter_metadata_and_shifts_compute;
 
 
@@ -125,11 +111,23 @@ package PreFilter_package is
 --! For more information about the calculation,
 --!   see Prefilter_IIR_stage_dummy.
   component Prefilter_IIR_stage_shift is
+    generic (
+      --! To avoid an extravagant selector,
+      --!   the number of shifts is the value between
+      --!   this base and the shifts_calc
+      shifts_max : positive;
+      --! In case the maximum number of shifts
+      --!   is (shifts_base plus) a number slightly
+      --!   greater than a power of two:
+      --! * it avoids an extravagant selector.
+      --! * the logic may try to select outside the
+      --!     highest bits of the input register.
+      delta_shifts  : natural);
     port (
       CLK         : in  std_logic;
       RST         : in  std_logic;
       reg_sync    : in  std_logic;
-      shifts_calc : in  shifts_IIR_data;
+      shifts_calc : in  std_logic_vector;
       data_in     : in  reg_type;
       data_out    : out reg_type
       );
@@ -296,7 +294,7 @@ package PreFilter_package is
   --! delay for the meta-data.
   component Prefilter_stage is
     generic (
-      the_stage_offset : real := 1.0;
+      the_stage_offset          : real    := 1.0;
       prefilter_not_lightfilter : boolean := true
       );
     port (
@@ -318,18 +316,32 @@ package PreFilter_package is
       stages_offsets            : prefilter_stages_offset_list;
       prefilter_not_lightfilter : boolean := true
       );
-      port (
-        CLK           : in  std_logic;
-        RST           : in  std_logic;
-        reg_sync      : in  std_logic;
-        meta_data_in  : in  meta_data_t;
-        meta_data_out : out meta_data_t;
-        scz_in        : in  reg_sin_cos_z;
-        scz_out       : out reg_sin_cos_z
-        );
+    port (
+      CLK           : in  std_logic;
+      RST           : in  std_logic;
+      reg_sync      : in  std_logic;
+      meta_data_in  : in  meta_data_t;
+      meta_data_out : out meta_data_t;
+      scz_in        : in  reg_sin_cos_z;
+      scz_out       : out reg_sin_cos_z
+      );
   end component Prefilter_bundle;
 
-
+  --! @brief Get the maximum prefilter shifts
+  --!
+  --! This fit to the mowest note of the lowest octave
+  --!   or ...TODO... for the lightfilter
+  function Get_Prefilter_Maximum_Shifts (
+    constant prefilter_stage_offset : real;
+    constant prefilter_not_lightfilter : boolean)
+    return positive;
+  --! @brief Get the delta prefillter shifts
+  --!
+  --! This fit to the maximum difference
+  --!   between the highest and the lowest shifts
+  function Get_Prefilter_Delta_Shifts (
+    constant prefilter_not_lightfilter : boolean)
+    return positive;
 --! @brief
 --!
 --! This function returns the ratio between the low-pass (pre)filter
@@ -396,6 +408,44 @@ end package PreFilter_package;
 
 package body PreFilter_package is
 
+  --! @brief Get the maximum prefilter shifts
+  --!
+  --! This fit to the mowest note of the lowest octave
+  --!   or ...TODO... for the lightfilter
+  function Get_Prefilter_Maximum_Shifts (
+    constant prefilter_stage_offset : real;
+    constant prefilter_not_lightfilter : boolean)
+    return positive is
+    begin
+      if prefilter_not_lightfilter then
+        --! TODO
+          return 10;
+      else
+          return 6;
+      end if;
+    end function Get_Prefilter_Maximum_Shifts;
+
+  --! @brief Get the delta prefillter shifts
+  --!
+  --! This fit to the maximum difference
+  --!   between the highest and the lowest shifts
+  function Get_Prefilter_Delta_Shifts (
+    constant prefilter_not_lightfilter : boolean)
+    return positive is
+    begin
+      if prefilter_not_lightfilter then
+        --! The best case is the thresholds are on an octave edge.
+        --! The worst case is the threshold is in a midle of an octave.
+        --! Then the width is the number of octaves plus one
+          return N_octaves + 1;
+      else
+        --! To be verified Since we are inside an octave and there is a downsampling
+        --! The ratio is not more than 2
+          return 2;
+      end if;
+    end function Get_Prefilter_Delta_Shifts;
+
+  
   function Meta_data_2_prefilter_coeff_shifts(constant cutoff_ratio : real) return integer is
     constant coeff_required : real    := Meta_data_2_prefilter_coeff_real(cutoff_ratio);
     variable coeff_curr     : real    := 1.0;

@@ -46,11 +46,10 @@ struct SimulDataType
 	const float GetInitAngle()const;
 
 	struct {
-	  stats<stats_long_type>check_module_constant;
+	  stats<stats_long_type>confirm_Z_2_0;
 	  map< pair< unsigned char, unsigned char >,
-		   pair<XY_Data<cxx_reg_type,reg_size>,stats<stats_long_type> > > check_scalar_prod_per_ON_constant;
-	  stats<stats_type>check_Z_converges;
-	}  Z_2_0;
+		   pair<XY_Data<cxx_reg_type,reg_size>,stats<stats_long_type> > > check_module_per_ON;
+	}  prefilter_1;
 	struct {
    	  stats_type avg_ratios_between_stats;
 	  stats<stats_type>check_X_converges;

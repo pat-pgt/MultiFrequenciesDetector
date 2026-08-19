@@ -28,7 +28,7 @@ entity Prefilter_metadata_and_shifts_compute is
     --
     meta_data_in  : in  meta_data_t;
     meta_data_out : out meta_data_t;
-    shifts_calc   : out shifts_IIR_data);
+    shifts_calc   : out std_logic_vector);
 end entity Prefilter_metadata_and_shifts_compute;
 
 architecture arch of Prefilter_metadata_and_shifts_compute is
@@ -56,8 +56,8 @@ begin
       CLK_IF : if rising_edge(CLK) then
         REGSYNC_IF : if reg_sync = '1' then
           -- TODO place the real computation
-          shifts_calc.the_shifts <= std_logic_vector( to_unsigned( 10 - to_integer( unsigned( meta_data_in.octave )),
-                                                        shifts_calc.the_shifts'length ));
+          shifts_calc <= std_logic_vector(to_unsigned(to_integer(unsigned(meta_data_in.octave)),
+                                                      shifts_calc'length));
         else
 
         end if REGSYNC_IF;
@@ -77,10 +77,10 @@ begin
       CLK_IF : if rising_edge(CLK) then
         REGSYNC_IF : if reg_sync = '1' then
           -- TODO place the real computation
-          if to_integer( unsigned( meta_data_in.note )) > 2 then
-            shifts_calc.the_shifts <= std_logic_vector( to_unsigned( 5 , shifts_calc.the_shifts'length ));
+          if to_integer(unsigned(meta_data_in.note)) > 2 then
+            shifts_calc <= std_logic_vector(to_unsigned(1, shifts_calc'length));
           else
-            shifts_calc.the_shifts <= std_logic_vector( to_unsigned( 4 , shifts_calc.the_shifts'length ));
+            shifts_calc <= std_logic_vector(to_unsigned(0, shifts_calc'length));
           end if;
         else
 
@@ -184,70 +184,88 @@ use IEEE.STD_LOGIC_1164.all,
 
 --! @brief Pre-filter IIR compute the shifts
 --!
---! The shifts architectures of the Cordic stages
---!   are designed for fixed numbers of shifts
---!   (defined in the generics).
---! This entity shifts against a signal.\n
---! It takes its data from the shift register of the previous stage
---!   and place the result in its output shift register.
+--! The shifts architectures of the pre-filter stages
+--!   are designed a numbers of shifts
+--!   between a minimum (defined in the generics)
+--!   and a difference from the input port.
+--! A mask shifted at each CLK cycle has been prefered
+--!   as a counter system would have been too complex
+--!   for the full test coverage especially of the arithm_size.
+--! For given values, especially arithm_size, or a power of 2,
+--!   specific entities can be written.
 
-
---! One could have use a large set of selectors
---!   but it is resource consuming
---!   and may break the small propagation delay of the others.\n 
---! Up to now, the data comes as low endian to high endian.
---! Each module uses the previous shift register for its operands
---! Each module provides its own register for the results
---!   and for the operands of the next one.
---! Then more registers are needed\n
 entity Prefilter_IIR_stage_shift is
+  generic (
+    --! Maximum number of shifts
+    shifts_max  : positive;
+    --! 
+    delta_shifts : natural);
   port(
     CLK         : in  std_logic;
     RST         : in  std_logic;
     reg_sync    : in  std_logic;
-    shifts_calc : in  shifts_IIR_data;
+    shifts_calc : in  std_logic_vector;
     data_in     : in  reg_type;
     data_out    : out reg_type
     );
 end entity Prefilter_IIR_stage_shift;
 
 architecture arch of Prefilter_IIR_stage_shift is
-  constant temporary_shifts : positive := 4;
-  signal data_shift         : reg_type;
+  signal sign_bit      : std_logic;
+  signal data_selected : std_logic_vector(arithm_size - 1 downto 0);
+
+  signal sign_mask : std_logic_vector(reg_size - shifts_max + 1 + delta_shifts - 1 downto 0);
+  signal arithm_sign_mask : std_logic_vector(arithm_size - 1 downto 0);
 begin
-
-  shift_I_minus_SV : process(CLK)
-
+  assert shifts_max < reg_size
+    report "The maximum number of shifts (" & integer'image(shifts_max) & " + " & integer'image(delta_shifts) &
+    ") should be lower than the register size"
+    severity failure;
+  assert shifts_max < ( reg_size + arithm_size ) and shifts_max < ( reg_size - 4 )
+    report "The maximum number of shifts (" & integer'image(shifts_max) & " + " & integer'image(delta_shifts) &
+    ") should be lower than the register size plus the arithmetic size" &
+    "and lower than the register size minus 4." &
+    "It is a non sense as the filter would never output anything"
+    severity warning;
+  assert shifts_max > delta_shifts
+    report "The maximum shifts (" & integer'image(shifts_max) &
+    ") should be greter than then delta_shifts (" & integer'image( delta_shifts ) & ")"
+    severity ERROR;
+  
+  main_proc : process (CLK) is
+    variable sub_mask : std_logic_vector( arithm_size - 1 downto 0 );
+    variable sign_vector : std_logic_vector( arithm_size - 1 downto 0 );
   begin
     CLK_IF : if rising_edge(CLK) then
       RST_if : if RST = '0' then
         REGSYNC_IF : if reg_sync = '1' then
-          -- Nothing special to do here about configuration,
-          --   as the computation is independent of the sign of the operands.
-
-
-          -- Temporary code for testing the test
-          data_shift(data_shift'high - temporary_shifts downto data_shift'low) <=
-            data_in(data_in'high downto data_in'low + temporary_shifts);
-          data_shift(data_shift'high downto data_shift'high - temporary_shifts + 1) <=
-            (others => data_in(data_in'high));
+          sign_bit         <= data_in(data_in'high);
+          sign_mask <= (others => '0');
         else
-          data_shift(data_shift'high - arithm_size downto data_shift'low) <=
-            data_shift(data_shift'high downto data_shift'low + arithm_size);
-          -- There is no high fill up as the load is done in parallel mode
-          -- For debug
-          data_shift(data_shift'high downto data_shift'high - arithm_size + 1) <= (others => '-');
+          --! Step one: make the selection in the input register
+          data_selected <= data_in(data_in'low + shifts_max - to_integer(unsigned(shifts_calc) + arithm_size - 1) downto
+                                   data_in'low + shifts_max - to_integer(unsigned(shifts_calc)));
+          --! Step two: run the mask for the next clock cycle
+          global_shift : for ind_sign_mask in 0 to arithm_size - 1 loop
+            if sign_mask'high - arithm_size - ind_sign_mask >= sign_mask'low then
+              sign_mask(sign_mask'high - arithm_size - ind_sign_mask) <=
+                sign_mask(sign_mask'high - ind_sign_mask);
+            end if;
+            sign_mask(sign_mask'high downto sign_mask'high - arithm_size + 1) <= (others => '1');
+          end loop global_shift;
+          --! Step three: 
+          sub_mask := sign_mask( sign_mask'low + to_integer(unsigned(shifts_calc)) + arithm_size - 1
+                                    downto sign_mask'low + to_integer(unsigned(shifts_calc)));
+          sign_vector := (others => sign_bit);
+          data_out(data_out'high downto data_out'high - arithm_size + 1 ) <=
+            ( data_selected and not sub_mask ) or ( sign_vector and sub_mask );
+          --! Step four: run the shifts as usual.
           data_out(data_out'high - arithm_size downto data_out'low) <=
             data_out(data_out'high downto data_out'low + arithm_size);
-          data_out(data_out'high downto data_out'high - arithm_size + 1)
-            <= data_shift(data_shift'low + arithm_size - 1 downto data_shift'low);
         end if REGSYNC_IF;
-      else
-        data_out   <= (others => '0');
-        data_shift <= (others => '0');
       end if RST_IF;
     end if CLK_IF;
-  end process shift_I_minus_SV;
+  end process main_proc;
 
 end architecture arch;
 
@@ -291,12 +309,12 @@ begin
     CLK_IF : if rising_edge(CLK) then
       RST_if : if RST = '0' then
         REGSYNC_IF : if reg_sync = '1' then
-          -- Nothing special to do here about configuration,
-          --   as the computation is independent of the sign of the operands.
-          -- Set carry to 0 for the first bloc
+                                        -- Nothing special to do here about configuration,
+                                        --   as the computation is independent of the sign of the operands.
+                                        -- Set carry to 0 for the first bloc
           carry_final_add <= '0';
         else
-          -- Set the variables
+                                        -- Set the variables
           carry_vector(carry_vector'low)                              := carry_final_add;
           carry_vector(carry_vector'high downto carry_vector'low + 1) := (others => '0');
           op_L_SV(op_L_SV'high)                                       := '0';
@@ -306,13 +324,13 @@ begin
           op_SHFT(op_SHFT'high) := '0';
           op_SHFT(op_SHFT'high - 1 downto op_SHFT'low) :=
             data_in(data_in'low + arithm_size - 1 downto data_in'low);
-          -- Do it
+                                        -- Do it
           result_fa := std_logic_vector(unsigned(op_L_SV) + unsigned(op_SHFT) + unsigned(carry_vector));
-          -- Place the result
+                                        -- Place the result
           state_var_data_out(state_var_data_out'high downto state_var_data_out'high - arithm_size + 1) <=
             result_fa(result_fa'high - 1 downto result_fa'low);
           carry_final_add <= result_fa(result_fa'high);
-          -- And shift for arithm_size
+                                        -- And shift for arithm_size
           state_var_data_out(state_var_data_out'high - arithm_size downto state_var_data_out'low) <=
             state_var_data_out(state_var_data_out'high downto state_var_data_out'low + arithm_size);
 
@@ -357,10 +375,10 @@ begin
   begin
     CLK_IF : if rising_edge(CLK) then
       REGSYNC_IF : if reg_sync = '0' then
-        -- This is equivalent to write a component to transfer
-        --   without any arithmetic's, and to place it under a generate
+                                        -- This is equivalent to write a component to transfer
+                                        --   without any arithmetic's, and to place it under a generate
         shifts_delay_RAM_s : for ind in 1 to state_var_delay_c'length loop
-          -- Shift all the registers themselves
+                                        -- Shift all the registers themselves
           state_var_delay_s(state_var_delay_s'low + ind - 1)(
             state_var_delay_s(state_var_delay_s'low + ind - 1)'high - arithm_size downto
             state_var_delay_s(state_var_delay_s'low + ind - 1)'low) <=
@@ -368,7 +386,7 @@ begin
               state_var_delay_s(state_var_delay_s'low + ind - 1)'high downto
               state_var_delay_s(state_var_delay_s'low + ind - 1)'low + arithm_size);
           if ind /= 1 then
-            -- Shift the low of the register N to the high of the register N+1
+                                        -- Shift the low of the register N to the high of the register N+1
             state_var_delay_s(state_var_delay_s'low + ind - 2)(
               state_var_delay_s(state_var_delay_s'low + ind - 2)'high downto
               state_var_delay_s(state_var_delay_s'low + ind - 2)'high - arithm_size + 1) <=
@@ -376,7 +394,7 @@ begin
                 state_var_delay_s(state_var_delay_s'low + ind - 1)'low + arithm_size - 1 downto
                 state_var_delay_s(state_var_delay_s'low + ind - 1)'low);
           else
-            -- Supply the register with the input
+                                        -- Supply the register with the input
             state_var_delay_s(state_var_delay_s'high)(
               state_var_delay_s(state_var_delay_s'high)'high downto
               state_var_delay_s(state_var_delay_s'high)'high - arithm_size + 1) <=
@@ -384,7 +402,7 @@ begin
           end if;
         end loop shifts_delay_RAM_s;
         shifts_delay_RAM_c : for ind in 1 to state_var_delay_c'length loop
-          -- Shift all the registers themselves
+                                        -- Shift all the registers themselves
           state_var_delay_c(state_var_delay_c'low + ind - 1)(
             state_var_delay_c(state_var_delay_c'low + ind - 1)'high - arithm_size downto
             state_var_delay_c(state_var_delay_c'low + ind - 1)'low) <=
@@ -392,7 +410,7 @@ begin
               state_var_delay_c(state_var_delay_c'low + ind - 1)'high downto
               state_var_delay_c(state_var_delay_c'low + ind - 1)'low + arithm_size);
           if ind /= 1 then
-            -- Shift the low of the register N to the high of the register N+1
+                                        -- Shift the low of the register N to the high of the register N+1
             state_var_delay_c(state_var_delay_c'low + ind - 2)(
               state_var_delay_c(state_var_delay_c'low + ind - 2)'high downto
               state_var_delay_c(state_var_delay_c'low + ind - 2)'high - arithm_size + 1) <=
@@ -400,7 +418,7 @@ begin
                 state_var_delay_c(state_var_delay_c'low + ind - 1)'low + arithm_size - 1 downto
                 state_var_delay_c(state_var_delay_c'low + ind - 1)'low);
           else
-            -- Supply with the input
+                                        -- Supply with the input
             state_var_delay_c(state_var_delay_c'high)(
               state_var_delay_c(state_var_delay_c'high)'high downto
               state_var_delay_c(state_var_delay_c'high)'high - arithm_size + 1) <=

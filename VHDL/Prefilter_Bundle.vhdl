@@ -1,6 +1,7 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
+  work.Utils_pac.StateNumbers_2_BitsNumbers,
   work.InterModule_formats.all,
   work.Meta_data_package.all,
   work.Prefilter_package.all;
@@ -12,7 +13,7 @@ use IEEE.STD_LOGIC_1164.all,
 entity Prefilter_stage is
   generic (
     the_stage_offset          : real    := 1.0;
-    prefilter_not_lightfilter : boolean := true
+    prefilter_not_lightfilter : boolean := true    
     );
   port (
     CLK           : in  std_logic;
@@ -26,7 +27,8 @@ entity Prefilter_stage is
 end entity Prefilter_stage;
 
 architecture arch of Prefilter_stage is
-  signal shifts_calc               : shifts_IIR_data;
+  signal shifts_calc               : std_logic_vector(
+    StateNumbers_2_BitsNumbers(Get_Prefilter_Delta_Shifts(prefilter_not_lightfilter)) - 1 downto 0);
   signal sin_diff_shift            : reg_type;
   signal cos_diff_shift            : reg_type;
   signal sin_shift_add             : reg_type;
@@ -56,6 +58,10 @@ begin
 --    report "Internal error, the delay should be at least 2 reg_sync"
 --    severity failure;
 
+
+  -- Bypass the Z for the tests.
+  -- The downsampling voids the angle then it should not consume any resources.
+  scz_out.angle_z <= scz_in.angle_z;
 
   main_proc : process (CLK) is
   begin
@@ -110,7 +116,11 @@ begin
     data_out      => sin_diff_shift,
     data_input_in => scz_in.the_sin);
 
-  sine_IIR_shift : Prefilter_IIR_stage_shift port map(
+  sine_IIR_shift : Prefilter_IIR_stage_shift generic map (
+    shifts_max => Get_Prefilter_Maximum_Shifts(the_stage_offset, prefilter_not_lightfilter),
+    delta_shifts => Get_Prefilter_Delta_shifts(prefilter_not_lightfilter)
+    )
+    port map(
     CLK         => CLK,
     RST         => RST,
     reg_sync    => reg_sync,
@@ -134,7 +144,11 @@ begin
     data_out      => cos_diff_shift,
     data_input_in => scz_in.the_cos);
 
-  cose_IIR_shift : Prefilter_IIR_stage_shift port map(
+  cose_IIR_shift : Prefilter_IIR_stage_shift generic map (
+    shifts_max => Get_Prefilter_Maximum_Shifts(the_stage_offset, prefilter_not_lightfilter),
+    delta_shifts => Get_Prefilter_Delta_shifts(prefilter_not_lightfilter)
+    )
+     port map(
     CLK         => CLK,
     RST         => RST,
     reg_sync    => reg_sync,

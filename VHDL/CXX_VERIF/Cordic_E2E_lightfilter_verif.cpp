@@ -29,11 +29,7 @@ Init(const stats_long_type&module_vector,
 	// The inversion is done at the end for performance reasons
 	Z_2_0_cumul_cos *= cos( atan( 1.0 / (float) pow( 2, ind + 1))); 
   // The expected module value is the initial module divided by the cosines
-  Z_2_0.check_module_constant.SetOffset( module_vector / Z_2_0_cumul_cos );
-  // The expected module value is the initial module divided by the cosines
   cout << Z_2_0_stages << '\t' << module_vector << " * " << 1.0 / Z_2_0_cumul_cos << " = " << module_vector / Z_2_0_cumul_cos << '\t';
-  // The expected Z value is 0, no offset
-  Z_2_0.check_Z_converges.SetNormalize( pow( 2, reg_size ) / 360 );
 
 
   stats_long_type Y_2_0_cumul_cos = 1.0;
@@ -52,9 +48,7 @@ template <typename stats_type, typename stats_long_type,typename cxx_reg_type, u
 optional<unsigned int> SimulDataType<stats_type,stats_long_type,cxx_reg_type,reg_size>::
 GetAndCheck_nbre_points()const
 {
-  unsigned int nbre_points = (unsigned int)Z_2_0.check_module_constant;
-  if ( (unsigned int)Z_2_0.check_Z_converges != nbre_points )
-	return nullopt;
+  unsigned int nbre_points = (unsigned int)prefilter_1.confirm_Z_2_0;
 
   nbre_points = (unsigned int)Y_2_0.check_X_converges;
   if ( (unsigned int)Y_2_0.check_Y_converges != nbre_points )
@@ -83,8 +77,8 @@ int main(int argc,char*argv[])
    *   is going to make a full spin
    * The value should be at least 2 to run the differences.
    */
-  unsigned short full_cycles_number = 6;
-  unsigned short nbre_initial_vextors = 3;
+  unsigned short full_cycles_number = 50;
+  unsigned short nbre_initial_vextors = 1;
 
   while((opt = getopt( argc,argv,"l:n:hv"))!=EOF)
 	switch( opt)
@@ -210,6 +204,7 @@ int main(int argc,char*argv[])
 				 top.p_the__input.set<decltype(dat.value_type())>
 				    (dat.Get_Positive_Negative_Value(input_Value_isNeg));
 				 cout << '>' << dat.Get_Positive_Negative_Value(input_Value_isNeg) << " ";
+				 cout.flush();
 				 top.p_input__x__not__y.set<bool>(true);
 			   };
 
@@ -222,7 +217,6 @@ int main(int argc,char*argv[])
 				   the sum of the number of Z to 0 stages plus the number of Y to 0 stages
 				   plus 6, plus 7 and plus 3 to count the first stages, the last stages and the down-sampling
 			   */
-			   set_input_values();
 			   unsigned short ind_Z = 0, ind_Y = 0;
 			   while ( ind_Y != numeric_limits<decltype(ind_Y)>::max() )
 				 {
@@ -232,6 +226,8 @@ int main(int argc,char*argv[])
 				   top.step();
 				   if ( top.p_reg__sync.get<bool>() == true )
 					 {
+					   set_input_values();
+
 					   if ( ind_Z == numeric_limits<decltype(ind_Z)>::max() )
 						 {
 						   if ( ind_Y == numeric_limits<decltype(ind_Y)>::max() )
@@ -268,7 +264,7 @@ int main(int argc,char*argv[])
 			   for ( ind_full_cycles = 0; ind_full_cycles < full_cycles_number ; ind_full_cycles ++ )
 				 {
 				   // For now the square input changes at each full cycle
-				   if( ind_full_cycles % 2 == 0 )
+				   if( ind_full_cycles % 5 == 0 )
 					 input_Value_isNeg = false;
 				   else
 					 input_Value_isNeg =  true;
@@ -293,32 +289,22 @@ int main(int argc,char*argv[])
 					 else
 					   strobe_stable_1 +=0;
 
-					 if ( top.p_reg__sync.get<bool>() == true )
+					 // Start a litle bit later to stabilise the filters
+					 if ( top.p_reg__sync.get<bool>() == true && ind_full_cycles > 5 )
 					   {
-						 /** Fetch the X, Y, Z
-						  *    ****   OBSOLETE ******
-						  *  Add the module of X and Y, which should increase of 16% from the initial value module, to the statistic
-						  *  Add the Z value, which should converge to 0 to the statistics
-						  *  These data should be the same regardless the frequency
-						  *  These data should be the same regardless the down-sampling is active or not.
+						 /** Fetch Z to confirm it works
 						  */
-						 decltype(dat.value_type()) X_pref_1 = top.p_X__prefilter__1.get<decltype(dat.value_type())>();
-						 decltype(dat.value_type()) Y_pref_1 = top.p_Y__prefilter__1.get<decltype(dat.value_type())>();
 						 decltype(dat.value_type()) Z_pref_1 = top.p_Z__prefilter__1.get<decltype(dat.value_type())>();
 
-						 XY_Data<int,32> currentPoint_pref_1( X_pref_1, Y_pref_1);
+						 simulData.prefilter_1.confirm_Z_2_0 += (float)Z_pref_1;
 
-						 simulData.Z_2_0.check_module_constant +=
-						   sqrt( (decltype(dat.module_value_type()))currentPoint_pref_1.GetModuleSquared()) ;			
-
-						 // cout << X_pref_1 << ',' << Y_pref_1 << ':';
-
-						 simulData.Z_2_0.check_Z_converges += (float)Z_pref_1;
 						 // cout << '\t' << Z_pref_1;
 
+						 decltype(dat.value_type()) X_pref_1 = top.p_X__prefilter__1.get<decltype(dat.value_type())>();
+						 decltype(dat.value_type()) Y_pref_1 = top.p_Y__prefilter__1.get<decltype(dat.value_type())>();
+
+						 XY_Data<int,32> currentPoint_pref_1( X_pref_1, Y_pref_1);
 						 /** Get the octave note couple, as it is independent statistics. The frequencies are different.
-						  *  Each angle cosine value is stored in the object for the next occurrence.
-						  *  The previous one is retrieved to compute the scalar product, and divided by the module power 2.
 						  *  Please note, the modules are checked above, then the two modules are supposed to be equal.
 						  *  The result is added to the statistics.
 						  *  The strobe is discarded here as it should always be on.
@@ -334,7 +320,7 @@ int main(int argc,char*argv[])
 						   note_max = note_pref_1;
 
 						 // cout << (unsigned short)octave_pref_1 << ',' << (unsigned short)note_pref_1 << " \t";
-						 if ( simulData.Z_2_0.check_scalar_prod_per_ON_constant.contains(key_ON_pref_1) )
+						 if ( simulData.prefilter_1.check_module_per_ON.contains(key_ON_pref_1) )
 						   {
 							 /** The following code displays the high digits of X and Y of the note 3
 							  *    as an array of octaves columns.
@@ -352,24 +338,28 @@ int main(int argc,char*argv[])
 
 							 // Found, then process the diff, replace the old value and add the diff in the statistics
 							 pair<XY_Data<int,32>,stats<long double>>&data_info =
-							   simulData.Z_2_0.check_scalar_prod_per_ON_constant.find( key_ON_pref_1 )->second;
-							 data_info.second += currentPoint_pref_1.GetCosine(data_info.first);
+							   simulData.prefilter_1.check_module_per_ON.find( key_ON_pref_1 )->second;
+							 data_info.second += sqrt( (decltype(dat.module_value_type()))
+													   currentPoint_pref_1.GetModuleSquared());
 							 data_info.first = currentPoint_pref_1;
 							 // cout << 'z';
 						   }
 						 else
 						   {
 							 // Not found, create the records and initialize the statistics
-							 stats<long double>theNewZStats;
+							 stats<long double>theNewPrefStats;
 							 // Set the value that should be found
-							 // TODO
+							 theNewPrefStats += sqrt( (decltype(dat.module_value_type()))
+													  currentPoint_pref_1.GetModuleSquared());
 							 simulData.
-							   Z_2_0.
-							   check_scalar_prod_per_ON_constant.
-							   insert(make_pair(key_ON_pref_1,make_pair(currentPoint_pref_1,theNewZStats)));
+							   prefilter_1.
+							   check_module_per_ON.
+							   insert(make_pair(key_ON_pref_1,make_pair(currentPoint_pref_1,theNewPrefStats)));
 							 // cout << 'Z';
 						   }
-
+	
+						 
+						 /** TODO second part */
 						 /** Now bring back the vector to the X axis
 						  *  This part depends if the Down-sampling is active or not
 						  */
@@ -488,22 +478,7 @@ int main(int argc,char*argv[])
   /*                          Now display all the structures                                  */
   /********************************************************************************************/
   
-  cout << "Checking the Z to 0 first set of stages" << endl;
-  cout << "Number             X,Y module delta from grow                       X,Y module absolute" << endl; 
-  cout << "of points         max-min average standard dev                   max-min average standard dev" << endl;
-  for_each( execution::seq,
-			theSimulData.begin(), theSimulData.end(),
-			[](auto&dat){
-			  if ( dat.GetAndCheck_nbre_points() )
-				{
-				  cout << "  " << *dat.GetAndCheck_nbre_points() << ",  ";
-				  cout << dat.Z_2_0.check_module_constant.Basic_display() << "\t\t";
-				  cout << dat.Z_2_0.check_module_constant.Display_without_offset_normalize() << endl;
-				}
-			  else
-				cout << "Problem: the number of points is not the same for all the tests" << endl;
-			});
-  cout << endl;
+  cout << "Checking the Z to 0 and the module after the first set of stages and the pre-filter" << endl;
   cout << "Number                 Z to 0 degrees                                       Z to 0 integer" << endl; 
   cout << "of points         max-min average standard dev                        max-min average standard dev" << endl;
 	for_each( execution::seq,
@@ -512,8 +487,8 @@ int main(int argc,char*argv[])
 			  if ( dat.GetAndCheck_nbre_points() )
 				{
 				  cout << "  " << *dat.GetAndCheck_nbre_points() << ",  ";
-				  cout << dat.Z_2_0.check_Z_converges.Basic_display() << "\t\t";
-				  cout << dat.Z_2_0.check_Z_converges.Display_without_offset_normalize() << endl;
+				  cout << dat.prefilter_1.confirm_Z_2_0.Basic_display() << "\t\t";
+				  cout << dat.prefilter_1.confirm_Z_2_0.Display_without_offset_normalize() << endl;
 				}
 			  else
 				cout << "Problem: the number of points is not the same for all the tests" << endl;
@@ -521,13 +496,14 @@ int main(int argc,char*argv[])
 	cout << endl;
 	// Now display the octave note specific results
 	// The number of samples are always minus 1 as they are differences
+	cout << "Module of X and Y after the prefilter" << endl;
   for_each( execution::seq,
 			theSimulData.begin(), theSimulData.end(),
 			[](auto&dat){
 
 			for_each( execution::seq,
-					  dat.Z_2_0.check_scalar_prod_per_ON_constant.begin(),
-					  dat.Z_2_0.check_scalar_prod_per_ON_constant.end(),
+					  dat.prefilter_1.check_module_per_ON.begin(),
+					  dat.prefilter_1.check_module_per_ON.end(),
 					  [](auto&ON_iter){
 						cout << "O: " << (unsigned short)ON_iter.first.first <<
 						  ", N: " << (unsigned short)ON_iter.first.second << '\t';
