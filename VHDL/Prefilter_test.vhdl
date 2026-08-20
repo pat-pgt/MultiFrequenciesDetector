@@ -228,7 +228,7 @@ begin
     CLK_IF : if falling_edge(CLK_fall) then
       RST_IF : if RST = '0' then
         -- This is a tremporary solution
-        shifts          := 4;
+        shifts          := 10;
         input_int_in_v  := to_integer(signed(val_in));
         input_int_pre_v := to_integer(signed(prefiltered_in));
         input_int_in_v  := input_int_in_v / 2 ** shifts;

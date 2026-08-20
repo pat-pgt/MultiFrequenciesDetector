@@ -72,7 +72,7 @@ architecture arch of Prefilter_RAM_Storage is
   --! The RAM of ram_addr_size X ram_data_size
   signal the_ram          : ram_t;
 begin
-  assert false report "for the prefilter, a RAM " & integer'image(2**ram_addr_size) & "X" & integer'image(ram_data_size) & " has been built"
+  assert false report "For the prefilter, a RAM " & integer'image(2**ram_addr_size) & "X" & integer'image(ram_data_size) & " has been built"
     severity note;
   assert 2**ram_addr_size >= 2 * ( N_octaves * N_notes - Prefilter_latency ) * ram_bloc_size report "Internal error" severity failure;
   assert ram_data_size * ram_bloc_size >= reg_size report "Internal error" severity failure;
@@ -185,8 +185,8 @@ end entity Prefilter_Dummy_Storage;
 
 architecture arch of Prefilter_Dummy_Storage is
 
-begin  -- architecture arch
-
+begin
+  assert false report "For the prefilter, a dummy storage is used" severity note;
   scz_out.the_sin <= default_value;
   scz_out.the_cos <= default_value;
 
@@ -226,6 +226,9 @@ architecture arch of Prefilter_Direct_Storage is
   signal sine_memory : mem_array;
   signal cosine_memory : mem_array;
 begin  -- architecture arch of Prefilter_Direct_Storage
+  assert false report "For the prefilter, a direct " & integer'image(N_octaves * N_notes) &
+    " registers has been built"
+    severity note;
   main_proc : process(CLK)
   begin
     CLK_IF : if rising_edge(CLK) then
@@ -284,6 +287,9 @@ architecture arch of Prefilter_Barrel_shifter_storage is
   signal sin_BS : BS_type;
   signal cos_BS : BS_type;
 begin  -- architecture arch
+  assert false report "For the prefilter, a direct " & integer'image(N_octaves * N_notes - Prefilter_latency) &
+    " registers has been built"
+    severity note;
   assert N_notes * N_octaves - Prefilter_latency > 1
     report "The prodcut of the number of note by the number of octaves minus the prefilter latency ("&
     integer'image(N_notes * N_octaves - Prefilter_latency ) &

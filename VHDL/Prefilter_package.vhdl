@@ -437,7 +437,7 @@ package body PreFilter_package is
         --! The best case is the thresholds are on an octave edge.
         --! The worst case is the threshold is in a midle of an octave.
         --! Then the width is the number of octaves plus one
-          return N_octaves + 1;
+          return N_octaves;
       else
         --! To be verified Since we are inside an octave and there is a downsampling
         --! The ratio is not more than 2

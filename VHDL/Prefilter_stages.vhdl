@@ -212,10 +212,14 @@ end entity Prefilter_IIR_stage_shift;
 
 architecture arch of Prefilter_IIR_stage_shift is
   signal sign_bit      : std_logic;
-  signal data_selected : std_logic_vector(arithm_size - 1 downto 0);
-
-  signal sign_mask : std_logic_vector(reg_size - shifts_max + 1 + delta_shifts - 1 downto 0);
-  signal arithm_sign_mask : std_logic_vector(arithm_size - 1 downto 0);
+  -- The minimum shift is shifts_max - delta_shifts + 1
+  signal sign_mask : std_logic_vector(reg_size - shifts_max + delta_shifts - 1 - 1 downto 0);
+  signal sm : positive := shifts_max;
+  signal ds : natural := delta_shifts;
+--  signal data_selected_high : integer;
+--  signal data_selected_low : integer;
+--  signal submask_high : integer;
+--  signal submask_low : integer;
 begin
   assert shifts_max < reg_size
     report "The maximum number of shifts (" & integer'image(shifts_max) & " + " & integer'image(delta_shifts) &
@@ -235,6 +239,7 @@ begin
   main_proc : process (CLK) is
     variable sub_mask : std_logic_vector( arithm_size - 1 downto 0 );
     variable sign_vector : std_logic_vector( arithm_size - 1 downto 0 );
+    variable data_selected : std_logic_vector(arithm_size - 1 downto 0);
   begin
     CLK_IF : if rising_edge(CLK) then
       RST_if : if RST = '0' then
@@ -242,20 +247,25 @@ begin
           sign_bit         <= data_in(data_in'high);
           sign_mask <= (others => '0');
         else
+          -- Keep that until multiple values of the arithmetic size has been tested.
+          -- data_selected_high <= data_in'low + shifts_max - to_integer(unsigned(shifts_calc) + arithm_size - 1);
+          -- data_selected_low <= data_in'low + shifts_max - to_integer(unsigned(shifts_calc));
+          -- submask_high <= sign_mask'low + delta_shifts - to_integer(unsigned(shifts_calc)) + arithm_size - 1;
+          -- submask_low <= sign_mask'low + delta_shifts - to_integer(unsigned(shifts_calc));
           --! Step one: make the selection in the input register
-          data_selected <= data_in(data_in'low + shifts_max - to_integer(unsigned(shifts_calc) + arithm_size - 1) downto
-                                   data_in'low + shifts_max - to_integer(unsigned(shifts_calc)));
+          data_selected :=
+            data_in(data_in'low + shifts_max - to_integer(unsigned(shifts_calc) + arithm_size - 1) downto
+                    data_in'low + shifts_max - to_integer(unsigned(shifts_calc)));
           --! Step two: run the mask for the next clock cycle
-          global_shift : for ind_sign_mask in 0 to arithm_size - 1 loop
-            if sign_mask'high - arithm_size - ind_sign_mask >= sign_mask'low then
-              sign_mask(sign_mask'high - arithm_size - ind_sign_mask) <=
-                sign_mask(sign_mask'high - ind_sign_mask);
-            end if;
-            sign_mask(sign_mask'high downto sign_mask'high - arithm_size + 1) <= (others => '1');
+          -- This vector may or may not have a length multiple of arithm_size
+          global_shift : for ind_sign_mask in 0 to sign_mask'length - 1 - arithm_size loop
+            sign_mask(sign_mask'low + ind_sign_mask) <=
+              sign_mask(sign_mask'low + ind_sign_mask + arithm_size);
           end loop global_shift;
+          sign_mask(sign_mask'high downto sign_mask'high - arithm_size + 1) <= (others => '1');
           --! Step three: 
-          sub_mask := sign_mask( sign_mask'low + to_integer(unsigned(shifts_calc)) + arithm_size - 1
-                                    downto sign_mask'low + to_integer(unsigned(shifts_calc)));
+          sub_mask := sign_mask( sign_mask'low + delta_shifts - to_integer(unsigned(shifts_calc)) + arithm_size - 1
+                                    downto sign_mask'low + delta_shifts - to_integer(unsigned(shifts_calc)));
           sign_vector := (others => sign_bit);
           data_out(data_out'high downto data_out'high - arithm_size + 1 ) <=
             ( data_selected and not sub_mask ) or ( sign_vector and sub_mask );

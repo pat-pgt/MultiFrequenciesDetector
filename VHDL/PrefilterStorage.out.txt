@@ -1,0 +1,6 @@
+Prefilter_stages.vhdl:345:3:@0ms:(assertion note): for the prefilter, a RAM 128X16 has been built
+Prefilter_storage_test.vhdl:105:13:@675830ns:(report note): Simulation: 1/135
+Prefilter_storage_test.vhdl:105:13:@1351670ns:(report note): Simulation: 2/135
+Prefilter_storage_test.vhdl:105:13:@2027510ns:(report note): Simulation: 3/135
+Prefilter_storage_test.vhdl:105:13:@2703350ns:(report note): Simulation: 4/135
+Prefilter_storage_test.vhdl:105:13:@3379190ns:(report note): Simulation: 5/135
