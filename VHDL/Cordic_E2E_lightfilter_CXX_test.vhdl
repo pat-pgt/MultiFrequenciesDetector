@@ -19,7 +19,7 @@ use IEEE.STD_LOGIC_1164.all,
 --! It is an FPGA test. For more information, see in the Cordic_E2E_DC_test.
 --! 
 
-entity Cordic_E2E_DC_CXX_test is
+entity Cordic_E2E_lightfilter_CXX_test is
   generic (
     with_downsampling : natural                     := 1;
     nbre_Z_2_0_stages : integer range 4 to reg_size := 24;
@@ -49,10 +49,10 @@ entity Cordic_E2E_DC_CXX_test is
     metadata_Y_2_0_strobe       : out std_logic;
     strobe_stable               : out std_logic
     );
-end entity Cordic_E2E_DC_CXX_test;
+end entity Cordic_E2E_lightfilter_CXX_test;
 
 
-architecture arch of Cordic_E2E_DC_CXX_test is
+architecture arch of Cordic_E2E_lightfilter_CXX_test is
   signal RST_monitor_Z_2_0         : natural := nbre_Z_2_0_stages + 5;
   signal RST_monitor_Y_2_0         : natural := nbre_Y_2_0_stages + 5;
   signal meta_data_prefilter_1_out : meta_data_t;
@@ -113,3 +113,29 @@ begin
 
 
 end architecture arch;
+
+
+configuration Cordic_E2E_lightfilter_CXX_test_dummy of Cordic_E2E_lightfilter_CXX_test is
+  for arch
+      for Cordic_E2E_lightfilter_Bundle_instanc : Cordic_E2E_lightfilter_Bundle
+        use entity work.Cordic_E2E_lightfilter_Bundle;
+        for arch
+          for all : work.Prefilter_package.Prefilter_bundle
+            use entity work.Prefilter_bundle;
+            for arch
+              for Prefilter_generate
+                for bundle_elem : work.Prefilter_package.Prefilter_stage
+                  use entity work.Prefilter_stage;                            
+                  for arch
+                    for selected_storage : work.Prefilter_package.Prefilter_RAM_Storage
+                      use entity work.Prefilter_Dummy_storage(arch);
+                    end for;
+                  end for;
+                end for;
+              end for;
+            end for;
+          end for;
+        end for;
+      end for;
+  end for;
+end configuration Cordic_E2E_lightfilter_CXX_test_dummy;

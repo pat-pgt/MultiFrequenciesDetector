@@ -136,7 +136,7 @@ $(BUILDDIR)Cordic_E2E_lightfilter_CXX_compiled : $(BUILDDIR)packages_compiled $(
 	touch $(BUILDDIR)Cordic_E2E_lightfilter_CXX_compiled
 
 $(SYNTHDESTDIR)Cordic_E2E_lightfilter_CXX_DS1.cpp : $(BUILDDIR)Cordic_E2E_lightfilter_CXX_compiled
-	$(YOSYS_PROG) -m ghdl -p '$(GHDL_PROG) $(VFLAGS) -gwith_downsampling=1 -gextra_shifts=2 Cordic_E2E_lightfilter_CXX_test; write_cxxrtl  -namespace Cordic_E2E_lightfilter_1 $(SYNTHDESTDIR)Cordic_E2E_lightfilter_CXX_DS1.cpp' 2>&1 |tee $(SYNTHDESTDIR)Cordic_E2E_lightfilter_1.synth.out.txt
+	$(YOSYS_PROG) -m ghdl -p '$(GHDL_PROG) $(VFLAGS) -gwith_downsampling=1 -gextra_shifts=2 Cordic_E2E_lightfilter_CXX_test_dummy; write_cxxrtl  -namespace Cordic_E2E_lightfilter_1 $(SYNTHDESTDIR)Cordic_E2E_lightfilter_CXX_DS1.cpp' 2>&1 |tee $(SYNTHDESTDIR)Cordic_E2E_lightfilter_1.synth.out.txt
 
 $(CXXDESTDIR)Cordic_E2E_lightfilter_verif_DS1 : $(SYNTHDESTDIR)Cordic_E2E_lightfilter_CXX_DS1.cpp $(CXXSRCDIR)Cordic_E2E_lightfilter_verif.cpp $(CXXSRCDIR)Cordic_E2E_lightfilter_verif.hxx $(CXXSRCDIR)Utils_CXX_verif.hxx $(CXXSRCDIR)Utils_CXX_verif.cpp
 	$(GCC_PROG) $(CXXFLAGS) $(CXXSRCDIR)Cordic_E2E_lightfilter_verif.cpp -DCordic_E2E_lightfilter_CXX_DS1 -o $(CXXDESTDIR)Cordic_E2E_lightfilter_verif_DS1 -I$(SYNTHDESTDIR) -I/usr/local/share/yosys/include/backends/cxxrtl/runtime
