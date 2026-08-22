@@ -515,6 +515,13 @@ int main(int argc,char*argv[])
 					  });
 			cout << endl;
 			});
+
+
+  cout << "Only the part one has been written. But the bugs are not yet been fixed" << endl;
+  cout << "The part two is still a fork from the end to end DC. The result beyond this line may be irrelevant" << endl; 
+  cout << "--------------------------------------------------------------------------------" << endl;
+
+
   cout << endl;
   cout << "Checking the Y to 0 second set of stages" << endl;
   cout << "Number            X module delta from grow                               X module absolute"<< endl;
