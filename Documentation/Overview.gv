@@ -1,56 +1,71 @@
 digraph g {
 		size="8.267,11.7";
-		margin=0;
-		node [ shape=record ];
-		newrank = true;
-		subgraph cluster_0{
-				 cordic_RZ_2_XY [
-				 				label = "{Cordic stage\nRuns one shift of the algo\nto converge Z to 0.}";
-				 				];
-				 metadata_Z20_fifo [
-				 				   label="FIFO as many elements\nas Cordic stages";
-								   ];
-								   one_gene [
-								   label = "1";
-								   shape="ellipse";
-								   ];
-								   cordic_RZ_2_XY:se -> cordic_RZ_2_XY:ne [color = "darkred"; label="X"];
-								   cordic_RZ_2_XY:se -> cordic_RZ_2_XY:ne [color = "darkred"; label="Y"];
-								   cordic_RZ_2_XY:se -> cordic_RZ_2_XY:ne [color = "darkgreen"; label="Z"];
-								   one_gene -> cordic_RZ_2_XY [color = "darkblue"; label="strobe"];
-								   label="N (1 shift) Cordic stages";
+		margin=5;
+		node [ shape="box" ];
+		rank = TB;
+		subgraph cluster_6{
+				angles_generator_run [ margin=0; label = <
+				 			<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+								   <TR><TD PORT="0">Angles generator</TD></TR><TR><TD>Generates sequentially the current angles for all the channels</TD></TR>
+							</TABLE>
+				 >];
+				input_val [ margin=0; label = <
+				 			<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+								   <TR><TD PORT="0">From hardware</TD></TR><TR><TD>Value latched or not on the entire frame</TD></TR>
+							</TABLE>
+				 >];
+				zero_Z [
+					label = "0";
+					shape="ellipse";
+				];
+				{ rank=same; angles_generator_run input_val zero_Z }
 		}
-		angles_generator_run [
-							 label = "{|Angles generator|Generates sequentially\nthe current angles\nfor all the channels.}";
-							 color="darkgreen";
-		];
-		"angles_generator_run" -> "cordic_RZ_2_XY" [ color = "darkgreen"; label="angle" ];
-		"angles_generator_run" -> "metadata_Z20_fifo" [ color = "darkblue"; label="metadata" ];
-		"input_val" -> "cordic_RZ_2_XY"    [ color = "darkred"; label = "X" ];
-		"zero_Y" -> "cordic_RZ_2_XY"    [ color = "darkred"; label = "Y" ];
-		input_val [
-		label = "{\<from hardware\>|Value latched or not\non the entire frame.}"];
-		color="black";
-		zero_Z [
-		label = "0";
-		shape="ellipse";
-		];
+		subgraph cluster_0{
+				 cordic_RZ_2_XY [ margin=0; label = <
+				 			<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+								   <TR><TD PORT="0">N Cordic stages</TD></TR><TR><TD>Always runs one shift of the algo\nto converge Z to 0</TD></TR>
+							</TABLE>
+				 >];
+				 metadata_Z20_fifo [ margin=0; label = <
+				 			<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+								   <TR><TD PORT="0">FIFO registers</TD></TR><TR><TD>N elements</TD></TR>
+							</TABLE>
+				 >];
+				 one_gene [
+					label = "1";
+					shape="ellipse";
+				 ];
+				 cordic_RZ_2_XY:se -> cordic_RZ_2_XY:ne [color = "darkred"; label="X"];
+				 cordic_RZ_2_XY:se -> cordic_RZ_2_XY:ne [color = "darkred"; label="Y"];
+				 cordic_RZ_2_XY:se -> cordic_RZ_2_XY:ne [color = "darkgreen"; label="Z"];
+				 one_gene -> cordic_RZ_2_XY [color = "darkblue"; label="strobe"];
+				 label="Cordic stages";
+				 { rank=same; cordic_RZ_2_XY metadata_Z20_fifo one_gene }
+		}
+		angles_generator_run -> cordic_RZ_2_XY [ color = "darkgreen"; label="angle" ];
+		angles_generator_run -> metadata_Z20_fifo [ color = "darkblue"; label="metadata" ];
+		input_val -> cordic_RZ_2_XY    [ color = "darkred"; label = "X" ];
+		zero_Z -> cordic_RZ_2_XY    [ color = "darkred"; label = "Y" ];
 		zero_Y [
 		label = "0";
 		shape="ellipse";
 		];
 		subgraph cluster_1{
-				 pre_filter [
-				 label = "{Pre-filter|Low-pass filter\nusing a minimum or resources\naccording to the meta-data.}";
-				 color = "darkgreen";
-				 ];
-				 metadata_prefilter_fifo [
-				 label="FIFO as many elements\nas prefilter stages";
-				 ];
-				 label="M prefilter stages";
+				 pre_filter [ margin=0; label = <
+				 			<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+								   <TR><TD PORT="0">M Pre-filter stages</TD></TR><TR><TD>Low-pass filter using a minimum or resources according to the meta-data.</TD></TR>
+							</TABLE>
+				 >];
+				 metadata_prefilter_fifo [ margin=0; label = <
+				 			<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+								   <TR><TD PORT="0">FIFO registers</TD></TR><TR><TD>as many elements as prefilter stages</TD></TR>
+							</TABLE>
+				 >];
+				 { rank=same pre_filter metadata_prefilter_fifo }
+				 label="Prefilter stages";
 				 pre_filter:se -> pre_filter:ne[color = "darkred"; label="X"];
 				 pre_filter:se -> pre_filter:ne [color = "darkred"; label="Y"];
-				 "metadata_prefilter_fifo" -> pre_filter [ label = "MD"; color = "darkblue" ];
+				 metadata_prefilter_fifo:0 -> pre_filter:0 [ label = "metadata"; color = "darkblue" ];
 		}
 		void_Z20  [
 		label = "Void";
@@ -62,67 +77,81 @@ digraph g {
 		shape = "ellipse";
 		color = "darkgreen";
 		];
-		"metadata_Z20_fifo" -> "metadata_prefilter_fifo" [ label = "MD"; color = "darkblue" ];
-		"cordic_RZ_2_XY" -> "pre_filter" [ label = "X" ; color = "darkred" ];
-		"cordic_RZ_2_XY" -> "pre_filter" [ label = "Y" ; color = "darkred" ];
-		"cordic_RZ_2_XY" -> "void_Z20" [ color = darkgreen ];
+		metadata_Z20_fifo -> metadata_prefilter_fifo [ label = "metadata"; color = "darkblue" ];
+		cordic_RZ_2_XY:s -> pre_filter:n [ label = "last X" ; color = "darkred" ];
+		cordic_RZ_2_XY:s -> pre_filter:n [ label = "last Y" ; color = "darkred" ];
+		cordic_RZ_2_XY:se -> void_Z20 [ label = "last Z"; color = "darkgreen" ];
 		subgraph cluster_2 {
-				 downsampler [
-				 			label = "{Down-sampler|Down samples\naccording to the meta-data.}";
-										color = "black";
-							];
-				 metadata_downsampler_fifo [
-										   label="FIFO as many elements\nrequired by the down sampler"
-										   ];
-			    "metadata_downsampler_fifo" -> downsampler [ label = "MD"; color = "darkblue" ];
+				 downsampler [ margin=0; label = <
+				 			<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+								   <TR><TD PORT="0">Down sampler</TD></TR><TR><TD>The ratio depends on the meta-data.</TD></TR>
+							</TABLE>
+				 >];
+				 metadata_downsampler_fifo [ margin=0; label = <
+				 			<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+								   <TR><TD PORT="0">FIFO registers</TD></TR><TR><TD>as many elements as the downsampler requires</TD></TR>
+							</TABLE>
+				 >];
+			    metadata_downsampler_fifo:0 -> downsampler:0 [ label = "metadata"; color = "darkblue" ];
 				label = "Downsmpling";
+			    { rank=same; metadata_downsampler_fifo downsampler };
 		}
-		"metadata_prefilter_fifo" -> "metadata_downsampler_fifo" [ label = "MD" ; color = "darkblue" ];
-		"pre_filter" -> "downsampler" [ label = "X" ; color = "darkred" ];
-		"pre_filter" -> "downsampler" [ label = "Y" ; color = "darkred" ];
+		metadata_prefilter_fifo -> metadata_downsampler_fifo [ label = "metadata" ; color = "darkblue" ];
+		pre_filter:s -> downsampler:n [ label = "X" ; color = "darkred" ];
+		pre_filter:s -> downsampler:n [ label = "Y" ; color = "darkred" ];
 		subgraph cluster_3 {
-				 main_filter [
-				 			 label = "{Main filter|Low-pass filter\nusing Bessel 5th order\naccording to the meta-data.}";
-				 			 color = "darkgreen";
-				];
-				metadata_mainfilter_fifo [
-										 label="FIFO as many elements\nrequired by the main filter"
-				];
-		"metadata_mainfilter_fifo" -> main_filter [ label = "note only"; color = "darkblue" ];
-		"metadata_mainfilter_fifo" -> main_filter [ label = "strobe"; color = "darkblue" ];
+				 main_filter [ margin=0; label = <
+				 			<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+								   <TR><TD PORT="0">Main filter</TD></TR><TR><TD>The frequency depends only on the note</TD></TR>
+							</TABLE>
+				 >];
+				metadata_mainfilter_fifo [ margin=0; label = <
+				 			<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+								   <TR><TD PORT="0">FIFO registers</TD></TR><TR><TD>as many elements as the main filter requires</TD></TR>
+							</TABLE>
+				 >];
+		metadata_mainfilter_fifo -> main_filter [ label = "note"; color = "darkblue" ];
+		metadata_mainfilter_fifo -> main_filter [ label = "strobe"; color = "darkblue" ];
 		label = "Main filter";
+		{ rank=same; main_filter metadata_mainfilter_fifo }
 		}
-		"downsampler" -> "metadata_mainfilter_fifo" [ label = "strobe" ; color = "darkblue" ];
-		"metadata_downsampler_fifo" -> "metadata_mainfilter_fifo" [ label = "MD" ; color = "darkblue" ];
-		"downsampler" -> "main_filter" [ label = "X" ; color = "darkred" ];
-		"downsampler" -> "main_filter" [ label = "Y" ; color = "darkred" ];
+		downsampler -> metadata_mainfilter_fifo [ label = "strobe" ; color = "darkblue" ];
+		metadata_downsampler_fifo -> metadata_mainfilter_fifo [ label = "metadata" ; color = "darkblue" ];
+		downsampler -> main_filter [ label = "X" ; color = "darkred" ];
+		downsampler -> main_filter [ label = "Y" ; color = "darkred" ];
 		subgraph cluster_4 {
-				 cordic_XY_2_RZ [
-				 				label = "{Cordic stage.\nRuns P shits of the algo\n to converge Y to 0.}";
-				];
-				metadata_Y20_fifo [
-								label="FIFO as many elements\nrequired by the main filter"
-				];
-				"metadata_Y20_fifo" -> cordic_XY_2_RZ  [ label = "strobe" ; color = "darkblue" ];
-				"metadata_Y20_fifo" -> cordic_XY_2_RZ [ label = "MD" ; color = "darkblue" ];
+				 cordic_XY_2_RZ [ margin=0; label = <
+				 			<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+								   <TR><TD PORT="0">Q Cordic stages</TD></TR><TR><TD>Runs shifts P times of the algo between the strobes (or do nothing) to converge Y to 0</TD></TR>
+							</TABLE>
+				 >];
+				metadata_Y20_fifo [ margin=0; label = <
+				 			<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+								   <TR><TD PORT="0">FIFO registers</TD></TR><TR><TD>P multiplied by Q elements</TD></TR>
+							</TABLE>
+				 >];
+				metadata_Y20_fifo -> cordic_XY_2_RZ  [ label = "strobe" ; color = "darkblue" ];
+				metadata_Y20_fifo -> cordic_XY_2_RZ [ label = "metadata" ; color = "darkblue" ];
 				cordic_XY_2_RZ:se -> cordic_XY_2_RZ:ne[color = "darkred"; label="X"];
 				cordic_XY_2_RZ:se -> cordic_XY_2_RZ:ne [color = "darkred"; label="Y"];
 				cordic_XY_2_RZ:se -> cordic_XY_2_RZ:ne [color = "darkgreen"; label="Z"];
-				label = "Q (P shifts) Cordic stages"
+				label = "Cordic stages"
+				{ rank=same; cordic_XY_2_RZ metadata_Y20_fifo };
 		}
-		"metadata_mainfilter_fifo" -> "metadata_Y20_fifo" [ label = "MD" ; color = "darkblue" ];
-		"metadata_mainfilter_fifo" -> "metadata_Y20_fifo" [ label = "strobe" ; color = "darkblue" ];
-		"main_filter" -> "cordic_XY_2_RZ" [ label = "X" ; color = "darkred" ];
-		"main_filter" -> "cordic_XY_2_RZ" [ label = "Y" ; color = "darkred" ];
-		"zero_Z" -> "cordic_XY_2_RZ" [ label = "Z"; color = "darkgreen" ];
+		metadata_mainfilter_fifo:s -> metadata_Y20_fifo:n [ label = "metadata" ; color = "darkblue" ];
+		metadata_mainfilter_fifo:s -> metadata_Y20_fifo:n [ label = "strobe" ; color = "darkblue" ];
+		main_filter:s -> cordic_XY_2_RZ:n [ label = "X" ; color = "darkred" ];
+		main_filter:s -> cordic_XY_2_RZ:n [ label = "Y" ; color = "darkred" ];
+		zero_Y -> cordic_XY_2_RZ [ label = "Z"; color = "darkgreen" ];
 
-		cordic_XY_2_RZ -> void_Y20 [ label = "Y"; color = "darkred" ];
-		output_data [
-					label = "{Output|\<to display or hardware\>}"
-					];
-		color="darkgreen";
-		"cordic_XY_2_RZ" -> "output_data" [ label = "X"; color = "darkred" ];
-		"cordic_XY_2_RZ" -> "output_data" [ label = "Z"; color = "darkgreen" ];
-		"metadata_Y20_fifo" -> "output_data" [ label = "MD"; color = "darkblue" ];
-		"metadata_Y20_fifo" -> "output_data" [ label = "strobe"; color = "darkblue" ];
+		output_data [ margin=0; label = <
+				 			<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+								   <TR><TD PORT="0">Output</TD></TR><TR><TD>to other projects or displays</TD></TR>
+							</TABLE>
+				 >];
+		cordic_XY_2_RZ:s -> output_data:ne [ label = "X"; color = "darkred" ];
+		cordic_XY_2_RZ:s -> output_data:ne [ label = "Z"; color = "darkgreen" ];
+		cordic_XY_2_RZ:s -> void_Y20:nw [ label = "Y"; color = "darkred" ];
+		metadata_Y20_fifo:s -> output_data:nw [ label = "metadata"; color = "darkblue" ];
+		metadata_Y20_fifo:s -> output_data:nw [ label = "strobe"; color = "darkblue" ];
 }
