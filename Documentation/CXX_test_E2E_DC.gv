@@ -1,0 +1,144 @@
+digraph g {
+		size="8.267,11.7";
+		margin=5;
+		node [ shape="box" ];
+		rank = TB;
+		subgraph cluster_6{
+				angles_generator_run [ margin=0; label = <
+				 			<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+								   <TR><TD PORT="0">Angles generator</TD></TR><TR><TD>Generates sequentially the current angles for all the channels</TD></TR>
+							</TABLE>
+				 >];
+				input_val [ margin=0; label = <
+				 			<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+								   <TR><TD PORT="0">Constant from the initial values list</TD></TR><TR><TD>A full simulation is done for each set</TD></TR>
+							</TABLE>
+				 >];
+				{ rank=same; angles_generator_run input_val }
+		}
+		subgraph cluster_0{
+				 cordic_RZ_2_XY [ margin=0; label = <
+				 			<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+								   <TR><TD PORT="0">N Cordic stages</TD></TR><TR><TD>Always runs one shift of the algo\nto converge Z to 0</TD></TR>
+							</TABLE>
+				 >];
+				 metadata_Z20_fifo [ margin=0; label = <
+				 			<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+								   <TR><TD PORT="0">FIFO registers</TD></TR><TR><TD>N elements</TD></TR>
+							</TABLE>
+				 >];
+				 one_gene [
+					label = "1";
+					shape="ellipse";
+				 ];
+				 cordic_RZ_2_XY:se -> cordic_RZ_2_XY:ne [color = "darkred"; label="X"];
+				 cordic_RZ_2_XY:se -> cordic_RZ_2_XY:ne [color = "darkred"; label="Y"];
+				 cordic_RZ_2_XY:se -> cordic_RZ_2_XY:ne [color = "darkgreen"; label="Z"];
+				 one_gene -> cordic_RZ_2_XY [color = "darkblue"; label="strobe"];
+				 label="Cordic stages";
+				 { rank=same; cordic_RZ_2_XY metadata_Z20_fifo one_gene }
+		}
+		angles_generator_run -> cordic_RZ_2_XY [ color = "darkgreen"; label="angle" ];
+		angles_generator_run -> metadata_Z20_fifo [ color = "darkblue"; label="metadata" ];
+		input_val -> cordic_RZ_2_XY    [ color = "darkred"; label = "X" ];
+		input_val -> cordic_RZ_2_XY    [ color = "darkred"; label = "Y" ];
+		zero_Y [
+		label = "0";
+		shape="ellipse";
+		];
+		subgraph cluster_1 {
+				test_Z20_Z_0  [
+							  label = "E2E_DC_Z20_Z_0";
+				  			  shape = "box";
+				  			  color = "darkgreen";
+				];
+				test_XY_constant [
+							  label = "E2E_DC_Z20_XY_module";
+				  			  shape = "box";
+				  			  color = "darkgreen";
+		        ];
+				test_XY_scalarprod [
+				  			  label = "E2E_DC_Z20_XY_scalarprod";
+				  			  shape = "box";
+				  			  color = "darkred";
+				];
+				{ rank=same; test_Z20_Z_0 test_XY_constant test_XY_scalarprod }
+				label = "First set of tests. If something is wrong, it is irrelevant to go future";
+		}
+		metadata_Z20_fifo:s -> test_XY_scalarprod [ label = "metadata" ; color = "darkblue" ];
+		cordic_RZ_2_XY:se -> test_XY_constant [ label = "last X" ; color = "darkred" ];
+		cordic_RZ_2_XY:se -> test_XY_constant [ label = "last Y" ; color = "darkred" ];
+		cordic_RZ_2_XY:se -> test_XY_scalarprod [ label = "last X" ; color = "darkred" ];
+		cordic_RZ_2_XY:se -> test_XY_scalarprod [ label = "last Y" ; color = "darkred" ];
+		cordic_RZ_2_XY:se -> test_Z20_Z_0 [ label = "last Z"; color = "darkgreen" ];
+		subgraph cluster_2 {
+				 downsampler [ margin=0; label = <
+				 			<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+								   <TR><TD PORT="0">Down sampler</TD></TR><TR><TD>The ratio depends on the meta-data.</TD></TR>
+							</TABLE>
+				 >];
+				 metadata_downsampler_fifo [ margin=0; label = <
+				 			<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+								   <TR><TD PORT="0">FIFO registers</TD></TR><TR><TD>as many elements as the downsampler requires</TD></TR>
+							</TABLE>
+				 >];
+			    metadata_downsampler_fifo:0 -> downsampler:0 [ label = "metadata"; color = "darkblue" ];
+				label = "Downsmpling";
+			    { rank=same; metadata_downsampler_fifo downsampler };
+		}
+		metadata_Z20_fifo:s -> metadata_downsampler_fifo [ label = "metadata" ; color = "darkblue" ];
+		cordic_RZ_2_XY:s -> downsampler:n [ label = "last X" ; color = "darkred" ];
+		cordic_RZ_2_XY:s -> downsampler:n [ label = "last Y" ; color = "darkred" ];
+		subgraph cluster_4 {
+				 one_gene_2 [
+					label = "1";
+					shape="ellipse";
+				 ];
+				 cordic_XY_2_RZ [ margin=0; label = <
+				 			<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+								   <TR><TD PORT="0">Q Cordic stages</TD></TR><TR><TD>Runs shifts P times of the algo between the strobes (or do nothing) to converge Y to 0</TD></TR>
+							</TABLE>
+				 >];
+				metadata_Y20_fifo [ margin=0; label = <
+				 			<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+								   <TR><TD PORT="0">FIFO registers</TD></TR><TR><TD>P multiplied by Q elements</TD></TR>
+							</TABLE>
+				 >];
+				one_gene_2 -> cordic_XY_2_RZ  [ label = "strobe" ; color = "darkblue" ];
+				metadata_Y20_fifo -> cordic_XY_2_RZ [ label = "metadata" ; color = "darkblue" ];
+				cordic_XY_2_RZ:se -> cordic_XY_2_RZ:ne[color = "darkred"; label="X"];
+				cordic_XY_2_RZ:se -> cordic_XY_2_RZ:ne [color = "darkred"; label="Y"];
+				cordic_XY_2_RZ:se -> cordic_XY_2_RZ:ne [color = "darkgreen"; label="Z"];
+				label = "Cordic stages"
+				{ rank=same; one_gene_2 cordic_XY_2_RZ metadata_Y20_fifo };
+		}
+		metadata_downsampler_fifo:s -> metadata_Y20_fifo:n [ label = "metadata" ; color = "darkblue" ];
+		downsampler:s -> cordic_XY_2_RZ:n [ label = "X" ; color = "darkred" ];
+		downsampler:s -> cordic_XY_2_RZ:n [ label = "Y" ; color = "darkred" ];
+		zero_Y -> cordic_XY_2_RZ [ label = "Z"; color = "darkgreen" ];
+
+		subgraph cluster_5 {
+				 test_X_constant [
+						label = "E2E_DC_Y20_X_const";
+						shape = "box";
+						color = darkgreen;
+				];	
+				test_Y_constant [
+						label = "E2E_DC_Y20_Y_const";
+						shape = "box";
+						color = darkgreen;
+				];	
+				test_Z_diff [
+						label = "E2E_DC_Y20_Z_diff";
+						shape = "box";
+						color = darkred;
+				];
+				{rank=same; test_X_constant test_Y_constant test_Z_diff };
+				label = "Second set of tests.";
+		}
+
+		cordic_XY_2_RZ:s -> test_X_constant [ label = "X"; color = "darkred" ];
+		cordic_XY_2_RZ:s -> test_Z_diff [ label = "Z"; color = "darkgreen" ];
+		cordic_XY_2_RZ:s -> test_Y_constant [ label = "Y"; color = "darkred" ];
+		metadata_Y20_fifo:s -> test_Z_diff [ label = "metadata"; color = "darkblue" ];
+}

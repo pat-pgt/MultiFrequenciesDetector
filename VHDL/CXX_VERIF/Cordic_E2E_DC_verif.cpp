@@ -141,7 +141,8 @@ int main(int argc,char*argv[])
 
   cout << "--------------------------------------------------------------------------------------------" << endl;
   cout << "All the results issued here, are with a minimum explanations to reduce the number of lines." << endl;
-  cout << "The documentation is inside the code, especially after this paragraph." << endl;
+  cout << "The documentations are inside the code and displayed in the schematic diagram," << endl;
+  cout << "located in the Documentation folder." << endl;
   cout << "--------------------------------------------------------------------------------------------" << endl;
   cout << "The tests results are displayed as: for each test, for each initial data, do it" << endl;
   cout << "If something is wrong in a test, it is irrelevant to go future." << endl; 
@@ -477,8 +478,8 @@ int main(int argc,char*argv[])
   /********************************************************************************************/
   /*                          Now display all the structures                                  */
   /********************************************************************************************/
-  
-  cout << "Checking the Z to 0 first set of stages" << endl;
+  cout << "---------------------------- Z to 0 first set of stages ----------------------------" << endl;
+  cout << "E2E_DC_Z20_XY_module Checking the module of the X and Y couple is the expected constant" << endl;
   cout << "Number             X,Y module delta from grow                       X,Y module absolute" << endl; 
   cout << "of points         max-min average standard dev                   max-min average standard dev" << endl;
   for_each( execution::seq,
@@ -494,6 +495,7 @@ int main(int argc,char*argv[])
 				cout << "Problem: the number of points is not the same for all the tests" << endl;
 			});
   cout << endl;
+  cout << "E2E_DC_Z20_Z_0 Checking the angle Z converge to 0" << endl;
   cout << "Number                 Z to 0 degrees                                       Z to 0 integer" << endl; 
   cout << "of points         max-min average standard dev                        max-min average standard dev" << endl;
 	for_each( execution::seq,
@@ -511,6 +513,8 @@ int main(int argc,char*argv[])
 	cout << endl;
 	// Now display the octave note specific results
 	// The number of samples are always minus 1 as they are differences
+	cout << "E2E_DC_Z20_XY_scalarprod Checking the scalar product is the constant (see above), per octave note couple" << endl;
+	cout << "titl TODO" << endl;
   for_each( execution::seq,
 			theSimulData.begin(), theSimulData.end(),
 			[](auto&dat){
@@ -530,7 +534,8 @@ int main(int argc,char*argv[])
 			cout << endl;
 			});
   cout << endl;
-  cout << "Checking the Y to 0 second set of stages" << endl;
+  cout << "---------------------------- Y to 0 second set of stages ----------------------------" << endl;
+  cout << "E2E_DC_Y20_X_const Checking X is the constant (see above)" << endl;
   cout << "Number            X module delta from grow                               X module absolute"<< endl;
   cout << "of points         max-min average standard dev                           max-min average standard dev " << endl;
   for_each( execution::seq,
@@ -546,6 +551,7 @@ int main(int argc,char*argv[])
 				cout << "Problem: the number of points is not the same for all the tests" << endl;
 			});
   cout << endl;
+  cout << "E2E_DC_Z20_Y_0 Checking Y converges to 0" << endl;
   cout << "Number            Y to 0 integer                                    Y to 0 ratio from X"<< endl;
   cout << "of points         max-min average standard dev                      max-min average standard dev " << endl;
   for_each( execution::seq,
@@ -561,8 +567,8 @@ int main(int argc,char*argv[])
 				cout << "Problem: the number of points is not the same for all the tests" << endl;
 			});
   cout << endl;
-  // Now display the octave note specific results
   // The number of samples are always minus 1 as they are differences
+  cout << "E2E_DC_Z20_Z_diff Checking the Z spin is constant, per note for all the octaves" << endl;
   cout << "Number            Z rotation angle degrees                          Z rotation angle integer" << endl; 
   cout << "of points         max-min average standard dev                      max-min average standard dev" << endl;
   for_each( execution::seq,
