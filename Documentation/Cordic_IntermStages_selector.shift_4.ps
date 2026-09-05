@@ -37,8 +37,8 @@
 	} for
 	% and the title
 	cells_high mul dup
-	cells_high add 0 exch 1 add moveto 0 cells_high neg rlineto cells_width 0 rlineto
-	0 cells_high rlineto
+	cells_high 0.7 mul add 0 exch 1 add moveto 0 cells_high 0.7 mul neg rlineto cells_width 0 rlineto
+	0 cells_high 0.7 mul rlineto
 	closepath 0 0 0 0.3 setcmykcolor fill
 	5 add 4 exch moveto 0 0 0 1 setcmykcolor show
 }def
@@ -95,11 +95,10 @@
 	200 40 sub cells_high 8.5 mul 14 3 div sub moveto (0) show
 	3 14 3 div rmoveto 200 cells_high 8.5 mul lineto
 	-10 5 rlineto 10 -5 rmoveto -10 -5 rlineto
-	200 70 sub cells_high 0.5 mul 14 3 div sub moveto exch show
-	3 14 3 div rmoveto 200 cells_high 0.5 mul lineto
-	-10 5 rlineto 10 -5 rmoveto -10 -5 rlineto
+%	200 70 sub cells_high 0.5 mul 14 3 div sub moveto exch pop
+%	3 14 3 div rmoveto 200 cells_high 0.5 mul lineto
+%	-10 5 rlineto 10 -5 rmoveto -10 -5 rlineto
 	stroke
-
 
 	
 0 0 0 1 setcmykcolor
@@ -107,10 +106,35 @@ setmatrix
 matrix currentmatrix
 10 cells_high 12 1 1 add add mul 10 add translate
 (latch) [(old b11)] cellsdraw
+	1 index
+	{
+		cells_width 0 moveto 
+		matrix currentmatrix 30 rotate currentpoint currentpoint 5 -10 rlineto moveto -5 -10 rlineto moveto setmatrix
+		cells_high cells_high 2 mul neg rlineto
+		stroke
+	} if
 100 0 translate
-(latch) [(add or sub)] cellsdraw
+(latch) [(carry L)] cellsdraw
+	cells_width cells_high 2 div moveto
+	currentpoint currentpoint 10 5 rlineto moveto 10 -5 rlineto moveto 30 0 rlineto
+	1 index {
+		5 -5 rmoveto (0 add, 1 sub) show
+	}{
+		205 cells_high 2 div lineto
+		0 cells_high 2 mul neg rmoveto
+		205 cells_high 2 div neg cells_high -90 90 arc
+		cells_width 2 div 0 moveto 95 13.5 cells_high mul neg lineto
+		matrix currentmatrix 280 rotate currentpoint -10 5 rlineto moveto -10 -5 rlineto setmatrix
+	} ifelse
+stroke
 300 0 translate
 (latch) [(old b11)] cellsdraw
+	1 index {
+		cells_width 0 moveto 
+		matrix currentmatrix 30 rotate currentpoint currentpoint 5 -10 rlineto moveto -5 -10 rlineto moveto setmatrix
+		cells_high cells_high 2 mul neg rlineto
+		stroke
+	} if
 setmatrix
 matrix currentmatrix
 210 10 translate
@@ -150,19 +174,28 @@ matrix currentmatrix
 	cells_width 0 translate
 	(sin_out) list_reg_out cellsdraw
 	setmatrix
+	exch not {
+		-97 cells_high 11.5 mul moveto cells_width 2 add cells_high 11.5 mul lineto
+		currentpoint -10 5 rlineto moveto -10 -5 rlineto
+		-97 cells_high 10.5 mul moveto cells_width 2 add cells_high 10.5 mul lineto
+		currentpoint -10 5 rlineto moveto -10 -5 rlineto
+		-97 cells_high 9.5 mul moveto cells_width 2 add cells_high 9.5 mul lineto
+		currentpoint -10 5 rlineto moveto -10 -5 rlineto
+		stroke
+	} if
 	setmatrix
 } def
 
 /Legenda_shifts {
 	matrix currentmatrix
-	140	250 translate
+	135	250 translate
 	0 0 0 setrgbcolor	0 40 moveto (bit as it) show
-	0 0 1 setrgbcolor	0 20 moveto (bit direct) show
+	0 0 1 setrgbcolor	0 20 moveto (bit inverted) show
 						0  0 moveto (  or not) show
 	0 0 0 setrgbcolor
 	setmatrix
 	
-	210 15.5 cells_high mul moveto show
+	210 15.5 cells_high mul 20 add moveto show
 } def
 
 /Legenda_reg {
@@ -174,22 +207,28 @@ matrix currentmatrix
 	0 0 0 setrgbcolor
 	setmatrix
 	
-	210 15.5 cells_high mul moveto show
+	210 15.5 cells_high mul 20 add moveto show
 } def
 
 /Legenda_extra_shifts {
 	matrix currentmatrix
-	140	210 translate
+	135	210 translate
 	0 0 0 setrgbcolor 0 80 moveto (bit as it) show
 	1 0 0 setrgbcolor 0 60 moveto (bit direct) show
-	1 0 0 setrgbcolor 0 40 moveto (  or not) show
-	0 1 0 setrgbcolor 0 20 moveto (d. or not) show
-	1 0.5 0 setrgbcolor 0 0 moveto (d. or not) show
+	1 0 0 setrgbcolor 0 40 moveto ( or inverted) show
+	0 1 0 setrgbcolor 0 20 moveto (d. or inv) show
+	1 0.5 0 setrgbcolor 0 0 moveto (d. or inv) show
 	0 0 0 setrgbcolor
 	setmatrix
 
-	210 15.5 cells_high mul moveto show
+	210 15.5 cells_high mul 20 add moveto show
 } def
+/trailer_legenda {
+	10 -10 moveto (Previous stage registers) show
+	410 -10 moveto (This stage registers) show
+	210 -10 moveto (Combinatory logic) show
+} def
+
 
 %%EndProlog
 
@@ -204,6 +243,8 @@ matrix currentmatrix
 
 10 450 translate
 
+trailer_legenda
+
 /list_add_sub [(out carry)(out b2)(out b1)(out b0)(op_S b3)(op_S b2)(op_S b1)(op_S b0)(op_N b3)(op_N b2)(op_N b1)(op_N b0)(in carry)] def
 /list_reg_in [(old b11) (old b10) (old b9)(old b8) (old b7) (old b6)(old b5) (old b4) (old b3)(old b2) (old b1) (old b0)] def
 /list_reg_out list_reg_in def
@@ -217,11 +258,13 @@ matrix currentmatrix
 
 (Clock cycle during reg_sync) Legenda_reg
 
-('-') One_op_draw
+true One_op_draw
 
 
 % bottom of the page
-0 -440 translate
+0 -420 translate
+
+trailer_legenda
 
 
 /list_left_B [ 6.5 5.5 4.5 ] def
@@ -229,7 +272,7 @@ matrix currentmatrix
 
 (First clock cycle) Legenda_shifts
 
-('0' or '1') One_op_draw
+false One_op_draw
 
 setmatrix
 
@@ -243,6 +286,8 @@ showpage
 matrix currentmatrix
 
 10 450 translate
+
+trailer_legenda
 
 /list_add_sub [(out carry)(out b2)(out b1)(out b0)(op_S b3)(op_S b2)(op_S b1)(op_S b0)(op_N b3)(op_N b2)(op_N b1)(op_N b0)(in carry)] def
 /list_reg_in [(old b11) (old b10) (old b9)(old b8) (old b7) (old b6)(old b5) (old b4) (old b3)(old b2) (old b1) (old b0)] def
@@ -260,9 +305,11 @@ matrix currentmatrix
 
 (Second clock cycle) Legenda_shifts
 
-(carry latch) One_op_draw
+false One_op_draw
 
 0 -430 translate
+
+trailer_legenda
 
 /list_reg_out list_reg_out [(out b5)(out b4)(out b3)] shift_list_reg def
 /list_reg_in list_reg_in [(new b5)(new b5)(new b3)] shift_list_reg def
@@ -276,7 +323,7 @@ matrix currentmatrix
 
 (Third clock cycle) Legenda_shifts
 
-(carry latch) One_op_draw
+false One_op_draw
 
 setmatrix
 
@@ -299,6 +346,8 @@ matrix currentmatrix
 
 10 450 translate
 
+trailer_legenda
+
 /list_right_R [] def
 /list_right_G [] def
 /list_right_O [] def
@@ -307,12 +356,12 @@ matrix currentmatrix
 
 (Fourth clock cycle) Legenda_shifts
 
-(carry latch) One_op_draw
+false One_op_draw
 
 0 -440 translate
 
 10 300 moveto (The frame is over.) show
-10 280 moveto (The computation of the sine is done using a second set) show
+10 280 moveto (The computation of the cosine is done using a second set) show
 10 260 moveto (  in which the cosine and the sine are toggled.) show
 10 200 moveto (* If we are in the step one, the Z to 0, loop to the page 1.) show
 10 180 moveto (* If we are in the step two, the Y to 0,) show
@@ -335,9 +384,28 @@ matrix currentmatrix
 
 10 450 translate
 
+trailer_legenda
+
 /list_add_sub [(out carry)(out b2)(out b1)(out b0)(op_S b3)(op_S b2)(op_S b1)(op_S b0)(op_N b3)(op_N b2)(op_N b1)(op_N b0)(in carry)] def
 /list_reg_in [(old b11) (old b10) (old b9)(old b8) (old b7) (old b6)(old b5) (old b4) (old b3)(old b2) (old b1) (old b0)] def
 /list_reg_out list_reg_in def
+
+/list_left_B [] def
+
+/list_right_R [] def
+/list_right_G [] def
+/list_right_O [] def
+
+
+(Clock cycle during reg_sync) Legenda_reg
+
+true One_op_draw
+
+
+% bottom of the page
+0 -430 translate
+
+trailer_legenda
 
 /list_left_B [] def
 
@@ -346,21 +414,9 @@ matrix currentmatrix
 /list_right_O [ 9.5 8.5 7.5 ] def
 
 
-(Clock cycle during reg_sync) Legenda_reg
-
-('-') One_op_draw
-
-
-% bottom of the page
-0 -440 translate
-
-
-/list_left_B [] def
-
-
 (First clock cycle) Legenda_extra_shifts
 
-('0' or '1') One_op_draw
+false One_op_draw
 
 setmatrix
 
@@ -374,6 +430,8 @@ showpage
 matrix currentmatrix
 
 10 450 translate
+
+trailer_legenda
 
 /list_add_sub [(out carry)(out b2)(out b1)(out b0)(op_S b3)(op_S b2)(op_S b1)(op_S b0)(op_N b3)(op_N b2)(op_N b1)(op_N b0)(in carry)] def
 /list_reg_in [(old b11) (old b10) (old b9)(old b8) (old b7) (old b6)(old b5) (old b4) (old b3)(old b2) (old b1) (old b0)] def
@@ -391,9 +449,11 @@ matrix currentmatrix
 
 (Second clock cycle) Legenda_extra_shifts
 
-(carry latch) One_op_draw
+false One_op_draw
 
 0 -430 translate
+
+trailer_legenda
 
 /list_reg_out list_reg_out [(out b5)(out b4)(out b3)] shift_list_reg def
 /list_reg_in list_reg_in [(new b5)(new b5)(new b3)] shift_list_reg def
@@ -407,7 +467,7 @@ matrix currentmatrix
 
 (Third clock cycle) Legenda_extra_shifts
 
-(carry latch) One_op_draw
+false One_op_draw
 
 setmatrix
 
@@ -430,6 +490,8 @@ matrix currentmatrix
 
 10 450 translate
 
+trailer_legenda
+
 /list_right_R [ 14.5 14.5 14.5 ] def
 /list_right_G [ 14.5 14.5 14.5 ] def
 /list_right_O [ 14.5 14.5 14.5 ] def
@@ -438,12 +500,12 @@ matrix currentmatrix
 
 (Fourth clock cycle) Legenda_extra_shifts
 
-(carry latch) One_op_draw
+false One_op_draw
 
 0 -440 translate
 
 10 300 moveto (The frame is over.) show
-10 280 moveto (The computation of the sine is done using a second set) show
+10 280 moveto (The computation of the cosine is done using a second set) show
 10 260 moveto (  in which the cosine and the sine are toggled.) show
 10 200 moveto (We are here because we are in the step two, the Y to 0, and some extra shifts.) show
 10 180 moveto (* If we have more extra shifts to run, loop to the page 3.) show
