@@ -108,9 +108,9 @@ matrix currentmatrix
 (latch) [(old b11)] cellsdraw
 	1 index
 	{
-		cells_width 0 moveto 
-		matrix currentmatrix 30 rotate currentpoint currentpoint 5 -10 rlineto moveto -5 -10 rlineto moveto setmatrix
-		cells_high cells_high 2 mul neg rlineto
+		cells_width 2 div 0 moveto 
+		currentpoint currentpoint 5 -10 rlineto moveto -5 -10 rlineto moveto
+		0 cells_high 2 mul neg rlineto
 		stroke
 	} if
 100 0 translate
@@ -130,9 +130,9 @@ stroke
 300 0 translate
 (latch) [(old b11)] cellsdraw
 	1 index {
-		cells_width 0 moveto 
-		matrix currentmatrix 30 rotate currentpoint currentpoint 5 -10 rlineto moveto -5 -10 rlineto moveto setmatrix
-		cells_high cells_high 2 mul neg rlineto
+		cells_width 2 div 0 moveto 
+		currentpoint currentpoint 5 -10 rlineto moveto -5 -10 rlineto moveto
+		0 cells_high 2 mul neg rlineto
 		stroke
 	} if
 setmatrix
@@ -361,8 +361,8 @@ false One_op_draw
 0 -440 translate
 
 10 300 moveto (The frame is over.) show
-10 280 moveto (The computation of the cosine is done using a second set) show
-10 260 moveto (  in which the cosine and the sine are toggled.) show
+10 280 moveto (The computation of the cosine is done using a second set of combinatory logic and latches) show
+10 260 moveto (  in which the cosine and the sine sources and destinations are toggled.) show
 10 200 moveto (* If we are in the step one, the Z to 0, loop to the page 1.) show
 10 180 moveto (* If we are in the step two, the Y to 0,) show
 30 160 moveto (* If there are no extra shifts, loop to the page 1 as well.) show
@@ -505,8 +505,8 @@ false One_op_draw
 0 -440 translate
 
 10 300 moveto (The frame is over.) show
-10 280 moveto (The computation of the cosine is done using a second set) show
-10 260 moveto (  in which the cosine and the sine are toggled.) show
+10 280 moveto (The computation of the cosine is done using a second set of combinatory logic and latches) show
+10 260 moveto (  in which the cosine and the sine sources and destinations are toggled.) show
 10 200 moveto (We are here because we are in the step two, the Y to 0, and some extra shifts.) show
 10 180 moveto (* If we have more extra shifts to run, loop to the page 3.) show
 10 160 moveto (  while considering the green rather than the red, the orange rather than the green, etc...) show
