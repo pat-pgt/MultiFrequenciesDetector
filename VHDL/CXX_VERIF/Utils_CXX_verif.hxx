@@ -12,6 +12,8 @@
 #include <optional>
 #include <limits>
 #include <ranges>
+#include <bitset>
+#include <cassert>
 
 using namespace std;
 
@@ -24,6 +26,11 @@ class Value_Data
 public:
   Value_Data() = delete;
   Value_Data(const cxx_reg_type&value_init);
+  Value_Data&operator=(const Value_Data&a){
+	value_init=a.value_init;
+	return*this;
+  }
+
   operator cxx_reg_type()const{ return value_init; }
   /** @brief Get_Positive_Negative_Value
    *
@@ -40,6 +47,12 @@ public:
 	else
 	  return value_init;
   } 
+
+  constexpr long long GetValueSquared()const {  
+	long long X = value_init;
+	return X * X;
+  }
+
   /** Two divided validation
    * Since the Cordic algorithm grows the values, the input is divided by 2.
    * The Python emulations validate that, for the 3 first stages done "by hand".\n
@@ -48,6 +61,16 @@ public:
    * It is a template instantiation. However, for now, it is specific instantiations.
    */
   void TwoDividedValidation()const;
+
+  constexpr cxx_reg_type value_type()const{};
+  const unsigned short value_size = reg_size;
+    /** @brief Get size to compare with the VHDL
+   *
+   * This function returns the number of BITS.
+   */
+  const unsigned char GetRegSize()const{ return reg_size;}
+
+  long double module_value_type()const;
 };
 
 /** @brief Holds an X and a Y value
@@ -174,24 +197,43 @@ public:
 template<typename cxx_reg_type,unsigned short reg_size>
 class Axis_counter
 {
-  const cxx_reg_type high_bit_mask;
+  cxx_reg_type high_bit_mask;
   bool last_sign;
+  unsigned char last_decimal;
   unsigned long the_counter;
 public:
-  // TODO TODO TODO set the bit properly  in order to run with other sizes than 32
-  Axis_counter():high_bit_mask(0x80000000),last_sign(false),the_counter(0){}
+  Axis_counter():last_sign(false),last_decimal(0),the_counter(0){
+	high_bit_mask = 1;
+  }
   constexpr Axis_counter<cxx_reg_type,reg_size>&operator+=(const cxx_reg_type&the_input){
-	bool this_sign;
-	if ( ( the_input & high_bit_mask ) == 0 )
-	  this_sign = false;
-	else
-	  this_sign = true;
+	bitset< reg_size >bs(the_input);
+	bool this_sign = bs.test( reg_size - 1 );
 	if ( this_sign == false && last_sign == true )
 	  the_counter += 1;
 	last_sign = this_sign;
+	last_decimal = 0x7 & ( the_input >> ( reg_size - 3 ));
 	return*this;
  }
-  constexpr operator const unsigned long()const{return the_counter;}
+  /** @brief Displays the number of times time angle passed through 0
+   *
+   * Displays the counter of passes through 0.
+   * Displays the last quadrant of the angle.
+   * Be careful, it does NOT adjusted against the angle of the initial vector.
+   */
+  constexpr operator const string()const{
+	switch( last_decimal )
+	  {
+	  case 0:
+		return to_string(the_counter) + " 0";
+	  case 4:
+		return to_string(the_counter) + " 1/2";
+	  case 2:
+	  case 6:
+		return to_string(the_counter) + ' ' + to_string(last_decimal/2) + "/4";
+      default:
+		return to_string(the_counter) + ' ' + to_string(last_decimal) + "/8";
+      }
+  }
 };
 /** @brief Holds the last angle, the statistics and the number of X axis passes
  */

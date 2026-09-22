@@ -83,7 +83,7 @@ int main(int argc,char*argv[])
    *   is going to make a full spin
    * The value should be at least 2 to run the differences.
    */
-  unsigned short full_cycles_number = 3;
+  unsigned short full_cycles_number = 10;
   unsigned short nbre_initial_vextors = 7;
 
   while((opt = getopt( argc,argv,"l:n:hv"))!=EOF)
@@ -588,7 +588,7 @@ int main(int argc,char*argv[])
 						cout << ON_iter.second.the_stats.Basic_display() << "\t\t";
 						cout << ON_iter.second.the_stats.Display_without_offset_normalize() << "\t\t";
 						//	cout << ON_iter.second.second.Display_without_offset_normalize() << "\t\t";
-						cout << (unsigned long)ON_iter.second.the_X_counter;
+						cout << (string)ON_iter.second.the_X_counter;
 						cout << endl;
 					  });
 			cout << endl;
