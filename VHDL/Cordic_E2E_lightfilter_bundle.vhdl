@@ -175,8 +175,9 @@ begin
   --! The first set of pre-filters are instantiated as they should
   Prefilter_bundle_1 : Prefilter_bundle
     generic map (
+      prefilter_not_lightfilter => true,
       --! Defines the number of stages and their offsets ratios
-      stages_offsets)
+      stages_offsets            => stages_offsets)
     port map (
       CLK,
       RST,
@@ -205,8 +206,9 @@ begin
   --! In this test it is replaced by the pre-filter
   Prefilter_bundle_2 : Prefilter_bundle
     generic map (
+      prefilter_not_lightfilter => false,
       --! Defines the number of stages and their offsets ratios
-      stages_offsets)
+      stages_offsets            => stages_offsets)
     port map (
       CLK,
       RST,

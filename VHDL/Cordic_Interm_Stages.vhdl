@@ -40,6 +40,11 @@ begin
     angle_add_or_subtract(ind) <= arctg_2_angle_reg(shifts_calc + ind);
   end generate populate_Z;
 
+  complain_not_init: if extra_shift_select'length = 0 generate
+    -- Only to shut up the complain in case the length is 0, it is not initialized.
+    extra_shift_select <= ( others => '0' );    
+  end generate complain_not_init;
+    
   main_proc : process (CLK) is
     variable extra_shift_Z_select : natural;
   begin
@@ -387,15 +392,6 @@ begin
     "The extra shifts (" & integer'image(extra_shifts) &
     ") should be less than the number of octaves (" & integer'image(N_octaves) &
     ") minus 1" severity error;
-
-
-
-  assert extra_shifts = 0
-    report "WARNING The extra shifts are selected. They are not yet implemented"
-    severity warning;
-
-
-
 
   scz_out <= scz_out_s;
 

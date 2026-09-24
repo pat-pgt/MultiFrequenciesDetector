@@ -9,7 +9,7 @@ use IEEE.STD_LOGIC_1164.all,
 --!
 --! This is a pair of sine and cosine calculation
 --! with their associated memory storage and
---! delay for the metadata.
+--! delay for the meta-data.
 entity Prefilter_stage is
   generic (
     the_stage_offset          : real    := 1.0;
@@ -33,48 +33,40 @@ architecture arch of Prefilter_stage is
   signal cos_diff_shift            : reg_type;
   signal sin_shift_add             : reg_type;
   signal cos_shift_add             : reg_type;
-  signal meta_data_diff            : meta_data_t;
+  signal meta_data_after_diff      : meta_data_t;
+  signal meta_data_after_shifts    : meta_data_t;
   -- Is nice for testing with 3 frequencies
   --   separately from the RAM test
   signal output_from_RAM           : reg_sin_cos_z;
-  -- Do not touch
   constant prefilter_diff_latency  : positive := 1;
   -- In case of a large number of octaves
   --   the shift can take more steps.
-  constant prefilter_shift_latency : positive := 1;
-  -- Do not touch
+  constant number_shift_stages     : positive := 1;
   constant prefilter_add_latency   : positive := 1;
   constant prefilter_all_latency   : positive := prefilter_diff_latency +
-                                               prefilter_shift_latency +
+                                               number_shift_stages +
                                                prefilter_add_latency;
-  -- The latency of the diff module is already handled
-  --   in the shift "detector" component
-  signal meta_data_delay : meta_data_list_t(prefilter_all_latency - 1 downto 1);
   signal scz_delayed     : reg_sin_cos_z;
 begin
-  meta_data_out <= meta_data_delay(meta_data_delay'low);
-
+  assert prefilter_diff_latency = 1 and prefilter_add_latency = 1
+    report "The constants prefilter_diff_latency and prefilter_add_latency should not be modified"
+    severity error;
+  
 --  assert state_var_delay_s'length > 1 and state_var_delay_c'length > 1
 --    report "Internal error, the delay should be at least 2 reg_sync"
 --    severity failure;
 
 
   -- Bypass the Z for the tests.
-  -- The downsampling voids the angle then it should not consume any resources.
+  -- The down-sampling voids the angle then it should not consume any resources.
   scz_out.angle_z <= scz_in.angle_z;
 
   main_proc : process (CLK) is
   begin
     CLK_IF : if rising_edge(CLK) then
       REGSYNC_IF : if reg_sync = '1' then
-        -- The metadata is transferred using parallel mode
-        meta_data_delay(meta_data_delay'high - 1 downto meta_data_delay'low) <=
-          meta_data_delay(meta_data_delay'high downto meta_data_delay'low + 1);
-        meta_data_delay(meta_data_delay'high) <= meta_data_diff;
-      -- The state variable delay line has nothing to do during the sync
-      -- only load
---        state_var_delay_s(state_var_delay_s'high) <= output_from_RAM_S;
---        state_var_delay_c(state_var_delay_c'high) <= output_from_RAM_C;
+        meta_data_after_diff <= meta_data_in;
+        meta_data_out <= meta_data_after_shifts;
       end if REGSYNC_IF;
     end if CLK_if;
   end process main_proc;
@@ -97,15 +89,15 @@ begin
       scz_out       => output_from_RAM
       );
 
-  delay_IIR : Prefilter_Delay generic map (
+  sin_delay_IIR : Prefilter_Delay generic map (
     latency => prefilter_all_latency - 1
     )
     port map (
       CLK      => CLK,
       RST      => RST,
       reg_sync => reg_sync,
-      scz_in   => output_from_RAM,
-      scz_out  => scz_delayed
+      data_in  => output_from_RAM.the_sin,
+      data_out => scz_delayed.the_sin
       );
 
   sine_IIR_diff : Prefilter_IIR_stage_diff port map(
@@ -132,9 +124,20 @@ begin
     CLK                => CLK,
     RST                => RST,
     reg_sync           => reg_sync,
-    state_var_in       => scz_delayed.the_sin,
+    state_var_in       => (others=>'0'), --scz_delayed.the_sin,
     data_in            => sin_shift_add,
     state_var_data_out => scz_out.the_sin);
+
+  cose_delay_IIR : Prefilter_Delay generic map (
+    latency => prefilter_all_latency - 1
+    )
+    port map (
+      CLK      => CLK,
+      RST      => RST,
+      reg_sync => reg_sync,
+      data_in  => output_from_RAM.the_cos,
+      data_out => scz_delayed.the_cos
+      );
 
   cose_IIR_diff : Prefilter_IIR_stage_diff port map(
     CLK           => CLK,
@@ -160,21 +163,21 @@ begin
     CLK                => CLK,
     RST                => RST,
     reg_sync           => reg_sync,
-    state_var_in       => scz_delayed.the_cos,
+    state_var_in       => (others=>'0'), --scz_delayed.the_cos,
     data_in            => cos_shift_add,
     state_var_data_out => scz_out.the_cos);
 
   meta_data_compute : Prefilter_metadata_and_shifts_compute generic map (
     the_stage_offset,
     prefilter_not_lightfilter,
-    latency => prefilter_all_latency
+    number_shift_stages
     )
     port map (
       CLK           => CLK,
       RST           => RST,
       reg_sync      => reg_sync,
-      meta_data_in  => meta_data_in,
-      meta_data_out => meta_data_diff,
+      meta_data_in  => meta_data_after_diff,
+      meta_data_out => meta_data_after_shifts,
       shifts_calc   => shifts_calc);
 
 end architecture arch;
@@ -212,7 +215,7 @@ architecture arch of Prefilter_bundle is
   signal meta_data_interm : meta_data_list_t(stages_offsets'length downto 0);
 begin
   assert stages_offsets'length > 0 report "The number of pre-filter stages should not be 0" severity failure;
-  assert false report "Instanciating " & integer'image(stages_offsets'length) & " Pre filters stages" severity note;
+  assert false report "Instantiating " & integer'image(stages_offsets'length) & " Pre filters stages" severity note;
 
   meta_data_interm(meta_data_interm'high) <= meta_data_in;
   meta_data_out                           <= meta_data_interm(meta_data_interm'low);

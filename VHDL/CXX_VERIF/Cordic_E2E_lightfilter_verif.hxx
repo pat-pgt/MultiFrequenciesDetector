@@ -52,11 +52,11 @@ struct SimulDataType
 	}  prefilter_1;
 	struct {
    	  stats_type avg_ratios_between_stats;
-	  stats<stats_type>check_X_converges;
-	  stats<stats_type>check_Y_converges;
 	  map< pair< unsigned char, unsigned char >,
-		   Z_spin_data< stats_type, cxx_reg_type, reg_size > > check_spin_per_ON_constant;
+		   stats< stats_type > >check_X_converges_per_ON;
+	  stats<stats_type>check_Y_converges;
 	}  Y_2_0;
+	unsigned char octave_of_input;
 
 	void Init(const stats_long_type&module_vector,
 		 const unsigned short &Z_2_0_stages,const unsigned short&Y_2_0_stages);

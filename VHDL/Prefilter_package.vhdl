@@ -33,15 +33,17 @@ package PreFilter_package is
 --! @brief Pre-filter meta-data to required shifts compute
 --!
 --! This entity computes:
---! * The delay of the metadata to through out.
---!     The IIR filter has a latency of 3 registers (+1)
+--! * The delay of the meta-data due to the shifters
 --! * The number of shifts needed.
+--! A too large interval requires 1 or more stages,
+--!   this component handles the latency.
+--! TODO write the code for more than 1
 --! It is a separate one as it is required only once for the sine and the cosine.
   component Prefilter_metadata_and_shifts_compute is
     generic (
       the_stage_offset          : real;
-      prefilter_not_lightfilter : boolean := true;
-      latency                   : positive
+      prefilter_not_lightfilter : boolean;
+      number_shift_stages       : positive
       );
     port (
       CLK           : in  std_logic;
@@ -167,8 +169,8 @@ package PreFilter_package is
       CLK      : in  std_logic;
       RST      : in  std_logic;
       reg_sync : in  std_logic;
-      scz_in   : in  reg_sin_cos_z;
-      scz_out  : out reg_sin_cos_z
+      data_in  : in  reg_type;
+      data_out : out reg_type
       );
   end component Prefilter_Delay;
 
@@ -329,7 +331,7 @@ package PreFilter_package is
 
   --! @brief Get the maximum prefilter shifts
   --!
-  --! This fit to the mowest note of the lowest octave
+  --! This fit to the lowest note of the lowest octave
   --!   or ...TODO... for the lightfilter
   function Get_Prefilter_Maximum_Shifts (
     constant prefilter_stage_offset : real;
@@ -419,7 +421,7 @@ package body PreFilter_package is
     begin
       if prefilter_not_lightfilter then
         --! TODO
-          return 10;
+          return 12;
       else
           return 6;
       end if;

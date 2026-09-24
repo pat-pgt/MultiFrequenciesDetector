@@ -379,6 +379,7 @@ architecture arch of Prefilter_Stages_test is
   signal input_real_s, input_real_c : real;
   -- signal ratio_s_min, ratio_c_min   : real                                     := real'high;
   -- signal ratio_s_max, ratio_c_max   : real                                     := real'low;
+  signal signbit : std_logic := '0';
   component Prefilter_stages_gen_pattern is
     generic (
       cycles_bits     : integer range 6 to reg_size;
@@ -493,7 +494,9 @@ begin
         out_and_delay_c(out_and_delay_c'high - 1 downto out_and_delay_c'low) <=
           out_and_delay_c(out_and_delay_c'high downto out_and_delay_c'low + 1);
         -- Fill up signal to be seen in the wave viewer
-        sc_in.the_sin <= sin_gene_pattern;
+        sc_in.the_sin(sc_in.the_sin'high - 1 downto sc_in.the_sin'low ) <= sin_gene_pattern(sin_gene_pattern'high downto sin_gene_pattern'low + 1);
+        sc_in.the_sin(sc_in.the_sin'high) <= signbit;
+        signbit <= not signbit;
         input_real_s  <= real(to_integer(signed(sin_gene_pattern)));
         sc_in.the_cos <= cos_gene_pattern;
         input_real_c  <= real(to_integer(signed(cos_gene_pattern)));

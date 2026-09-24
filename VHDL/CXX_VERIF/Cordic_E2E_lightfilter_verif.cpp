@@ -35,8 +35,6 @@ Init(const stats_long_type&module_vector,
   stats_long_type Y_2_0_cumul_cos = 1.0;
   for ( ind = 0; ind < Y_2_0_stages; ind ++ )
 	Y_2_0_cumul_cos *= cos( atan( 1.0 / (float)pow( 2, ind + 1 )));
-  // The expected X value is the initial module divided by the cosines of both Z and Y to 0
-  Y_2_0.check_X_converges.SetOffset( module_vector / ( Z_2_0_cumul_cos * Y_2_0_cumul_cos ));
   cout << ", " << module_vector << " * " << 1.0 / ( Z_2_0_cumul_cos * Y_2_0_cumul_cos ) << " = " << module_vector / ( Z_2_0_cumul_cos * Y_2_0_cumul_cos ) << endl;
   // The expected Y value is 0, no offset, but normalize to compare to X at the end
   Y_2_0.check_Y_converges.SetNormalize( module_vector / ( Z_2_0_cumul_cos * Y_2_0_cumul_cos ));
@@ -48,12 +46,7 @@ template <typename stats_type, typename stats_long_type,typename cxx_reg_type, u
 optional<unsigned int> SimulDataType<stats_type,stats_long_type,cxx_reg_type,reg_size>::
 GetAndCheck_nbre_points()const
 {
-  unsigned int nbre_points = (unsigned int)prefilter_1.confirm_Z_2_0;
-
-  nbre_points = (unsigned int)Y_2_0.check_X_converges;
-  if ( (unsigned int)Y_2_0.check_Y_converges != nbre_points )
-	return nullopt;
-  return nbre_points;
+  return (unsigned int)Y_2_0.check_Y_converges;
 }
 
 
@@ -77,7 +70,7 @@ int main(int argc,char*argv[])
    *   is going to make a full spin
    * The value should be at least 2 to run the differences.
    */
-  unsigned short full_cycles_number = 50;
+  unsigned short half_cycles_number = 200;
   unsigned short nbre_initial_vextors = 1;
 
   while((opt = getopt( argc,argv,"l:n:hv"))!=EOF)
@@ -87,7 +80,7 @@ int main(int argc,char*argv[])
 		nbre_initial_vextors = atoi(optarg);
 		break;
 	  case 'l':
-		full_cycles_number = atoi(optarg);
+		half_cycles_number = atoi(optarg);
 		break;
 	  case 'h':
 		PrintHelp();
@@ -99,30 +92,22 @@ int main(int argc,char*argv[])
 		break;
 	  }
 
-  /** Initial data list
-   * The 4 axis vectors are tested. It tests well the pre-processing
-   * The PI/4 are tested only for the first and the second quadrant
-   * The PI/8 and 3.PI/8 are tested once
+  /* Only to get a runable veriosn, to be changed later
+   *
+   * The initial data is only one vector
+   * the simulation runs for multiple cuttoff frequencies
    */
-  vector<Value_Data<int,32>>theInitialDataCandidates = { 
-	Value_Data<int,32>( 0x3fffffff ),
-	Value_Data<int,32>( 0xc0000001 ),
-	Value_Data<int,32>( 0x2d4139f6 ),
-	Value_Data<int,32>( 0xd2bec60a ),
-	Value_Data<int,32>( 0x1fffffff ),
-	Value_Data<int,32>( 0x376cf5d0 )
-  };
+  Value_Data<int,32>dat = Value_Data<int,32>( 0x3fffffff );
+  vector<unsigned char>freq_octave_list = { 2, 4 };
 
   if ( has_hv )
 	return -1;
-  if ( full_cycles_number < 2 )
+  if ( half_cycles_number < 200 )
 	{
-	  cout << "-l The number of full cycles should not be lower then 2" << endl;
-	  return -2;
-	}
-  if( nbre_initial_vextors < 1 || nbre_initial_vextors > theInitialDataCandidates.size() )
-	{
-	  cout << "-n Wrong number of initial vectors" << endl;
+	  // There is a need to spin the clock at lot
+	  //   as the filters need to converge to their values.
+	  // There is a warm up before collecting the results, see below.
+	  cout << "-l The number of half cycles should not be lower then 200" << endl;
 	  return -2;
 	}
   /** In some cases, the same result is expected for different initial values.
@@ -139,12 +124,8 @@ int main(int argc,char*argv[])
   cout << "If something is wrong in a test, it is irrelevant to go future." << endl; 
   cout << "--------------------------------------------------------------------------------------------" << endl;
 
-  vector<Value_Data<int,32>>theInitialData;
-  for ( unsigned short indniv; indniv < nbre_initial_vextors; indniv++ )
-	theInitialData.push_back(theInitialDataCandidates[ indniv ]);
-
   vector<SimulDataType<double,long double,int,32>>theSimulData;
-  for( auto ind_ID : theInitialData )
+  for( auto ind_ID : freq_octave_list )
 	theSimulData.push_back(SimulDataType<double,long double,int,32>());
 
 
@@ -154,9 +135,9 @@ int main(int argc,char*argv[])
    *  Indeed a future version is going to run in parallel on multiple CPU machines
    */
   transform( execution::par,
-			 theInitialData.begin(), theInitialData.end(),
+			 freq_octave_list.begin(), freq_octave_list.end(),
 			 theSimulData.begin(),
-			 [&](const Value_Data<int,32>&dat) {
+			 [&](const unsigned char&freq_octave) {
 
 			   unsigned long long strobe_stable_1=0, strobe_stable_0=0;
 
@@ -203,8 +184,8 @@ int main(int argc,char*argv[])
 			   auto set_input_values=[&top,&input_Value_isNeg,&dat](){
 				 top.p_the__input.set<decltype(dat.value_type())>
 				    (dat.Get_Positive_Negative_Value(input_Value_isNeg));
-				 cout << '>' << dat.Get_Positive_Negative_Value(input_Value_isNeg) << " ";
-				 cout.flush();
+				 // cout << '>' << dat.Get_Positive_Negative_Value(input_Value_isNeg) << " ";
+				 // cout.flush();
 				 top.p_input__x__not__y.set<bool>(true);
 			   };
 
@@ -251,30 +232,120 @@ int main(int argc,char*argv[])
 						 ind_Z += 1;
 					 }
 				 }
-			   // 
+			   /* Despite the end to end DC test, which should test a couple of full Z spins of the lowest frequency,
+				*   this should consider the time to converge to the destination.
+				* In this test, the input signals are a square of the lowest note at the octave under test.
+				*/
+
+
+			   simulData.octave_of_input = freq_octave;
+			   /* To avoid a verification of the frequency (done elsewhere), a first "dry-run"
+				*   similar to the end to end DC test checks how many cycles are required to get
+				*   an half turn of the Z output
+				*/
+			   unsigned long input_half_periode_according_X = 0;
+			   unsigned long input_half_periode_according_Y = 0;
+			   unsigned short HP_counter = 0;
+			   cout << "Spin the clock to find the half periode of the octave " << (unsigned short)freq_octave << " note 0" << endl;
+			   enum XY_per_state { wait4start, isstarted, isdone };
+			   XY_per_state X_per_state = XY_per_state::wait4start;
+			   XY_per_state Y_per_state = XY_per_state::wait4start;
+			   bool is_Y_started = false;
+			   do {
+				  top.p_CLK.set<bool>(true);
+				  top.step();
+				  top.p_CLK.set<bool>(false);
+				  top.step();
+
+				  if ( top.p_reg__sync.get<bool>() == true )
+					{
+					  HP_counter += 1;
+					  if ( top.p_metadata__prefilter__1__note.get<unsigned char>() == 0  )
+						   //						   top.p_metadata__Y__2__0__strobe.get<bool>() == true )
+						if ( top.p_metadata__prefilter__1__octave.get<unsigned char>() == freq_octave )
+						  {
+							decltype(dat.value_type()) perdetec_X = top.p_X__prefilter__1.get<decltype(dat.value_type())>();
+							decltype(dat.value_type()) perdetec_Y = top.p_Y__prefilter__1.get<decltype(dat.value_type())>();
+							bitset<32>bsX(perdetec_X);
+							// cout << setfill('0') << setw(8) << hex << perdetec_X << ':' ;
+							// cout << setfill('0') << setw(8) << hex << perdetec_Y << "  " ;
+							// cout.flush();
+							if ( bsX.test( 32 - 1 ) )
+							  {
+								if ( X_per_state == XY_per_state::wait4start )
+								  {
+									// Set as started
+									X_per_state = XY_per_state::isstarted;
+									input_half_periode_according_X = HP_counter;
+								  }
+							  } else
+							  {
+								if ( X_per_state == XY_per_state::isstarted )
+								  {
+									// Terminate
+									input_half_periode_according_X = HP_counter - input_half_periode_according_X;
+									X_per_state = XY_per_state::isdone;
+								  }
+								// else nothing as we are still waiting to start
+							  }
+							bitset<32>bsY(perdetec_Y);
+							// cout << setfill('0') << setw(8) << hex << perdetec_X << ':' ;
+							// cout << setfill('0') << setw(8) << hex << perdetec_Y << "  " ;
+							// cout.flush();
+							if ( bsY.test( 32 - 1 ) )
+							  {
+								if ( Y_per_state == XY_per_state::wait4start )
+								  {
+									// Set as started
+									Y_per_state = XY_per_state::isstarted;
+									input_half_periode_according_Y = HP_counter;
+								  }
+							  } else
+							  {
+								if ( Y_per_state == XY_per_state::isstarted )
+								  {
+									// Terminate
+									input_half_periode_according_Y = HP_counter - input_half_periode_according_Y;
+									Y_per_state = XY_per_state::isdone;
+								  }
+								// else nothing as we are still waiting to start
+							  }
+						  }
+					}
+			   } while ( X_per_state != XY_per_state::isdone && Y_per_state != XY_per_state::isdone );
+			   cout << endl;
+			   cout << "Frequency found at octave " << dec << (unsigned short)freq_octave;
+			   cout << ", requires " << input_half_periode_according_X;
+			   cout << "  " << input_half_periode_according_Y;
+			   cout << " reg_sync cycles for a half periode " << endl;
+			   // Both values are displayed to verify the test.
+			   // Some unbalance can occur. It is due to the arithmetics rounding errors
+
+
 			   unsigned char note_max(1);
 			   unsigned char octave_max(1);
 			   unsigned long full_cycle_loop;
-			   unsigned short ind_full_cycles;
+			   unsigned short ind_half_cycles;
 			   unsigned long extra_cycles_downsampling;
 			   /** TODO compute the value
 				*
 				* 
 				*/
-			   for ( ind_full_cycles = 0; ind_full_cycles < full_cycles_number ; ind_full_cycles ++ )
+			   for ( ind_half_cycles = 0; ind_half_cycles < half_cycles_number ; ind_half_cycles ++ )
 				 {
 				   // For now the square input changes at each full cycle
-				   if( ind_full_cycles % 5 == 0 )
-					 input_Value_isNeg = false;
-				   else
-					 input_Value_isNeg =  true;
-				   set_input_values();
-
-				   if( ind_full_cycles % 50 == 0 )
+				   if( ind_half_cycles % 2 == 0 )
 					 {
-					   cout << '.';
-					   cout.flush();
+					   input_Value_isNeg = false;
+					   cout << '-';
 					 }
+				   else
+					 {
+					   input_Value_isNeg =  true;
+					   cout << '_';
+					 }
+				   cout.flush();
+				   set_input_values();
 
 				   full_cycle_loop = 0;
 				   do {
@@ -290,7 +361,7 @@ int main(int argc,char*argv[])
 					   strobe_stable_1 +=0;
 
 					 // Start a litle bit later to stabilise the filters
-					 if ( top.p_reg__sync.get<bool>() == true && ind_full_cycles > 5 )
+					 if ( top.p_reg__sync.get<bool>() == true && ind_half_cycles > (half_cycles_number / 2) )
 					   {
 						 /** Fetch Z to confirm it works
 						  */
@@ -398,8 +469,6 @@ int main(int argc,char*argv[])
 						  */
 						 if ( octave_Y_2_0 != numeric_limits<decltype(octave_Y_2_0)>::max() ||
 							  note_Y_2_0 != numeric_limits<decltype(note_Y_2_0)>::max() ) {
-						   simulData.Y_2_0.check_X_converges += (float)X_Y_2_0;
-						   // cout << '\t' << X_Y_2_0;
 						   simulData.Y_2_0.check_Y_converges += (float)Y_Y_2_0;
 						   // cout << '\t' << Y_Y_2_0;
 						 }
@@ -408,34 +477,27 @@ int main(int argc,char*argv[])
 						 // TEMP TEMP Looks like there is a shift between the meta data and the data
 						 // A branch makes a quick and dirty temporary fix.
 						 pair< unsigned char, unsigned char > key_ON_Y_2_0 = make_pair( octave_Y_2_0, note_Y_2_0 );
-						 if ( simulData.Y_2_0.check_spin_per_ON_constant.contains(key_ON_Y_2_0) )
+						 if ( simulData.Y_2_0.check_X_converges_per_ON.contains(key_ON_Y_2_0) )
 						   {
-							 // Found, then process the diff, replace the old value and add the diff in the statistics
-							 Z_spin_data<double, int, 32>&data_info =
-							   simulData.Y_2_0.check_spin_per_ON_constant.find( key_ON_Y_2_0 )->second;
+							 stats<double>&data_info = simulData.Y_2_0.check_X_converges_per_ON.find(key_ON_Y_2_0)->second;
 							 if ( octave_Y_2_0 != numeric_limits<decltype(octave_Y_2_0)>::max() ||
 								  note_Y_2_0 != numeric_limits<decltype(note_Y_2_0)>::max() ) {
-							   data_info.the_stats += (double)((unsigned int)Z_Y_2_0 - (unsigned int)data_info.last_Z);
-							   data_info.last_Z = Z_Y_2_0;
-							   data_info.the_X_counter += Z_Y_2_0;
+							   data_info += (float)X_Y_2_0;
 							 }else
-							   {
-								 data_info.the_stats += 0.0;
-								 data_info.last_Z = 0;
-							   }
+								 data_info += 0.0;
 							 //cout << 'y';
 						   }
 						 else
 						   {
 							 // Not found, create the records and initialize the statistics
-							 stats<double>theNewYStats(&simulData.Y_2_0.avg_ratios_between_stats);
-							 theNewYStats.SetNormalize( pow( 2, dat.GetRegSize() ) / 360 );
 							 // Set the value that should be found
 							 // TODO
+							 stats<double>new_stats;
+							 new_stats += (double)X_Y_2_0;
 							 simulData.
 							   Y_2_0.
-							   check_spin_per_ON_constant.
-							   insert(make_pair(key_ON_Y_2_0,Z_spin_data<double, int, 32>(Z_Y_2_0,theNewYStats)));
+							   check_X_converges_per_ON.
+							   insert(make_pair(key_ON_Y_2_0,new_stats));
 							 //cout << 'Y';
 						   }
 					   } // top.p_reg__sync.get<bool>() == true
@@ -446,20 +508,9 @@ int main(int argc,char*argv[])
 					 // It looks like bad to recalculate at each iteration (including the max notes and octaves),
 					 // The circuit and the statistics are so complex and resource consuming,
 					 //   this is neglectable.
-					 extra_cycles_downsampling = 1;
-					 if ( with_downsampling > 0 )
-					   {
-						 // 2^octaves full cycles, down-sampling cycles and 2 because the diffs needs at least 2 computations.
-						 extra_cycles_downsampling *= with_downsampling;
-						 unsigned short ind_pow;
-						 for ( ind_pow = 0; ind_pow < ( octave_max + 1 ); ind_pow++ )
-						   extra_cycles_downsampling *= 2;
-					   }
 
-				   } while( full_cycle_loop < ( (unsigned long)( octave_max + 1 ) *
-												(unsigned long)( note_max + 1 ) *
-												(unsigned long)( dat.value_size + 1 ) *
-												extra_cycles_downsampling));
+				   } while( full_cycle_loop <
+							( input_half_periode_according_X + input_half_periode_according_Y ) / 2);
 				 } // Main for loop
 
 			   cout << endl;
@@ -504,7 +555,11 @@ int main(int argc,char*argv[])
 			for_each( execution::seq,
 					  dat.prefilter_1.check_module_per_ON.begin(),
 					  dat.prefilter_1.check_module_per_ON.end(),
-					  [](auto&ON_iter){
+					  [&dat](auto&ON_iter){
+						if ( ON_iter.first.first == dat.octave_of_input && ON_iter.first.second == 0 )
+						  cout << "* ";
+						else
+						  cout << "  ";
 						cout << "O: " << (unsigned short)ON_iter.first.first <<
 						  ", N: " << (unsigned short)ON_iter.first.second << '\t';
 						cout << (unsigned int)ON_iter.second.second << '\t';
@@ -517,28 +572,9 @@ int main(int argc,char*argv[])
 			});
 
 
-  cout << "Only the part one has been written. But the bugs are not yet been fixed" << endl;
-  cout << "The part two is still a fork from the end to end DC. The result beyond this line may be irrelevant" << endl; 
-  cout << "--------------------------------------------------------------------------------" << endl;
-
-
   cout << endl;
+  cout << "-------------------------------------------------------------------------------------------------" << endl;
   cout << "Checking the Y to 0 second set of stages" << endl;
-  cout << "Number            X module delta from grow                               X module absolute"<< endl;
-  cout << "of points         max-min average standard dev                           max-min average standard dev " << endl;
-  for_each( execution::seq,
-			theSimulData.begin(), theSimulData.end(),
-			[](auto&dat){
-			  if ( dat.GetAndCheck_nbre_points() )
-				{
-				  cout << "  " << *dat.GetAndCheck_nbre_points() << ",  ";
-				  cout << dat.Y_2_0.check_X_converges.Basic_display() << "\t\t";
-				  cout << dat.Y_2_0.check_X_converges.Display_without_offset_normalize() << endl;
-				}
-			  else
-				cout << "Problem: the number of points is not the same for all the tests" << endl;
-			});
-  cout << endl;
   cout << "Number            Y to 0 integer                                    Y to 0 ratio from X"<< endl;
   cout << "of points         max-min average standard dev                      max-min average standard dev " << endl;
   for_each( execution::seq,
@@ -556,26 +592,28 @@ int main(int argc,char*argv[])
   cout << endl;
   // Now display the octave note specific results
   // The number of samples are always minus 1 as they are differences
-  cout << "Number            Z rotation angle degrees                          Z rotation angle integer" << endl; 
+  cout << "Number            Y filtered value                                  Y integer" << endl; 
   cout << "of points         max-min average standard dev                      max-min average standard dev" << endl;
   for_each( execution::seq,
 			theSimulData.begin(), theSimulData.end(),
 			[](auto&dat){
 			for_each( execution::seq,
-					  dat.Y_2_0.check_spin_per_ON_constant.begin(),
-					  dat.Y_2_0.check_spin_per_ON_constant.end(),
-					  [](auto&ON_iter){
+					  dat.Y_2_0.check_X_converges_per_ON.begin(),
+					  dat.Y_2_0.check_X_converges_per_ON.end(),
+					  [&dat](auto&ON_iter){
 						if ( ON_iter.first.first != numeric_limits<decltype(ON_iter.first.first)>::max() ||
 							 ON_iter.first.second != numeric_limits<decltype(ON_iter.first.second)>::max() ) {
-						  cout << "O: " << (unsigned short)ON_iter.first.first <<
-							", N: " << (unsigned short)ON_iter.first.second << '\t';
+						  if ( ON_iter.first.first == dat.octave_of_input && ON_iter.first.second == 0 )
+							cout << "* ";
+						  else
+							cout << "  ";
+						  cout << "O: " << (unsigned short)ON_iter.first.first;
+						  cout << ", N: " << (unsigned short)ON_iter.first.second << '\t';
+						  cout << (unsigned int)ON_iter.second << '\t';
+						  cout << ON_iter.second.Basic_display() << "\t\t";
+						  cout << ON_iter.second.Display_without_offset_normalize();
 						}else
-						  cout << "O: /, N: /\t";
-						cout << (unsigned int)ON_iter.second.the_stats << '\t';
-						cout << ON_iter.second.the_stats.Basic_display() << "\t\t";
-						cout << ON_iter.second.the_stats.Display_without_offset_normalize() << "\t\t";
-						//	cout << ON_iter.second.second.Display_without_offset_normalize() << "\t\t";
-						cout << (unsigned long)ON_iter.second.the_X_counter;
+						  cout << "  O: /, N: /\t";
 						cout << endl;
 					  });
 			cout << endl;

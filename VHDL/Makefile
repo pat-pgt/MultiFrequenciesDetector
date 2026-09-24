@@ -2,7 +2,8 @@ NETLIST_PROG?=gnetlist
 EXPORT_PROG?=gaf
 GHDL_PROG=ghdl
 GCC_PROG=g++
-CXXFLAGS?=-std=c++20 -ffast-math -m64 -O2
+CXXFLAGS?=-std=c++20 -m64 -O2
+CXXPARFLAGS=-fopenmp -D_GLIBCXX_PARALLEL
 VFLAGS?=--std=08
 SRCDIR?=
 BUILDDIR?=build/
@@ -109,13 +110,13 @@ $(SYNTHDESTDIR)Cordic_E2E_DC_CXX_DS2.cpp : $(BUILDDIR)Cordic_E2E_DC_CXX_compiled
 	$(YOSYS_PROG) -m ghdl -p '$(GHDL_PROG) $(VFLAGS) -gwith_downsampling=2 Cordic_E2E_DC_CXX_test; write_cxxrtl  -namespace Cordic_E2E_DC_2 $(SYNTHDESTDIR)Cordic_E2E_DC_CXX_DS2.cpp' 2>&1 |tee $(SYNTHDESTDIR)Cordic_E2E_DC_2.synth.out.txt
 
 $(CXXDESTDIR)Cordic_E2E_DC_verif_noDS : $(SYNTHDESTDIR)Cordic_E2E_DC_CXX_noDS.cpp $(CXXSRCDIR)Cordic_E2E_DC_verif.cpp $(CXXSRCDIR)Cordic_E2E_DC_verif.hxx $(CXXSRCDIR)Utils_CXX_verif.hxx $(CXXSRCDIR)Utils_CXX_verif.cpp
-	$(GCC_PROG) $(CXXFLAGS) $(CXXSRCDIR)Cordic_E2E_DC_verif.cpp -DCordic_E2E_DC_CXX_noDS -o $(CXXDESTDIR)Cordic_E2E_DC_verif_noDS -I$(SYNTHDESTDIR) -I/usr/local/share/yosys/include/backends/cxxrtl/runtime
+	$(GCC_PROG) $(CXXFLAGS) $(CXXPARFLAGS) $(CXXSRCDIR)Cordic_E2E_DC_verif.cpp -DCordic_E2E_DC_CXX_noDS -o $(CXXDESTDIR)Cordic_E2E_DC_verif_noDS -I$(SYNTHDESTDIR) -I/usr/local/share/yosys/include/backends/cxxrtl/runtime
 
 $(CXXDESTDIR)Cordic_E2E_DC_verif_DS1 : $(SYNTHDESTDIR)Cordic_E2E_DC_CXX_DS1.cpp $(CXXSRCDIR)Cordic_E2E_DC_verif.cpp $(CXXSRCDIR)Cordic_E2E_DC_verif.hxx $(CXXSRCDIR)Utils_CXX_verif.hxx $(CXXSRCDIR)Utils_CXX_verif.cpp
-	$(GCC_PROG) $(CXXFLAGS) $(CXXSRCDIR)Cordic_E2E_DC_verif.cpp -DCordic_E2E_DC_CXX_DS1 -o $(CXXDESTDIR)Cordic_E2E_DC_verif_DS1 -I$(SYNTHDESTDIR) -I/usr/local/share/yosys/include/backends/cxxrtl/runtime
+	$(GCC_PROG) $(CXXFLAGS) $(CXXPARFLAGS) $(CXXSRCDIR)Cordic_E2E_DC_verif.cpp -DCordic_E2E_DC_CXX_DS1 -o $(CXXDESTDIR)Cordic_E2E_DC_verif_DS1 -I$(SYNTHDESTDIR) -I/usr/local/share/yosys/include/backends/cxxrtl/runtime
 
 $(CXXDESTDIR)Cordic_E2E_DC_verif_DS2 : $(SYNTHDESTDIR)Cordic_E2E_DC_CXX_DS2.cpp $(CXXSRCDIR)Cordic_E2E_DC_verif.cpp $(CXXSRCDIR)Cordic_E2E_DC_verif.hxx $(CXXSRCDIR)Utils_CXX_verif.hxx $(CXXSRCDIR)Utils_CXX_verif.cpp
-	$(GCC_PROG) $(CXXFLAGS) $(CXXSRCDIR)Cordic_E2E_DC_verif.cpp -DCordic_E2E_DC_CXX_DS2 -o $(CXXDESTDIR)Cordic_E2E_DC_verif_DS2 -I$(SYNTHDESTDIR) -I/usr/local/share/yosys/include/backends/cxxrtl/runtime
+	$(GCC_PROG) $(CXXFLAGS) $(CXXPARFLAGS) $(CXXSRCDIR)Cordic_E2E_DC_verif.cpp -DCordic_E2E_DC_CXX_DS2 -o $(CXXDESTDIR)Cordic_E2E_DC_verif_DS2 -I$(SYNTHDESTDIR) -I/usr/local/share/yosys/include/backends/cxxrtl/runtime
 
 $(CXXDESTDIR)Cordic_E2E_DC_verif_all : $(CXXDESTDIR)Cordic_E2E_DC_verif_noDS $(CXXDESTDIR)Cordic_E2E_DC_verif_DS1 $(CXXDESTDIR)Cordic_E2E_DC_verif_DS2
 
@@ -136,7 +137,7 @@ $(BUILDDIR)Cordic_E2E_lightfilter_CXX_compiled : $(BUILDDIR)packages_compiled $(
 	touch $(BUILDDIR)Cordic_E2E_lightfilter_CXX_compiled
 
 $(SYNTHDESTDIR)Cordic_E2E_lightfilter_CXX_DS1.cpp : $(BUILDDIR)Cordic_E2E_lightfilter_CXX_compiled
-	$(YOSYS_PROG) -m ghdl -p '$(GHDL_PROG) $(VFLAGS) -gwith_downsampling=1 -gextra_shifts=2 Cordic_E2E_lightfilter_CXX_test_dummy; write_cxxrtl  -namespace Cordic_E2E_lightfilter_1 $(SYNTHDESTDIR)Cordic_E2E_lightfilter_CXX_DS1.cpp' 2>&1 |tee $(SYNTHDESTDIR)Cordic_E2E_lightfilter_1.synth.out.txt
+	$(YOSYS_PROG) -m ghdl -p '$(GHDL_PROG) $(VFLAGS) -gwith_downsampling=1 -gextra_shifts=2 Cordic_E2E_lightfilter_CXX_test_Barrel_shifter; write_cxxrtl  -namespace Cordic_E2E_lightfilter_1 $(SYNTHDESTDIR)Cordic_E2E_lightfilter_CXX_DS1.cpp' 2>&1 |tee $(SYNTHDESTDIR)Cordic_E2E_lightfilter_1.synth.out.txt
 
 $(CXXDESTDIR)Cordic_E2E_lightfilter_verif_DS1 : $(SYNTHDESTDIR)Cordic_E2E_lightfilter_CXX_DS1.cpp $(CXXSRCDIR)Cordic_E2E_lightfilter_verif.cpp $(CXXSRCDIR)Cordic_E2E_lightfilter_verif.hxx $(CXXSRCDIR)Utils_CXX_verif.hxx $(CXXSRCDIR)Utils_CXX_verif.cpp
 	$(GCC_PROG) $(CXXFLAGS) $(CXXSRCDIR)Cordic_E2E_lightfilter_verif.cpp -DCordic_E2E_lightfilter_CXX_DS1 -o $(CXXDESTDIR)Cordic_E2E_lightfilter_verif_DS1 -I$(SYNTHDESTDIR) -I/usr/local/share/yosys/include/backends/cxxrtl/runtime

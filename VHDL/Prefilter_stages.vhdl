@@ -11,15 +11,15 @@ use IEEE.STD_LOGIC_1164.all,
 --! @brief Pre-filter meta-data to coefficient compute
 --!
 --! This entity computes:
---! * The delay of the metadata to through out.
---!     The IIR filter has a latency of 3 registers (+1)
+--! * The delay of the meta-data to through out.
 --! * The number of shifts needed.
---! It is a separate one as it is required only once for the sine and the cosine.
+--! TODO write the code for more than 1
+--! TODO write a real code according with the mathematics.
 entity Prefilter_metadata_and_shifts_compute is
   generic (
     the_stage_offset          : real;
-    prefilter_not_lightfilter : boolean := true;
-    latency                   : positive
+    prefilter_not_lightfilter : boolean;
+    number_shift_stages       : positive
     );
   port (
     CLK           : in  std_logic;
@@ -32,16 +32,21 @@ entity Prefilter_metadata_and_shifts_compute is
 end entity Prefilter_metadata_and_shifts_compute;
 
 architecture arch of Prefilter_metadata_and_shifts_compute is
-  signal meta_data_list : meta_data_list_t(latency downto 1);
+  signal meta_data_list : meta_data_list_t(number_shift_stages downto 1);
 begin
-  meta_data_out <= meta_data_list(meta_data_list'high);
+  assert number_shift_stages = 1
+    report "The number of shift stages (" & integer'image(number_shift_stages) &
+    ") not 1 is not yet implemented"
+    severity failure;
+  
+  meta_data_out <= meta_data_list(meta_data_list'low);
   meta_data_proc_proc : process (CLK) is
   begin
     CLK_IF : if rising_edge(CLK) then
       REGSYNC_IF : if reg_sync = '1' then
         meta_data_list(meta_data_list'high) <= meta_data_in;
-        meta_data_list(meta_data_list'high - 1) <=
-          meta_data_list(meta_data_list'low + 1);
+        meta_data_list(meta_data_list'high - 1 downto meta_data_list'low) <=
+          meta_data_list(meta_data_list'high downto meta_data_list'low + 1);
       end if REGSYNC_IF;
     end if CLK_IF;
   end process meta_data_proc_proc;
@@ -66,7 +71,7 @@ begin
   end generate prefilter_mode;
 
   lightfilter_mode : if not prefilter_not_lightfilter generate
-    --! In the real lightfilter mode,
+    --! In the real light filter mode,
     --!   the shifts should be independent to the octave
     --!   as the down-sampling sets each octave on its own sampling rate.
     --! Among all the notes of a given octave,
@@ -188,7 +193,7 @@ use IEEE.STD_LOGIC_1164.all,
 --!   are designed a numbers of shifts
 --!   between a minimum (defined in the generics)
 --!   and a difference from the input port.
---! A mask shifted at each CLK cycle has been prefered
+--! A mask shifted at each CLK cycle has been preferred
 --!   as a counter system would have been too complex
 --!   for the full test coverage especially of the arithm_size.
 --! For given values, especially arithm_size, or a power of 2,
@@ -369,17 +374,15 @@ entity Prefilter_Delay is
     CLK      : in  std_logic;
     RST      : in  std_logic;
     reg_sync : in  std_logic;
-    scz_in   : in  reg_sin_cos_z;
-    scz_out  : out reg_sin_cos_z
+    data_in  : in  reg_type;
+    data_out : out reg_type
     );
 end entity Prefilter_Delay;
 
 architecture arch of Prefilter_Delay is
-  signal state_var_delay_s : reg_type_list(latency downto 1);
-  signal state_var_delay_c : reg_type_list(latency downto 1);
+  signal state_var_delay : reg_type_list(latency downto 1);
 begin
-  scz_out.the_sin <= state_var_delay_s(state_var_delay_s'high);
-  scz_out.the_cos <= state_var_delay_c(state_var_delay_c'high);
+  data_out <= state_var_delay(state_var_delay'low);
 
   main_proc : process (CLK) is
   begin
@@ -387,54 +390,30 @@ begin
       REGSYNC_IF : if reg_sync = '0' then
                                         -- This is equivalent to write a component to transfer
                                         --   without any arithmetic's, and to place it under a generate
-        shifts_delay_RAM_s : for ind in 1 to state_var_delay_c'length loop
+        shifts_delay_RAM : for ind in 0 to state_var_delay'length - 1 loop
                                         -- Shift all the registers themselves
-          state_var_delay_s(state_var_delay_s'low + ind - 1)(
-            state_var_delay_s(state_var_delay_s'low + ind - 1)'high - arithm_size downto
-            state_var_delay_s(state_var_delay_s'low + ind - 1)'low) <=
-            state_var_delay_s(state_var_delay_s'low + ind - 1)(
-              state_var_delay_s(state_var_delay_s'low + ind - 1)'high downto
-              state_var_delay_s(state_var_delay_s'low + ind - 1)'low + arithm_size);
-          if ind /= 1 then
+          state_var_delay(state_var_delay'low + ind)(
+            state_var_delay(state_var_delay'low + ind)'high - arithm_size downto
+            state_var_delay(state_var_delay'low + ind)'low) <=
+            state_var_delay(state_var_delay'low + ind)(
+              state_var_delay(state_var_delay'low + ind)'high downto
+              state_var_delay(state_var_delay'low + ind)'low + arithm_size);
+          if ind /= 0 then
                                         -- Shift the low of the register N to the high of the register N+1
-            state_var_delay_s(state_var_delay_s'low + ind - 2)(
-              state_var_delay_s(state_var_delay_s'low + ind - 2)'high downto
-              state_var_delay_s(state_var_delay_s'low + ind - 2)'high - arithm_size + 1) <=
-              state_var_delay_s(state_var_delay_s'low + ind - 1)(
-                state_var_delay_s(state_var_delay_s'low + ind - 1)'low + arithm_size - 1 downto
-                state_var_delay_s(state_var_delay_s'low + ind - 1)'low);
+            state_var_delay(state_var_delay'low + ind - 1)(
+              state_var_delay(state_var_delay'low + ind - 1)'high downto
+              state_var_delay(state_var_delay'low + ind - 1)'high - arithm_size + 1) <=
+              state_var_delay(state_var_delay'low + ind)(
+                state_var_delay(state_var_delay'low + ind)'low + arithm_size - 1 downto
+                state_var_delay(state_var_delay'low + ind)'low);
           else
                                         -- Supply the register with the input
-            state_var_delay_s(state_var_delay_s'high)(
-              state_var_delay_s(state_var_delay_s'high)'high downto
-              state_var_delay_s(state_var_delay_s'high)'high - arithm_size + 1) <=
-              scz_in.the_sin(scz_in.the_sin'low +arithm_size - 1 downto scz_in.the_sin'low);
+            state_var_delay(state_var_delay'high)(
+              state_var_delay(state_var_delay'high)'high downto
+              state_var_delay(state_var_delay'high)'high - arithm_size + 1) <=
+              data_in(data_in'low + arithm_size - 1 downto data_in'low);
           end if;
-        end loop shifts_delay_RAM_s;
-        shifts_delay_RAM_c : for ind in 1 to state_var_delay_c'length loop
-                                        -- Shift all the registers themselves
-          state_var_delay_c(state_var_delay_c'low + ind - 1)(
-            state_var_delay_c(state_var_delay_c'low + ind - 1)'high - arithm_size downto
-            state_var_delay_c(state_var_delay_c'low + ind - 1)'low) <=
-            state_var_delay_c(state_var_delay_c'low + ind - 1)(
-              state_var_delay_c(state_var_delay_c'low + ind - 1)'high downto
-              state_var_delay_c(state_var_delay_c'low + ind - 1)'low + arithm_size);
-          if ind /= 1 then
-                                        -- Shift the low of the register N to the high of the register N+1
-            state_var_delay_c(state_var_delay_c'low + ind - 2)(
-              state_var_delay_c(state_var_delay_c'low + ind - 2)'high downto
-              state_var_delay_c(state_var_delay_c'low + ind - 2)'high - arithm_size + 1) <=
-              state_var_delay_c(state_var_delay_c'low + ind - 1)(
-                state_var_delay_c(state_var_delay_c'low + ind - 1)'low + arithm_size - 1 downto
-                state_var_delay_c(state_var_delay_c'low + ind - 1)'low);
-          else
-                                        -- Supply with the input
-            state_var_delay_c(state_var_delay_c'high)(
-              state_var_delay_c(state_var_delay_c'high)'high downto
-              state_var_delay_c(state_var_delay_c'high)'high - arithm_size + 1) <=
-              scz_in.the_cos(scz_in.the_cos'low +arithm_size - 1 downto scz_in.the_cos'low);
-          end if;
-        end loop shifts_delay_RAM_c;
+        end loop shifts_delay_RAM;
       end if REGSYNC_IF;
     end if CLK_IF;
   end process main_proc;
