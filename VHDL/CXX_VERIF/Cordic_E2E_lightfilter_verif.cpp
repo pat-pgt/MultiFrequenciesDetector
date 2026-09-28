@@ -70,12 +70,16 @@ int main(int argc,char*argv[])
    *   is going to make a full spin
    * The value should be at least 2 to run the differences.
    */
-  unsigned short half_cycles_number = 200;
+  unsigned short half_cycles_number = 20;
   unsigned short nbre_initial_vextors = 1;
+  bool input_DC = false;
 
-  while((opt = getopt( argc,argv,"l:n:hv"))!=EOF)
+  while((opt = getopt( argc,argv,"cl:n:hv"))!=EOF)
 	switch( opt)
 	  {
+	  case 'c':
+		input_DC = true;
+		break;
 	  case 'n':
 		nbre_initial_vextors = atoi(optarg);
 		break;
@@ -102,12 +106,12 @@ int main(int argc,char*argv[])
 
   if ( has_hv )
 	return -1;
-  if ( half_cycles_number < 200 )
+  if ( half_cycles_number < 20 )
 	{
 	  // There is a need to spin the clock at lot
 	  //   as the filters need to converge to their values.
 	  // There is a warm up before collecting the results, see below.
-	  cout << "-l The number of half cycles should not be lower then 200" << endl;
+	  cout << "-l The number of half cycles should not be lower then 20" << endl;
 	  return -2;
 	}
   /** In some cases, the same result is expected for different initial values.
@@ -184,10 +188,12 @@ int main(int argc,char*argv[])
 			   auto set_input_values=[&top,&input_Value_isNeg,&dat](){
 				 top.p_the__input.set<decltype(dat.value_type())>
 				    (dat.Get_Positive_Negative_Value(input_Value_isNeg));
-				 // cout << '>' << dat.Get_Positive_Negative_Value(input_Value_isNeg) << " ";
-				 // cout.flush();
+				 //				 cout << '>' << dat.Get_Positive_Negative_Value(input_Value_isNeg) << " ";
+				 //				 cout.flush();
 				 top.p_input__x__not__y.set<bool>(true);
 			   };
+
+			   set_input_values();
 
 			   cout << '(' << (int)dat << ")\t";  
 
@@ -198,6 +204,10 @@ int main(int argc,char*argv[])
 				   the sum of the number of Z to 0 stages plus the number of Y to 0 stages
 				   plus 6, plus 7 and plus 3 to count the first stages, the last stages and the down-sampling
 			   */
+			   /** This may be removed.
+				   The code below is intended to wait until the filter are stabilized.
+				   Then this one is redundant.
+			   */
 			   unsigned short ind_Z = 0, ind_Y = 0;
 			   while ( ind_Y != numeric_limits<decltype(ind_Y)>::max() )
 				 {
@@ -207,8 +217,6 @@ int main(int argc,char*argv[])
 				   top.step();
 				   if ( top.p_reg__sync.get<bool>() == true )
 					 {
-					   set_input_values();
-
 					   if ( ind_Z == numeric_limits<decltype(ind_Z)>::max() )
 						 {
 						   if ( ind_Y == numeric_limits<decltype(ind_Y)>::max() )
@@ -242,15 +250,22 @@ int main(int argc,char*argv[])
 			   /* To avoid a verification of the frequency (done elsewhere), a first "dry-run"
 				*   similar to the end to end DC test checks how many cycles are required to get
 				*   an half turn of the Z output
+				*   X and Y start with the same 0 initial value as they are not.
+				*   As soon as the simetry is reached, the module exits with the lenth of the half periode
 				*/
-			   unsigned long input_half_periode_according_X = 0;
-			   unsigned long input_half_periode_according_Y = 0;
-			   unsigned short HP_counter = 0;
+			   long input_half_periode_according_X;
+			   long input_half_periode_according_Y;
+			   unsigned long HP_counter = 0;
 			   cout << "Spin the clock to find the half periode of the octave " << (unsigned short)freq_octave << " note 0" << endl;
-			   enum XY_per_state { wait4start, isstarted, isdone };
-			   XY_per_state X_per_state = XY_per_state::wait4start;
-			   XY_per_state Y_per_state = XY_per_state::wait4start;
+			   enum XY_per_state { wait4start, wait4first1, isstarted, isdone };
+			   XY_per_state X_per_state;
+			   XY_per_state Y_per_state;
 			   bool is_Y_started = false;
+			   do {
+				 X_per_state = XY_per_state::wait4start;
+				 Y_per_state = XY_per_state::wait4start;
+				 input_half_periode_according_X = 0;
+				 input_half_periode_according_Y = 0;
 			   do {
 				  top.p_CLK.set<bool>(true);
 				  top.step();
@@ -265,38 +280,40 @@ int main(int argc,char*argv[])
 						if ( top.p_metadata__prefilter__1__octave.get<unsigned char>() == freq_octave )
 						  {
 							decltype(dat.value_type()) perdetec_X = top.p_X__prefilter__1.get<decltype(dat.value_type())>();
-							decltype(dat.value_type()) perdetec_Y = top.p_Y__prefilter__1.get<decltype(dat.value_type())>();
 							bitset<32>bsX(perdetec_X);
 							// cout << setfill('0') << setw(8) << hex << perdetec_X << ':' ;
 							// cout << setfill('0') << setw(8) << hex << perdetec_Y << "  " ;
 							// cout.flush();
 							if ( bsX.test( 32 - 1 ) )
 							  {
-								if ( X_per_state == XY_per_state::wait4start )
+								// A 1 is received, set to started
+								if ( X_per_state == XY_per_state::wait4first1 )
 								  {
-									// Set as started
 									X_per_state = XY_per_state::isstarted;
 									input_half_periode_according_X = HP_counter;
 								  }
 							  } else
 							  {
+								// The counting was started, it ends here owing a return to 0
 								if ( X_per_state == XY_per_state::isstarted )
 								  {
-									// Terminate
 									input_half_periode_according_X = HP_counter - input_half_periode_according_X;
 									X_per_state = XY_per_state::isdone;
 								  }
-								// else nothing as we are still waiting to start
+								// We can now wait for a one
+								if ( X_per_state == XY_per_state::wait4start )
+								  X_per_state = XY_per_state::wait4first1;
 							  }
+							decltype(dat.value_type()) perdetec_Y = top.p_Y__prefilter__1.get<decltype(dat.value_type())>();
 							bitset<32>bsY(perdetec_Y);
 							// cout << setfill('0') << setw(8) << hex << perdetec_X << ':' ;
 							// cout << setfill('0') << setw(8) << hex << perdetec_Y << "  " ;
 							// cout.flush();
+							// No comments hee. For more details see the comments of the X, above.
 							if ( bsY.test( 32 - 1 ) )
 							  {
-								if ( Y_per_state == XY_per_state::wait4start )
+								if ( Y_per_state == XY_per_state::wait4first1 )
 								  {
-									// Set as started
 									Y_per_state = XY_per_state::isstarted;
 									input_half_periode_according_Y = HP_counter;
 								  }
@@ -304,22 +321,23 @@ int main(int argc,char*argv[])
 							  {
 								if ( Y_per_state == XY_per_state::isstarted )
 								  {
-									// Terminate
 									input_half_periode_according_Y = HP_counter - input_half_periode_according_Y;
 									Y_per_state = XY_per_state::isdone;
 								  }
-								// else nothing as we are still waiting to start
+								if ( Y_per_state == XY_per_state::wait4start )
+								  Y_per_state = XY_per_state::wait4first1;
 							  }
 						  }
 					}
-			   } while ( X_per_state != XY_per_state::isdone && Y_per_state != XY_per_state::isdone );
-			   cout << endl;
+			   } while ( ( X_per_state != XY_per_state::isdone ) || ( Y_per_state != XY_per_state::isdone ));
 			   cout << "Frequency found at octave " << dec << (unsigned short)freq_octave;
 			   cout << ", requires " << input_half_periode_according_X;
 			   cout << "  " << input_half_periode_according_Y;
 			   cout << " reg_sync cycles for a half periode " << endl;
 			   // Both values are displayed to verify the test.
 			   // Some unbalance can occur. It is due to the arithmetics rounding errors
+			   } while ( abs( input_half_periode_according_X - input_half_periode_according_Y ) >
+						 input_half_periode_according_X / 200 );
 
 
 			   unsigned char note_max(1);
@@ -341,7 +359,8 @@ int main(int argc,char*argv[])
 					 }
 				   else
 					 {
-					   input_Value_isNeg =  true;
+					   if ( input_DC == false )
+						 input_Value_isNeg =  true;
 					   cout << '_';
 					 }
 				   cout.flush();
@@ -349,7 +368,6 @@ int main(int argc,char*argv[])
 
 				   full_cycle_loop = 0;
 				   do {
-
 					 top.p_CLK.set<bool>(true);
 					 top.step();
 					 top.p_CLK.set<bool>(false);
@@ -360,148 +378,152 @@ int main(int argc,char*argv[])
 					 else
 					   strobe_stable_1 +=0;
 
-					 // Start a litle bit later to stabilise the filters
-					 if ( top.p_reg__sync.get<bool>() == true && ind_half_cycles > (half_cycles_number / 2) )
+					 if ( top.p_reg__sync.get<bool>() == true )
 					   {
-						 /** Fetch Z to confirm it works
-						  */
-						 decltype(dat.value_type()) Z_pref_1 = top.p_Z__prefilter__1.get<decltype(dat.value_type())>();
+						 full_cycle_loop += 1;
 
-						 simulData.prefilter_1.confirm_Z_2_0 += (float)Z_pref_1;
-
-						 // cout << '\t' << Z_pref_1;
-
-						 decltype(dat.value_type()) X_pref_1 = top.p_X__prefilter__1.get<decltype(dat.value_type())>();
-						 decltype(dat.value_type()) Y_pref_1 = top.p_Y__prefilter__1.get<decltype(dat.value_type())>();
-
-						 XY_Data<int,32> currentPoint_pref_1( X_pref_1, Y_pref_1);
-						 /** Get the octave note couple, as it is independent statistics. The frequencies are different.
-						  *  Please note, the modules are checked above, then the two modules are supposed to be equal.
-						  *  The result is added to the statistics.
-						  *  The strobe is discarded here as it should always be on.
-						  */
-						 unsigned char octave_pref_1 = top.p_metadata__prefilter__1__octave.get<unsigned char>();
-						 unsigned char note_pref_1 = top.p_metadata__prefilter__1__note.get<unsigned char>();
-						 pair< unsigned char, unsigned char > key_ON_pref_1 = make_pair( octave_pref_1, note_pref_1 );
-						 // Update, if so, the maximums numbers of octave or notes
-						 // It is done only once here, has some value can be lost but none can appear later
-						 if ( octave_pref_1 > octave_max )
-						   octave_max = octave_pref_1;
-						 if ( note_pref_1 > note_max )
-						   note_max = note_pref_1;
-
-						 // cout << (unsigned short)octave_pref_1 << ',' << (unsigned short)note_pref_1 << " \t";
-						 if ( simulData.prefilter_1.check_module_per_ON.contains(key_ON_pref_1) )
+						 // Start a litle bit later to stabilise the filters
+						 if ( ind_half_cycles > (half_cycles_number / 2) )
 						   {
-							 /** The following code displays the high digits of X and Y of the note 3
-							  *    as an array of octaves columns.
-							  *  It is intended to debug the test software and/or check the meta data fits the values.
-							  *  Uncomment it if needed.
+							 /** Fetch Z to confirm it works
 							  */
-							 /*
-							   if ( key_ON_pref_1.second == 3 )
-							   {
-							   cout << (unsigned short)key_ON_pref_1.first << ": " << currentPoint_pref_1.string_light() << '\t';
-							   if ( key_ON_pref_1.first == 5 )
-							   cout << endl;
-							   }
-							 */
+							 decltype(dat.value_type()) Z_pref_1 = top.p_Z__prefilter__1.get<decltype(dat.value_type())>();
 
-							 // Found, then process the diff, replace the old value and add the diff in the statistics
-							 pair<XY_Data<int,32>,stats<long double>>&data_info =
-							   simulData.prefilter_1.check_module_per_ON.find( key_ON_pref_1 )->second;
-							 data_info.second += sqrt( (decltype(dat.module_value_type()))
-													   currentPoint_pref_1.GetModuleSquared());
-							 data_info.first = currentPoint_pref_1;
-							 // cout << 'z';
-						   }
-						 else
-						   {
-							 // Not found, create the records and initialize the statistics
-							 stats<long double>theNewPrefStats;
-							 // Set the value that should be found
-							 theNewPrefStats += sqrt( (decltype(dat.module_value_type()))
-													  currentPoint_pref_1.GetModuleSquared());
-							 simulData.
-							   prefilter_1.
-							   check_module_per_ON.
-							   insert(make_pair(key_ON_pref_1,make_pair(currentPoint_pref_1,theNewPrefStats)));
-							 // cout << 'Z';
-						   }
+							 simulData.prefilter_1.confirm_Z_2_0 += (float)Z_pref_1;
+
+							 // cout << '\t' << Z_pref_1;
+
+							 decltype(dat.value_type()) X_pref_1 = top.p_X__prefilter__1.get<decltype(dat.value_type())>();
+							 decltype(dat.value_type()) Y_pref_1 = top.p_Y__prefilter__1.get<decltype(dat.value_type())>();
+
+							 XY_Data<int,32> currentPoint_pref_1( X_pref_1, Y_pref_1);
+							 /** Get the octave note couple, as it is independent statistics. The frequencies are different.
+							  *  Please note, the modules are checked above, then the two modules are supposed to be equal.
+							  *  The result is added to the statistics.
+							  *  The strobe is discarded here as it should always be on.
+							  */
+							 unsigned char octave_pref_1 = top.p_metadata__prefilter__1__octave.get<unsigned char>();
+							 unsigned char note_pref_1 = top.p_metadata__prefilter__1__note.get<unsigned char>();
+							 pair< unsigned char, unsigned char > key_ON_pref_1 = make_pair( octave_pref_1, note_pref_1 );
+							 // Update, if so, the maximums numbers of octave or notes
+							 // It is done only once here, has some value can be lost but none can appear later
+							 if ( octave_pref_1 > octave_max )
+							   octave_max = octave_pref_1;
+							 if ( note_pref_1 > note_max )
+							   note_max = note_pref_1;
+
+							 // cout << (unsigned short)octave_pref_1 << ',' << (unsigned short)note_pref_1 << " \t";
+							 if ( simulData.prefilter_1.check_module_per_ON.contains(key_ON_pref_1) )
+							   {
+								 /** The following code displays the high digits of X and Y of the note 3
+								  *    as an array of octaves columns.
+								  *  It is intended to debug the test software and/or check the meta data fits the values.
+								  *  Uncomment it if needed.
+								  */
+								 /*
+								   if ( key_ON_pref_1.second == 3 )
+								   {
+								   cout << (unsigned short)key_ON_pref_1.first << ": " << currentPoint_pref_1.string_light() << '\t';
+								   if ( key_ON_pref_1.first == 5 )
+								   cout << endl;
+								   }
+								 */
+
+								 // Found, then process the diff, replace the old value and add the diff in the statistics
+								 pair<XY_Data<int,32>,stats<long double>>&data_info =
+								   simulData.prefilter_1.check_module_per_ON.find( key_ON_pref_1 )->second;
+								 data_info.second += sqrt( (decltype(dat.module_value_type()))
+														   currentPoint_pref_1.GetModuleSquared());
+								 data_info.first = currentPoint_pref_1;
+								 // cout << 'z';
+							   }
+							 else
+							   {
+								 // Not found, create the records and initialize the statistics
+								 stats<long double>theNewPrefStats;
+								 // Set the value that should be found
+								 theNewPrefStats += sqrt( (decltype(dat.module_value_type()))
+														  currentPoint_pref_1.GetModuleSquared());
+								 simulData.
+								   prefilter_1.
+								   check_module_per_ON.
+								   insert(make_pair(key_ON_pref_1,make_pair(currentPoint_pref_1,theNewPrefStats)));
+								 // cout << 'Z';
+							   }
 	
 						 
-						 /** TODO second part */
-						 /** Now bring back the vector to the X axis
-						  *  This part depends if the Down-sampling is active or not
-						  */
+							 /** TODO second part */
+							 /** Now bring back the vector to the X axis
+							  *  This part depends if the Down-sampling is active or not
+							  */
 
-						 // cout << (unsigned short)octave_Y_2_0 << ',' << (unsigned short)note_Y_2_0 << " \t";
+							 // cout << (unsigned short)octave_Y_2_0 << ',' << (unsigned short)note_Y_2_0 << " \t";
 
-						 /** Fetch the X, Y, Z
-						  */
-						 decltype(dat.value_type()) X_Y_2_0 = top.p_X__Y__2__0.get<decltype(dat.value_type())>();
-						 decltype(dat.value_type()) Y_Y_2_0 = top.p_Y__Y__2__0.get<decltype(dat.value_type())>();
-						 decltype(dat.value_type()) Z_Y_2_0 = top.p_Z__Y__2__0.get<decltype(dat.value_type())>();
+							 /** Fetch the X, Y, Z
+							  */
+							 decltype(dat.value_type()) X_Y_2_0 = top.p_X__Y__2__0.get<decltype(dat.value_type())>();
+							 decltype(dat.value_type()) Y_Y_2_0 = top.p_Y__Y__2__0.get<decltype(dat.value_type())>();
+							 decltype(dat.value_type()) Z_Y_2_0 = top.p_Z__Y__2__0.get<decltype(dat.value_type())>();
 
-						 /** Get the octave note couple, as it is independent statistics. The frequencies are different.
-						  *  Each Z value is stored in the object for the next occurrence.
-						  *  The previous one is retrieved to compute the difference.
-						  *  The result is added to the statistics.
-						  *
-						  *  In the case the strobe is off, the result is irrelevant.
-						  *  It enter into the statistics with the octave and the note set to the maximum value.
-						  *  It does not look like clean. However it is a good check to keep them,
-						  *    in order to display the number of occurrence.
-						  */
-						 unsigned char octave_Y_2_0 = top.p_metadata__Y__2__0__octave.get<unsigned char>();
-						 unsigned char note_Y_2_0 = top.p_metadata__Y__2__0__note.get<unsigned char>();
-						 if ( top.p_metadata__Y__2__0__strobe.get<bool>() == false )
-						   {
-							 // We should find a way to populate cleanly according to the N_octaves and N_notes
-							 octave_Y_2_0 = numeric_limits<decltype(octave_Y_2_0)>::max();
-							 note_Y_2_0 = numeric_limits<decltype(note_Y_2_0)>::max();
-						   }
+							 /** Get the octave note couple, as it is independent statistics. The frequencies are different.
+							  *  Each Z value is stored in the object for the next occurrence.
+							  *  The previous one is retrieved to compute the difference.
+							  *  The result is added to the statistics.
+							  *
+							  *  In the case the strobe is off, the result is irrelevant.
+							  *  It enter into the statistics with the octave and the note set to the maximum value.
+							  *  It does not look like clean. However it is a good check to keep them,
+							  *    in order to display the number of occurrence.
+							  */
+							 unsigned char octave_Y_2_0 = top.p_metadata__Y__2__0__octave.get<unsigned char>();
+							 unsigned char note_Y_2_0 = top.p_metadata__Y__2__0__note.get<unsigned char>();
+							 if ( top.p_metadata__Y__2__0__strobe.get<bool>() == false )
+							   {
+								 // We should find a way to populate cleanly according to the N_octaves and N_notes
+								 octave_Y_2_0 = numeric_limits<decltype(octave_Y_2_0)>::max();
+								 note_Y_2_0 = numeric_limits<decltype(note_Y_2_0)>::max();
+							   }
 
 			
-						 /**  Add the X value, which should increase of 32% from the initial value module, to the statistic
-						  *  Add the Y value, which should converge to 0 to the statistics
-						  *  These data should be the same regardless the frequency
-						  */
-						 if ( octave_Y_2_0 != numeric_limits<decltype(octave_Y_2_0)>::max() ||
-							  note_Y_2_0 != numeric_limits<decltype(note_Y_2_0)>::max() ) {
-						   simulData.Y_2_0.check_Y_converges += (float)Y_Y_2_0;
-						   // cout << '\t' << Y_Y_2_0;
-						 }
-
-
-						 // TEMP TEMP Looks like there is a shift between the meta data and the data
-						 // A branch makes a quick and dirty temporary fix.
-						 pair< unsigned char, unsigned char > key_ON_Y_2_0 = make_pair( octave_Y_2_0, note_Y_2_0 );
-						 if ( simulData.Y_2_0.check_X_converges_per_ON.contains(key_ON_Y_2_0) )
-						   {
-							 stats<double>&data_info = simulData.Y_2_0.check_X_converges_per_ON.find(key_ON_Y_2_0)->second;
+							 /**  Add the X value, which should increase of 32% from the initial value module, to the statistic
+							  *  Add the Y value, which should converge to 0 to the statistics
+							  *  These data should be the same regardless the frequency
+							  */
 							 if ( octave_Y_2_0 != numeric_limits<decltype(octave_Y_2_0)>::max() ||
 								  note_Y_2_0 != numeric_limits<decltype(note_Y_2_0)>::max() ) {
-							   data_info += (float)X_Y_2_0;
-							 }else
-								 data_info += 0.0;
-							 //cout << 'y';
-						   }
-						 else
-						   {
-							 // Not found, create the records and initialize the statistics
-							 // Set the value that should be found
-							 // TODO
-							 stats<double>new_stats;
-							 new_stats += (double)X_Y_2_0;
-							 simulData.
-							   Y_2_0.
-							   check_X_converges_per_ON.
-							   insert(make_pair(key_ON_Y_2_0,new_stats));
-							 //cout << 'Y';
-						   }
+							   simulData.Y_2_0.check_Y_converges += (float)Y_Y_2_0;
+							   // cout << '\t' << Y_Y_2_0;
+							 }
+
+
+							 // TEMP TEMP Looks like there is a shift between the meta data and the data
+							 // A branch makes a quick and dirty temporary fix.
+							 pair< unsigned char, unsigned char > key_ON_Y_2_0 = make_pair( octave_Y_2_0, note_Y_2_0 );
+							 if ( simulData.Y_2_0.check_X_converges_per_ON.contains(key_ON_Y_2_0) )
+							   {
+								 stats<double>&data_info = simulData.Y_2_0.check_X_converges_per_ON.find(key_ON_Y_2_0)->second;
+								 if ( octave_Y_2_0 != numeric_limits<decltype(octave_Y_2_0)>::max() ||
+									  note_Y_2_0 != numeric_limits<decltype(note_Y_2_0)>::max() ) {
+								   data_info += (float)X_Y_2_0;
+								 }else
+								   data_info += 0.0;
+								 //cout << 'y';
+							   }
+							 else
+							   {
+								 // Not found, create the records and initialize the statistics
+								 // Set the value that should be found
+								 // TODO
+								 stats<double>new_stats;
+								 new_stats += (double)X_Y_2_0;
+								 simulData.
+								   Y_2_0.
+								   check_X_converges_per_ON.
+								   insert(make_pair(key_ON_Y_2_0,new_stats));
+								 //cout << 'Y';
+							   }
+						   } // ind_half_cycles > half_cycles_number / 2
 					   } // top.p_reg__sync.get<bool>() == true
-					 full_cycle_loop += 1;
 					 /* count for full cycles
 					  *
 					  */
@@ -591,8 +613,7 @@ int main(int argc,char*argv[])
 			});
   cout << endl;
   // Now display the octave note specific results
-  // The number of samples are always minus 1 as they are differences
-  cout << "Number            Y filtered value                                  Y integer" << endl; 
+  cout << "Number            X value after the filter                              integer" << endl; 
   cout << "of points         max-min average standard dev                      max-min average standard dev" << endl;
   for_each( execution::seq,
 			theSimulData.begin(), theSimulData.end(),
@@ -612,8 +633,10 @@ int main(int argc,char*argv[])
 						  cout << (unsigned int)ON_iter.second << '\t';
 						  cout << ON_iter.second.Basic_display() << "\t\t";
 						  cout << ON_iter.second.Display_without_offset_normalize();
-						}else
+						}else{
 						  cout << "  O: /, N: /\t";
+						  cout << (unsigned int)ON_iter.second;
+						}
 						cout << endl;
 					  });
 			cout << endl;

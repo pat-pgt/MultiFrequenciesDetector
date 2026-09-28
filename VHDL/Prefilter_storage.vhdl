@@ -12,6 +12,8 @@ use IEEE.STD_LOGIC_1164.all,
 --!
 entity Prefilter_RAM_Storage is
   generic (
+      --! Tell the usage for the assert note warning error
+      prefilter_not_lightfilter : boolean := true;
     --! Size of the RAM = N_notes * N_octaves - the latency in run mode.
       Prefilter_latency : positive
     );
@@ -24,12 +26,12 @@ entity Prefilter_RAM_Storage is
     --! Void as it runs as a barrel shifter
     meta_data_out : in  meta_data_t;
     --! The photo is taken during the register sync.\n
-    --! BE CAREFULL it should be connected to the input side of the filter
+    --! BE CAREFUL it should be connected to the input side of the filter
     scz_in     : in  reg_sin_cos_z;
     --! Output cosine register.\n
     --! To keep a standard inter-modules interface, thees reg_type registers
     --! are shifted by arithm size between the reg_sync (active).\n
-    --! BE CAREFULL it should be connected to the output side of the filter
+    --! BE CAREFULLY it should be connected to the output side of the filter
     scz_out       : out reg_sin_cos_z
     );
 end entity Prefilter_RAM_Storage;
@@ -72,7 +74,11 @@ architecture arch of Prefilter_RAM_Storage is
   --! The RAM of ram_addr_size X ram_data_size
   signal the_ram          : ram_t;
 begin
-  assert false report "For the prefilter, a RAM " & integer'image(2**ram_addr_size) & "X" & integer'image(ram_data_size) & " has been built"
+  assert not prefilter_not_lightfilter report "For the prefilter, a RAM " & integer'image(2**ram_addr_size) &
+    "X" & integer'image(ram_data_size) & " has been built"
+    severity note;
+  assert prefilter_not_lightfilter report "For the light filter, a RAM " & integer'image(2**ram_addr_size) &
+    "X" & integer'image(ram_data_size) & " has been built"
     severity note;
   assert 2**ram_addr_size >= 2 * ( N_octaves * N_notes - Prefilter_latency ) * ram_bloc_size report "Internal error" severity failure;
   assert ram_data_size * ram_bloc_size >= reg_size report "Internal error" severity failure;
@@ -164,6 +170,8 @@ use IEEE.STD_LOGIC_1164.all,
 
 entity Prefilter_Dummy_Storage is
     generic (
+      --! Tell the usage for the assert note warning error
+      prefilter_not_lightfilter : boolean := true;
       --! Void as the result is a constant
       Prefilter_latency : positive;
       default_value     : reg_type := ( others => '0' )
@@ -186,7 +194,8 @@ end entity Prefilter_Dummy_Storage;
 architecture arch of Prefilter_Dummy_Storage is
 
 begin
-  assert false report "For the prefilter, a dummy storage is used" severity note;
+  assert not prefilter_not_lightfilter report "For the prefilter, a dummy storage is used" severity note;
+  assert prefilter_not_lightfilter report "For the light filter, a dummy storage is used" severity note;
   scz_out.the_sin <= default_value;
   scz_out.the_cos <= default_value;
 
@@ -203,6 +212,8 @@ use IEEE.STD_LOGIC_1164.all,
 
 entity Prefilter_Direct_Storage is
   generic (
+    --! Tell the usage for the assert note warning error
+    prefilter_not_lightfilter : boolean := true;
     --! Void as it is not a barrel shifter
     Prefilter_latency : positive
     );
@@ -226,7 +237,10 @@ architecture arch of Prefilter_Direct_Storage is
   signal sine_memory : mem_array;
   signal cosine_memory : mem_array;
 begin  -- architecture arch of Prefilter_Direct_Storage
-  assert false report "For the prefilter, a direct " & integer'image(N_octaves * N_notes) &
+  assert not prefilter_not_lightfilter report "For the prefilter, a direct " & integer'image(N_octaves * N_notes) &
+    " registers has been built"
+    severity note;
+  assert prefilter_not_lightfilter report "For the light filter, a direct " & integer'image(N_octaves * N_notes) &
     " registers has been built"
     severity note;
   main_proc : process(CLK)
@@ -266,6 +280,8 @@ use IEEE.STD_LOGIC_1164.all,
 
 entity Prefilter_Barrel_shifter_storage is
     generic (
+      --! Tell the usage for the assert note warning error
+      prefilter_not_lightfilter : boolean := true;
       Prefilter_latency : positive
       );
     port (
@@ -283,17 +299,22 @@ entity Prefilter_Barrel_shifter_storage is
 end entity Prefilter_Barrel_shifter_storage;
 
 architecture arch of Prefilter_Barrel_shifter_storage is
-  type BS_type is array (N_notes * N_octaves - Prefilter_latency - 1 downto 0) of reg_type;
+  type BS_type is array (N_notes * N_octaves - Prefilter_latency + 1 - 1 downto 0) of reg_type;
   signal sin_BS : BS_type;
   signal cos_BS : BS_type;
 begin  -- architecture arch
-  assert false report "For the prefilter, a direct " & integer'image(N_octaves * N_notes - Prefilter_latency) &
+  assert not prefilter_not_lightfilter report "For the prefilter, a barrel shifter " &
+    integer'image(N_octaves * N_notes - Prefilter_latency + 1) &
     " registers has been built"
     severity note;
-  assert N_notes * N_octaves - Prefilter_latency > 1
-    report "The prodcut of the number of note by the number of octaves minus the prefilter latency ("&
-    integer'image(N_notes * N_octaves - Prefilter_latency ) &
-    ") should be at least 2"
+  assert prefilter_not_lightfilter report "For the light filter, a barrel shifter " &
+    integer'image(N_octaves * N_notes - Prefilter_latency + 1) &
+    " is irrelevant"
+    severity error;
+  assert N_notes * N_octaves >= Prefilter_latency
+    report "The product of the number of note by the number of octaves minus the prefilter latency ("&
+    integer'image(N_notes * N_octaves - Prefilter_latency + 1 ) &
+    ") should be at least 3"
     severity failure;
 
   scz_out.the_sin <= sin_BS( sin_BS'low );

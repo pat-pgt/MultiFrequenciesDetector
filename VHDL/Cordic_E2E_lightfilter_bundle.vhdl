@@ -23,7 +23,8 @@ package Cordic_E2E_lightfilter_Bundle_pac is
       with_downsampling : natural              := 1;
       nbre_Z_2_0_stages : natural;
       nbre_Y_2_0_stages : natural;
-      extra_shifts      : integer range 0 to 7 := 0
+      extra_shifts      : integer range 0 to 7 := 0;
+      full_simul        : boolean              := true
       );
     port (
       CLK                    : in  std_logic;
@@ -68,7 +69,8 @@ entity Cordic_E2E_lightfilter_Bundle is
     with_downsampling : natural              := 0;
     nbre_Z_2_0_stages : natural;
     nbre_Y_2_0_stages : natural;
-    extra_shifts      : integer range 0 to 7 := 0
+    extra_shifts      : integer range 0 to 7 := 0;
+    full_simul        : boolean              := true
     );
   port (
     CLK                    : in  std_logic;
@@ -116,9 +118,9 @@ begin
   begin
     if input_x_not_y = '1' then
       input_x <= the_input;
-      input_y <= ( others => '0' );
+      input_y <= (others => '0');
     else
-      input_x <= ( others => '0' );
+      input_x <= (others => '0');
       input_y <= the_input;
     end if;
   end process switch_proc;
@@ -188,67 +190,84 @@ begin
       scz_out       => scz_pref_1_out
       );
 
-  Downsampling_bundle_instanc : Downsampling_bundle
-    generic map (
-      extra_downsampling => with_downsampling)
-    port map (
-      CLK,
-      RST,
-      reg_sync      => reg_sync_interm,
-      meta_data_in  => meta_data_pref_1_out,
-      meta_data_out => meta_data_DS_out,
-      scz_in        => SCZ_pref_1_out,
-      scz_out       => scz_DS_out,
-      xy_is_neg     => xy_is_neg
-      );
+  full_simul_if : if full_simul generate
+    Downsampling_bundle_instanc : Downsampling_bundle
+      generic map (
+        extra_downsampling => with_downsampling)
+      port map (
+        CLK,
+        RST,
+        reg_sync      => reg_sync_interm,
+        meta_data_in  => meta_data_pref_1_out,
+        meta_data_out => meta_data_DS_out,
+        scz_in        => SCZ_pref_1_out,
+        scz_out       => scz_DS_out,
+        xy_is_neg     => xy_is_neg
+        );
 
-  --! The filter should be the final "real" filter
-  --! In this test it is replaced by the pre-filter
-  Prefilter_bundle_2 : Prefilter_bundle
-    generic map (
-      prefilter_not_lightfilter => false,
-      --! Defines the number of stages and their offsets ratios
-      stages_offsets            => stages_offsets)
-    port map (
-      CLK,
-      RST,
-      reg_sync      => reg_sync_interm,
-      meta_data_in  => meta_data_DS_out,
-      meta_data_out => meta_data_pref_2_out,
-      scz_in        => scz_DS_out,
-      scz_out       => scz_pref_2_out
-      );
+    --! The filter should be the final "real" filter
+    --! In this test it is replaced by the pre-filter
+    Prefilter_bundle_2 : Prefilter_bundle
+      generic map (
+        prefilter_not_lightfilter => false,
+        --! Defines the number of stages and their offsets ratios
+        stages_offsets            => stages_offsets)
+      port map (
+        CLK,
+        RST,
+        reg_sync      => reg_sync_interm,
+        meta_data_in  => meta_data_DS_out,
+        meta_data_out => meta_data_pref_2_out,
+        scz_in        => scz_DS_out,
+        scz_out       => scz_pref_2_out
+        );
 
-  cordic_first_stage_Y_2_0_instanc_DS : Cordic_FirstStage_Y_to_0
-    port map (
-      CLK           => CLK,
-      RST           => RST,
-      reg_sync      => reg_sync_interm,
-      meta_data_in  => meta_data_pref_2_out,
-      meta_data_out => meta_data_5,
-      scz_in        => scz_pref_2_out,
-      scz_out       => scz_3,
-      xy_is_neg     => xy_is_neg);
+    cordic_first_stage_Y_2_0_instanc_DS : Cordic_FirstStage_Y_to_0
+      port map (
+        CLK           => CLK,
+        RST           => RST,
+        reg_sync      => reg_sync_interm,
+        meta_data_in  => meta_data_pref_2_out,
+        meta_data_out => meta_data_5,
+        scz_in        => scz_pref_2_out,
+        scz_out       => scz_3,
+        xy_is_neg     => xy_is_neg);
 
 
 
-  cordic_bundle_Y_2_0_instanc : Cordic_Bundle_Y_to_0 generic map (
-    stages_nbre         => nbre_Y_2_0_stages,
-    metadata_catch_list => metadata_catch_list,
-    stages_catch_list   => stages_catch_list,
-    extra_shifts        => extra_shifts
-    )
-    port map (
-      CLK           => CLK,
-      RST           => RST,
-      reg_sync      => reg_sync_interm,
-      full_sync     => full_sync,
-      meta_data_in  => meta_data_5,
-      meta_data_out => meta_data_Y_2_0_out,
-      scz_in        => scz_3,
-      scz_out       => SCZ_out_Y_2_0,
-      report_in     => report_cordic_bundle_2,
-      strobe_stable => strobe_stable);
+    cordic_bundle_Y_2_0_instanc : Cordic_Bundle_Y_to_0 generic map (
+      stages_nbre         => nbre_Y_2_0_stages,
+      metadata_catch_list => metadata_catch_list,
+      stages_catch_list   => stages_catch_list,
+      extra_shifts        => extra_shifts
+      )
+      port map (
+        CLK           => CLK,
+        RST           => RST,
+        reg_sync      => reg_sync_interm,
+        full_sync     => full_sync,
+        meta_data_in  => meta_data_5,
+        meta_data_out => meta_data_Y_2_0_out,
+        scz_in        => scz_3,
+        scz_out       => SCZ_out_Y_2_0,
+        report_in     => report_cordic_bundle_2,
+        strobe_stable => strobe_stable);
 
+  end generate full_simul_if;
+  if_not_full_simul : if full_simul = false generate
+
+    SCZ_pref_2_out.the_sin      <= (others => '0');
+    SCZ_pref_2_out.the_cos      <= (others => '0');
+    SCZ_pref_2_out.angle_z      <= (others => '0');
+    SCZ_out_Y_2_0.the_sin       <= (others => '0');
+    SCZ_out_Y_2_0.the_cos       <= (others => '0');
+    SCZ_out_Y_2_0.angle_z       <= (others => '0');
+    meta_data_pref_2_out.octave <= (others => '0');
+    meta_data_pref_2_out.note   <= (others => '0');
+    meta_data_Y_2_0_out.octave  <= (others => '0');
+    meta_data_Y_2_0_out.note    <= (others => '0');
+    strobe_stable               <= '0';
+
+  end generate if_not_full_simul;
 
 end architecture arch;

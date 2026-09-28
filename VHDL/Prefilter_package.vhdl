@@ -180,6 +180,8 @@ package PreFilter_package is
 --!
   component Prefilter_RAM_Storage is
     generic (
+      --! Tell the usage for the assert note warning error
+      prefilter_not_lightfilter : boolean := true;
       --! ram_locations_size : positive := N_notes * N_octaves - 3;
       --! N_notes * N_octaves is the number of IIR filters involved\n
       --! multiplied by 2 because there is the sine and the cosine to handle\n
@@ -212,6 +214,8 @@ package PreFilter_package is
 --!   is output after a division
   component Prefilter_Dummy_Storage is
     generic (
+      --! Tell the usage for the assert note warning error
+      prefilter_not_lightfilter : boolean := true;
       --! Void as the result is a constant
       Prefilter_latency : positive;
       default_value     : reg_type := (others => '0')
@@ -244,6 +248,8 @@ package PreFilter_package is
   --! Then the meta data is used as an address of the memory.
   component Prefilter_Direct_Storage is
     generic (
+      --! Tell the usage for the assert note warning error
+      prefilter_not_lightfilter : boolean := true;
       --! Void as it is not a barrel shifter
       Prefilter_latency : positive
       );
@@ -271,6 +277,8 @@ package PreFilter_package is
   --!   as the meta data is ignored.
   component Prefilter_Barrel_shifter_Storage is
     generic (
+      --! Tell the usage for the assert note warning error
+      prefilter_not_lightfilter : boolean := true;
       --! Void as it is not a barrel shifter
       Prefilter_latency : positive
       );
@@ -421,9 +429,9 @@ package body PreFilter_package is
     begin
       if prefilter_not_lightfilter then
         --! TODO
-          return 12;
+          return 14;
       else
-          return 6;
+          return 8;
       end if;
     end function Get_Prefilter_Maximum_Shifts;
 
@@ -437,11 +445,11 @@ package body PreFilter_package is
     begin
       if prefilter_not_lightfilter then
         --! The best case is the thresholds are on an octave edge.
-        --! The worst case is the threshold is in a midle of an octave.
+        --! The worst case is the threshold is in a middle of an octave.
         --! Then the width is the number of octaves plus one
           return N_octaves;
       else
-        --! To be verified Since we are inside an octave and there is a downsampling
+        --! To be verified Since we are inside an octave and there is a down-sampling
         --! The ratio is not more than 2
           return 2;
       end if;

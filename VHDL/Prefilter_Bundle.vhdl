@@ -74,6 +74,7 @@ begin
 
   selected_storage : Prefilter_RAM_Storage
     generic map (
+      prefilter_not_lightfilter,
       Prefilter_latency => prefilter_all_latency)
     port map (
       CLK,
@@ -124,7 +125,7 @@ begin
     CLK                => CLK,
     RST                => RST,
     reg_sync           => reg_sync,
-    state_var_in       => (others=>'0'), --scz_delayed.the_sin,
+    state_var_in       => scz_delayed.the_sin,
     data_in            => sin_shift_add,
     state_var_data_out => scz_out.the_sin);
 
@@ -163,7 +164,7 @@ begin
     CLK                => CLK,
     RST                => RST,
     reg_sync           => reg_sync,
-    state_var_in       => (others=>'0'), --scz_delayed.the_cos,
+    state_var_in       => scz_delayed.the_cos,
     data_in            => cos_shift_add,
     state_var_data_out => scz_out.the_cos);
 

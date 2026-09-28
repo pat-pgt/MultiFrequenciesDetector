@@ -13,7 +13,7 @@ use IEEE.STD_LOGIC_1164.all,
 --! Due to the downsampling, the loops are\n
 --! * a counter of the notes at the top level\n
 --! * a counter of the octave inside the notes\n
---! * a run or sync flipflop and an arithmetic bloc counter
+--! * a run or sync flip-flop and an arithmetic bloc counter
 --! inside the notes\n
 --! \return The angle, the metadata and the sync bit
 --! @anchor AngleGene_entity
@@ -80,7 +80,7 @@ begin
     -- For each note:
     -- * step 1: add a constant to the cumulative angle
     -- ** get it from the RAM
-    -- ** sequencially add the constant
+    -- ** sequentially add the constant
     -- ** re-write the result
     -- * step2: pass the result to the next pipelined process
     -- ** multiply by 2 for each octave 
@@ -105,7 +105,7 @@ begin
             else
               note_counter <= std_logic_vector(unsigned(note_counter) + 1);
             end if;
-            -- TEMPORARY, a serial calc should be implement'ed as well
+            -- TEMPORARY, a serial calc should be implemented as well
             angle_temp := angle_storage(to_integer(unsigned(note_counter)));
             angle_step <= freq_list(to_integer(unsigned(note_counter)));
             angle_temp := std_logic_vector(unsigned(angle_temp) +
@@ -116,7 +116,7 @@ begin
             delay_note_calc                                   <= delay_note_mem;
           else
             octave_counter <= std_logic_vector(unsigned(octave_counter) + 1);
-            -- The angle current is mutiply by 2 for the new octave
+            -- The angle current is multiply by 2 for the new octave
             -- modulo 2.PI, coded as (others=>'1') + 1
             angle_octave(angle_octave'high downto angle_octave'low + 1) <=
               angle_octave(angle_octave'high - 1 downto angle_octave'low);
@@ -127,6 +127,7 @@ begin
             angle_z          <= angle_octave(angle_octave'high downto angle_octave'high + 1 - angle_z'length);
             meta_data.note   <= delay_note_calc;
             meta_data.octave <= octave_counter;
+            meta_data.strobe <= '1';
             reg_sync <= '0';
           end if;
           arithm_counter <= std_logic_vector(unsigned(arithm_counter) + 1);
