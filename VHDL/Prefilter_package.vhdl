@@ -174,10 +174,16 @@ package PreFilter_package is
       );
   end component Prefilter_Delay;
 
---! @brief Pre-filter RAM state variable storage
+--! @brief Pre-filter or light filter RAM state variable storage
 --!
---! Stores in a RAM based barrel shifter two state variables
---!
+--! Stores in a RAM based sine and cosine state variables storage.\n
+--! It may be irrelevant for ASIC as one can generate
+--!   the data and address sizes he wants.\n
+--! It is nice for FPGA as the memories have to be chosen
+--!   among a closed list. It splits the IO into multiple IO
+--!   at different addresses.
+--! It requires a minimum of clock cycles between 2 reg_syncs,
+--!   more more information, see in the implementation.
   component Prefilter_RAM_Storage is
     generic (
       --! Tell the usage for the assert note warning error
@@ -209,9 +215,9 @@ package PreFilter_package is
   end component Prefilter_RAM_Storage;
 --! @brief Pre-filter Dummy state variable storage
 --!
---! Test ONLY.\n
---! Sends 0 as a state variable to test the input pattern
---!   is output after a division
+--! Produces a constant regardless what is requested to store
+--! Useful for test and debug as all the system is a "finite impulse response",
+--!   the output is predictable from the input, regardless what happened before
   component Prefilter_Dummy_Storage is
     generic (
       --! Tell the usage for the assert note warning error
@@ -235,10 +241,11 @@ package PreFilter_package is
       );
   end component Prefilter_Dummy_Storage;
 
-  --! @brief Direct access state variable storage
+  --! @brief prefilter or ligh filter state variable storage
   --!
-  --! This is ONLY intended for the Cordic_E2E_lightFilter.
-  --! It should NOT be used for any other application.\n
+  --! This is ONLY intended for the Cordic_E2E_lightFilter
+  --!   or the prefilter while testing the circuit.
+  --! There is no reason to use it for other applications.\n
   --! From the pre-filter view, the data arrives always
   --!   in the same order (1st note to last note containing
   --!   lowest octave to highest octave).
@@ -273,7 +280,7 @@ package PreFilter_package is
   --! * it can help the debug as it is an half trivial implementation.\n
   --! * according to the technology in an ASIC or a FPGA implementation,
   --!   this one or the RAM based is better.\n
-  --! It can be used only in a prefilter (not in a test final filter)
+  --! It can be used only in a prefilter (not in a light filter)
   --!   as the meta data is ignored.
   component Prefilter_Barrel_shifter_Storage is
     generic (
@@ -340,7 +347,7 @@ package PreFilter_package is
   --! @brief Get the maximum prefilter shifts
   --!
   --! This fit to the lowest note of the lowest octave
-  --!   or ...TODO... for the lightfilter
+  --!   or ...TODO... for the light filter
   function Get_Prefilter_Maximum_Shifts (
     constant prefilter_stage_offset : real;
     constant prefilter_not_lightfilter : boolean)
@@ -429,7 +436,7 @@ package body PreFilter_package is
     begin
       if prefilter_not_lightfilter then
         --! TODO
-          return 14;
+          return 13;
       else
           return 8;
       end if;

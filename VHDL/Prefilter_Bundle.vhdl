@@ -226,7 +226,7 @@ begin
   Prefilter_generate : for ind in 0 to stages_offsets'length - 1 generate
     bundle_elem : Prefilter_stage
       generic map (
-        the_stage_offset          => stages_offsets(stages_offsets'low - ind),
+        the_stage_offset          => stages_offsets(stages_offsets'low + ind),
         prefilter_not_lightfilter => prefilter_not_lightfilter
       )
       port map (

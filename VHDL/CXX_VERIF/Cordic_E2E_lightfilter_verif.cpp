@@ -261,6 +261,7 @@ int main(int argc,char*argv[])
 			   XY_per_state X_per_state;
 			   XY_per_state Y_per_state;
 			   bool is_Y_started = false;
+			   unsigned short freq_detec_max = 3;
 			   do {
 				 X_per_state = XY_per_state::wait4start;
 				 Y_per_state = XY_per_state::wait4start;
@@ -329,16 +330,24 @@ int main(int argc,char*argv[])
 							  }
 						  }
 					}
-			   } while ( ( X_per_state != XY_per_state::isdone ) || ( Y_per_state != XY_per_state::isdone ));
+			   }while( false ); // while ( ( X_per_state != XY_per_state::isdone ) || ( Y_per_state != XY_per_state::isdone ) );
 			   cout << "Frequency found at octave " << dec << (unsigned short)freq_octave;
 			   cout << ", requires " << input_half_periode_according_X;
 			   cout << "  " << input_half_periode_according_Y;
 			   cout << " reg_sync cycles for a half periode " << endl;
+			   if ( freq_detec_max > 0 )
+				 freq_detec_max -= 1;
 			   // Both values are displayed to verify the test.
 			   // Some unbalance can occur. It is due to the arithmetics rounding errors
-			   } while ( abs( input_half_periode_according_X - input_half_periode_according_Y ) >
-						 input_half_periode_according_X / 200 );
+			   } while ( ( abs( input_half_periode_according_X - input_half_periode_according_Y ) >
+						   input_half_periode_according_X / 200 )  && freq_detec_max > 0 );
+			   unsigned long input_half_periode = ( input_half_periode_according_X + input_half_periode_according_Y ) / 2;
 
+
+			   // According with the end to end DC test, octave 4 note 0 takes 128 reg_sync to spin one full turn.
+			   // Then the helf is 64. Since there are 4 notes and 6 octaves, the result is:
+			   input_half_periode = 24576 / pow( 2, freq_octave );
+			   cout << "To speed up the simulation, set to " << input_half_periode << endl;
 
 			   unsigned char note_max(1);
 			   unsigned char octave_max(1);
@@ -351,23 +360,28 @@ int main(int argc,char*argv[])
 				*/
 			   for ( ind_half_cycles = 0; ind_half_cycles < half_cycles_number ; ind_half_cycles ++ )
 				 {
-				   // For now the square input changes at each full cycle
+				   // For now the input changes at each full cycle
 				   if( ind_half_cycles % 2 == 0 )
 					 {
-					   input_Value_isNeg = false;
+					   input_Value_isNeg =  false;
 					   cout << '-';
-					 }
-				   else
-					 {
-					   if ( input_DC == false )
-						 input_Value_isNeg =  true;
-					   cout << '_';
-					 }
-				   cout.flush();
-				   set_input_values();
+					 } else {
+					 if ( input_DC )
+					   input_Value_isNeg = false;
+					 else
+					   input_Value_isNeg = true;
+					 cout << '_';
+				   }
 
 				   full_cycle_loop = 0;
 				   do {
+ 					 dat = Value_Data<int,32>( (signed long)( 0x3fffffff * sin(full_cycle_loop*2*numbers::pi/(input_half_periode*2))) );
+					 //					 dat = Value_Data<int,32>( 0x3fffffff );
+
+					 cout.flush();
+					 set_input_values();
+
+
 					 top.p_CLK.set<bool>(true);
 					 top.step();
 					 top.p_CLK.set<bool>(false);
@@ -531,8 +545,7 @@ int main(int argc,char*argv[])
 					 // The circuit and the statistics are so complex and resource consuming,
 					 //   this is neglectable.
 
-				   } while( full_cycle_loop <
-							( input_half_periode_according_X + input_half_periode_according_Y ) / 2);
+				   } while( full_cycle_loop < input_half_periode);
 				 } // Main for loop
 
 			   cout << endl;
