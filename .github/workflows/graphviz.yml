@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: environement
       run: |
         sudo apt-get install -y graphviz
@@ -33,7 +33,7 @@ jobs:
         make DOTLANG=png BUILDDIR=../build/png/
         make DOTLANG=ps BUILDDIR=../build/ps/
     - name: return workflow as artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: MultiFrequenciesDetector-doc
         path: build/*
