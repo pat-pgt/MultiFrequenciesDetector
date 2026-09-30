@@ -478,6 +478,27 @@ int main(int argc,char*argv[])
   /********************************************************************************************/
   /*                          Now display all the structures                                  */
   /********************************************************************************************/
+  /** @brief What should be care about.
+   *
+   * The test is a pure "finite impulse response".
+   * Each step of the DUT does not depends on what happened before.
+   * There is no need to extend excessively the number of the iterations.
+   * 1) All the test display statistics and maximum minus minimum values.
+   * The statistics are intended to verify the test runs properly.
+   * However, if the result is wrong in 0.1% of the cases, nobody can see that.
+   * The maximum value minus the minimum value IS the verification.\n
+   * 2) The starting vectors should be chosen to have the same maximum modules.
+   * Only the angle differs. That checks there is a perfect symmetry without cross talk in X and Y.
+   * All the results should be the same with only a couple of low bits mismatch.\n
+   * 3) The frequency independent test should fit the theory, see below.
+   * 4) After the Z to 0, the spinning should increase from the lowest frequency to the highest one.
+   * The ratio between the speeds should be constant as well.\n
+   * 5) The down-sampling is octave related.
+   * After the Y to 0, every octave of a given note should produce the same results.
+   * The speed between the lowest note and the highest note should be in a 2 ratio.\n\n
+   *
+   * This is a beta version of the test.
+   */
   cout << "---------------------------- Z to 0 first set of stages ----------------------------" << endl;
   cout << "E2E_DC_Z20_XY_module Checking the module of the X and Y couple is the expected constant" << endl;
   cout << "Number             X,Y module delta from grow                       X,Y module absolute" << endl; 

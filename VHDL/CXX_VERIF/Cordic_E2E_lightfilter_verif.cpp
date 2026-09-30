@@ -563,7 +563,35 @@ int main(int argc,char*argv[])
   /********************************************************************************************/
   /*                          Now display all the structures                                  */
   /********************************************************************************************/
-  
+  /** @brief What should be care about.
+   *
+   * The test is an "infinite impulse response".
+   * Each step of the DUT depends on what happened before.
+   * There is a dilemma between pushing the simulation and using more configurations.\n
+   * In case of a doubt of a result, one can try to push more simulation.\n
+   * Since the link between the mathematics and the implementations is not yet done,
+   *   the shifts of the filter is an "arbitrary" value.
+   * The day this link is done, a way to forge is going to be kept.
+   * By this way, a higher frequency can be used to not cut everything.
+   * 1) All the first part simulation should be done, at least, using the barrel shifter and the direct access
+   *   memory module.
+   * The result should be the same (for the same parameters).\n
+   * 2) All the test should be done with multiple number of prefilter stages.
+   * For every frequency, the attenuation ratio should be power of the number of stages.
+   * 3) The DC input sends the sinusoid in the filters.
+   * Since the filter cut-off frequencies as low as the frequency, the output should be slightly constant.\n
+   * 4) The sinusoidal input should produce a peek at the corresponding octave note,
+   *   and produce a decay on both sides.\n\n
+   *
+   * This is an early version.\n
+   * All the parameters should go into a class rather than to recompile
+   *   and rather than to have a single octave number. 
+   * A new test angle generator or an injector should be written
+   *   to send some frequencies in random order and to send 0 for some others.
+   * The goal is to avoid to miss some bugs with correlated data.\n
+   * It give a pretty good idea of the resources for the project if the main filter can be estimate and added.
+   */
+
   cout << "Checking the Z to 0 and the module after the first set of stages and the pre-filter" << endl;
   cout << "Number                 Z to 0 degrees                                       Z to 0 integer" << endl; 
   cout << "of points         max-min average standard dev                        max-min average standard dev" << endl;
