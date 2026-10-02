@@ -29,7 +29,7 @@ package Input_modules is
 
   --! @brief computes the Z angle for a given arctg as 1/2**N
   --!
-  --! For each cordic algorithm stage, the vector (X,Y) is spun
+  --! For each Cordic algorithm stage, the vector (X,Y) is spun
   --! CW or CCW by an angle which its tangent is 1/2**N.\n
   --! This function computes the angle to add or subtract to the angle Z.
   function arctg_2_angle_real(constant shift_bits : natural) return real;
@@ -53,6 +53,13 @@ package Input_modules is
       --! A full cycle of all the requested notes of all the requested octaves
       --! completed
       full_sync : out std_logic;
+      --! It is intended to detect the frequency during a test,
+      --!   or even during the run.\n
+      --! It returns the high bit of all the octaves at note 0.
+      --! There is no guarantee of any phase relation with the angle output.
+      --! By counting the number of 1 after 0's and before other 0's
+      --!   one gets the half period.
+      Z_high_N0 : out std_logic_vector(N_octaves - 1 downto 0);
       --! Starts a new computation of a given note and octave
       --! Note, it is not in phase with the meta data, but the shift is constant
       reg_sync  : out std_logic;

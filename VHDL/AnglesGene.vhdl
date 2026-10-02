@@ -28,6 +28,10 @@ entity AngleGene is
     --! A full cycle of all the requested notes of all the requested octaves
     --! completed
     full_sync : out std_logic;
+    --! Since the angle is generated, according to the note, and
+    --!   multiplied by 2 at each octave, the N_octave high bits
+    --!   are the high bits of each octave at note 0.
+    Z_high_N0 : out std_logic_vector(N_octaves - 1 downto 0);
     --! Starts a new computation of a given note and octave
     --! Note, it is not in phase with the meta data, but the shift is constant
     reg_sync  : out std_logic;
@@ -114,6 +118,7 @@ begin
             angle_note                                        <= angle_temp;
             delay_note_mem                                    <= note_counter;
             delay_note_calc                                   <= delay_note_mem;
+
           else
             octave_counter <= std_logic_vector(unsigned(octave_counter) + 1);
             -- The angle current is multiply by 2 for the new octave
@@ -129,6 +134,12 @@ begin
             meta_data.octave <= octave_counter;
             meta_data.strobe <= '1';
             reg_sync <= '0';
+            if delay_note_calc = std_logic_vector(to_unsigned( 0, delay_note_calc'length )) and
+              octave_counter = std_logic_vector(to_unsigned( 0, octave_counter'length ))then
+              toggle_Z_bits: for ind in 0 to Z_high_N0'length - 1 loop 
+                Z_high_N0( ind ) <= angle_octave( angle_octave'high - ind );
+              end loop toggle_Z_bits;
+            end if;
           end if;
           arithm_counter <= std_logic_vector(unsigned(arithm_counter) + 1);
         end if ARITHM_C;

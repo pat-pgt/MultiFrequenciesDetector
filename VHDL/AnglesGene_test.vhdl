@@ -13,7 +13,8 @@ end entity AngleGene_test;
 
 architecture rtl of AngleGene_test is
   signal CLK          : std_logic                     := '0';
-  signal main_counter : std_logic_vector(4 downto 0) := (others => '0');
+  -- For a fast basic simulation, comment out the N_octaves
+  signal main_counter : std_logic_vector(4 + N_octaves downto 0) := (others => '0');
   signal RST          : std_logic_vector(5 downto 0)  := (others => '1');
 
   signal reg_sync       : std_logic;
@@ -73,6 +74,7 @@ begin
       CLK       => CLK,
       RST       => RST(0),
       full_sync => full_sync,
+      Z_high_N0 => open,
       reg_sync  => reg_sync,
       angle_z   => angle_z,
       meta_data => meta_data

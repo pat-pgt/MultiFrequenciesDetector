@@ -71,10 +71,11 @@ int main(int argc,char*argv[])
    * The value should be at least 2 to run the differences.
    */
   unsigned short half_cycles_number = 20;
-  unsigned short nbre_initial_vextors = 1;
+  unsigned short nbre_initial_vextors = 2;
+  unsigned char forced_octave = numeric_limits<unsigned char>::max();
   bool input_DC = false;
 
-  while((opt = getopt( argc,argv,"cl:n:hv"))!=EOF)
+  while((opt = getopt( argc,argv,"cl:n:o:hv"))!=EOF)
 	switch( opt)
 	  {
 	  case 'c':
@@ -86,6 +87,9 @@ int main(int argc,char*argv[])
 	  case 'l':
 		half_cycles_number = atoi(optarg);
 		break;
+	  case 'o':
+		forced_octave = atoi(optarg);
+		break;
 	  case 'h':
 		PrintHelp();
 		has_hv = true;
@@ -95,6 +99,8 @@ int main(int argc,char*argv[])
 		has_hv = true;
 		break;
 	  }
+  if ( nbre_initial_vextors != 2 && forced_octave != numeric_limits<unsigned char>::max() )
+	cout << "WARNING the -n option (" << nbre_initial_vextors << ") should not be used with the forced octave option " << forced_octave << ")" << endl;
 
   /* Only to get a runable veriosn, to be changed later
    *
@@ -102,7 +108,12 @@ int main(int argc,char*argv[])
    * the simulation runs for multiple cuttoff frequencies
    */
   Value_Data<int,32>dat = Value_Data<int,32>( 0x3fffffff );
-  vector<unsigned char>freq_octave_list = { 2, 4 };
+
+  vector<unsigned char>freq_octave_list;
+  if ( forced_octave == numeric_limits<unsigned char>::max() )
+	freq_octave_list = { 2, 4 };
+  else
+	freq_octave_list.push_back( forced_octave );
 
   if ( has_hv )
 	return -1;
@@ -253,20 +264,14 @@ int main(int argc,char*argv[])
 				*   X and Y start with the same 0 initial value as they are not.
 				*   As soon as the simetry is reached, the module exits with the lenth of the half periode
 				*/
-			   long input_half_periode_according_X;
-			   long input_half_periode_according_Y;
+			   long input_half_periode;
 			   unsigned long HP_counter = 0;
 			   cout << "Spin the clock to find the half periode of the octave " << (unsigned short)freq_octave << " note 0" << endl;
-			   enum XY_per_state { wait4start, wait4first1, isstarted, isdone };
-			   XY_per_state X_per_state;
-			   XY_per_state Y_per_state;
-			   bool is_Y_started = false;
-			   unsigned short freq_detec_max = 3;
-			   do {
-				 X_per_state = XY_per_state::wait4start;
-				 Y_per_state = XY_per_state::wait4start;
-				 input_half_periode_according_X = 0;
-				 input_half_periode_according_Y = 0;
+			   enum auto_detect_state_t { wait4start, wait4first1, isstarted, isdone };
+			   auto_detect_state_t auto_detect_state;
+			   unsigned short Z_high_note0;
+
+			   auto_detect_state = auto_detect_state_t::wait4start;
 			   do {
 				  top.p_CLK.set<bool>(true);
 				  top.step();
@@ -276,78 +281,46 @@ int main(int argc,char*argv[])
 				  if ( top.p_reg__sync.get<bool>() == true )
 					{
 					  HP_counter += 1;
-					  if ( top.p_metadata__prefilter__1__note.get<unsigned char>() == 0  )
-						   //						   top.p_metadata__Y__2__0__strobe.get<bool>() == true )
-						if ( top.p_metadata__prefilter__1__octave.get<unsigned char>() == freq_octave )
-						  {
-							decltype(dat.value_type()) perdetec_X = top.p_X__prefilter__1.get<decltype(dat.value_type())>();
-							bitset<32>bsX(perdetec_X);
-							// cout << setfill('0') << setw(8) << hex << perdetec_X << ':' ;
-							// cout << setfill('0') << setw(8) << hex << perdetec_Y << "  " ;
-							// cout.flush();
-							if ( bsX.test( 32 - 1 ) )
-							  {
-								// A 1 is received, set to started
-								if ( X_per_state == XY_per_state::wait4first1 )
-								  {
-									X_per_state = XY_per_state::isstarted;
-									input_half_periode_according_X = HP_counter;
-								  }
-							  } else
-							  {
-								// The counting was started, it ends here owing a return to 0
-								if ( X_per_state == XY_per_state::isstarted )
-								  {
-									input_half_periode_according_X = HP_counter - input_half_periode_according_X;
-									X_per_state = XY_per_state::isdone;
-								  }
-								// We can now wait for a one
-								if ( X_per_state == XY_per_state::wait4start )
-								  X_per_state = XY_per_state::wait4first1;
-							  }
-							decltype(dat.value_type()) perdetec_Y = top.p_Y__prefilter__1.get<decltype(dat.value_type())>();
-							bitset<32>bsY(perdetec_Y);
-							// cout << setfill('0') << setw(8) << hex << perdetec_X << ':' ;
-							// cout << setfill('0') << setw(8) << hex << perdetec_Y << "  " ;
-							// cout.flush();
-							// No comments hee. For more details see the comments of the X, above.
-							if ( bsY.test( 32 - 1 ) )
-							  {
-								if ( Y_per_state == XY_per_state::wait4first1 )
-								  {
-									Y_per_state = XY_per_state::isstarted;
-									input_half_periode_according_Y = HP_counter;
-								  }
-							  } else
-							  {
-								if ( Y_per_state == XY_per_state::isstarted )
-								  {
-									input_half_periode_according_Y = HP_counter - input_half_periode_according_Y;
-									Y_per_state = XY_per_state::isdone;
-								  }
-								if ( Y_per_state == XY_per_state::wait4start )
-								  Y_per_state = XY_per_state::wait4first1;
-							  }
-						  }
+					  Z_high_note0 = top.p_Z__high__N0.get<unsigned char>();
+
+					  bitset<32>bsX(Z_high_note0);
+					  //cout << setfill('0') << setw(2) << hex << Z_high_note0;
+					  if ( bsX.test( freq_octave ) )
+						{
+						  //cout << "- ";
+						  //cout.flush();
+						  // A 1 is received, set to started
+						  if ( auto_detect_state == auto_detect_state_t::wait4first1 )
+							{
+							  auto_detect_state = auto_detect_state_t::isstarted;
+							  input_half_periode = HP_counter;
+							}
+						} else
+						{
+						  //cout << ". ";
+						  //cout.flush();
+						  // The counting was started, it ends here owing a return to 0
+						  if ( auto_detect_state == auto_detect_state_t::isstarted )
+							{
+							  input_half_periode = HP_counter - input_half_periode;
+							  auto_detect_state = auto_detect_state_t::isdone;
+							}
+						  // We can now wait for a one
+						  if ( auto_detect_state == auto_detect_state_t::wait4start )
+							auto_detect_state = auto_detect_state_t::wait4first1;
+						}
 					}
-			   }while( false ); // while ( ( X_per_state != XY_per_state::isdone ) || ( Y_per_state != XY_per_state::isdone ) );
+			   }while ( auto_detect_state != auto_detect_state_t::isdone  );
 			   cout << "Frequency found at octave " << dec << (unsigned short)freq_octave;
-			   cout << ", requires " << input_half_periode_according_X;
-			   cout << "  " << input_half_periode_according_Y;
+			   cout << ", requires " << input_half_periode;
 			   cout << " reg_sync cycles for a half periode " << endl;
-			   if ( freq_detec_max > 0 )
-				 freq_detec_max -= 1;
-			   // Both values are displayed to verify the test.
-			   // Some unbalance can occur. It is due to the arithmetics rounding errors
-			   } while ( ( abs( input_half_periode_according_X - input_half_periode_according_Y ) >
-						   input_half_periode_according_X / 200 )  && freq_detec_max > 0 );
-			   unsigned long input_half_periode = ( input_half_periode_according_X + input_half_periode_according_Y ) / 2;
 
 
 			   // According with the end to end DC test, octave 4 note 0 takes 128 reg_sync to spin one full turn.
 			   // Then the helf is 64. Since there are 4 notes and 6 octaves, the result is:
-			   input_half_periode = 24576 / pow( 2, freq_octave );
-			   cout << "To speed up the simulation, set to " << input_half_periode << endl;
+			   //			   input_half_periode = 24576 / pow( 2, freq_octave );
+			   //cout << "To speed up the simulation, set to " << input_half_periode << endl;
+
 
 			   unsigned char note_max(1);
 			   unsigned char octave_max(1);
@@ -364,21 +337,24 @@ int main(int argc,char*argv[])
 				   if( ind_half_cycles % 2 == 0 )
 					 {
 					   input_Value_isNeg =  false;
-					   cout << '-';
+					   if( ind_half_cycles % 50 == 0 )
+						 {
+						   cout << ind_half_cycles / 50 << "/" << half_cycles_number / 50 << '\t';
+						   cout.flush();
+						 }
 					 } else {
 					 if ( input_DC )
 					   input_Value_isNeg = false;
 					 else
 					   input_Value_isNeg = true;
-					 cout << '_';
 				   }
+				   
 
 				   full_cycle_loop = 0;
 				   do {
  					 dat = Value_Data<int,32>( (signed long)( 0x3fffffff * sin(full_cycle_loop*2*numbers::pi/(input_half_periode*2))) );
 					 //					 dat = Value_Data<int,32>( 0x3fffffff );
 
-					 cout.flush();
 					 set_input_values();
 
 

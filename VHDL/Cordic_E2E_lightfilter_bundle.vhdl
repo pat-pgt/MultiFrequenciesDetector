@@ -9,6 +9,7 @@ use IEEE.STD_LOGIC_1164.all,
 
   work.Meta_data_package.meta_data_t,
   work.Meta_data_package.meta_data_list_t,
+  work.Meta_data_package.N_octaves,
 
   work.MultiFreqDetect_package.cordic_stages_num_list;
 
@@ -33,6 +34,7 @@ package Cordic_E2E_lightfilter_Bundle_pac is
       input_x_not_y          : in  std_logic;
       reg_sync               : out std_logic;
       full_sync              : out std_logic;
+      Z_high_N0              : out std_logic_vector(N_octaves - 1 downto 0);
       SCZ_pref_1_out         : out reg_sin_cos_z;
       SCZ_pref_2_out         : out reg_sin_cos_z;
       SCZ_out_Y_2_0          : out reg_sin_cos_z;
@@ -79,6 +81,7 @@ entity Cordic_E2E_lightfilter_Bundle is
     input_x_not_y          : in  std_logic;
     reg_sync               : out std_logic;
     full_sync              : out std_logic;
+    Z_high_N0              : out std_logic_vector(N_octaves - 1 downto 0);
     SCZ_pref_1_out         : out reg_sin_cos_z;
     SCZ_pref_2_out         : out reg_sin_cos_z;
     SCZ_out_Y_2_0          : out reg_sin_cos_z;
@@ -131,10 +134,11 @@ begin
       debug_mode => false
       )
     port map (
-      CLK       => CLK,
-      RST       => RST,
-      reg_sync  => reg_sync,
+      CLK       ,
+      RST       ,
       full_sync => full_sync,
+      Z_high_N0 => Z_high_N0,
+      reg_sync  => reg_sync,
       angle_z   => angle_z,
       meta_data => meta_data_1
       );

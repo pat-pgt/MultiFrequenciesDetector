@@ -31,6 +31,7 @@ entity Cordic_E2E_lightfilter_CXX_test is
     CLK                         : in  std_logic := '0';
     RST                         : in  std_logic;
     full_sync                   : out std_logic;
+    Z_high_N0                   : out std_logic_vector(N_octaves - 1 downto 0);
     reg_sync                    : out std_logic;
     the_input                   : in  std_logic_vector(reg_size - 1 - 1 downto 0);
     input_x_not_y               : in  std_logic;
@@ -104,7 +105,8 @@ begin
       the_input              ,
       input_x_not_y          ,
       reg_sync               ,
-      full_sync              => full_sync,
+      full_sync              ,
+      Z_high_N0              ,
       SCZ_pref_1_out         => SCZ_prefilter_1_out,
       SCZ_out_Y_2_0          => SCZ_out_Y_2_0,
       report_cordic_bundle_1 => report_cordic_bundle,
