@@ -23,7 +23,7 @@ package Meta_data_package is
   --! This is nice for testing or checking an FPGA size.\n
   --! The maximum is 16, due to the number of bits in the metadata_t.
   --! TODO make this dynamic.
-  constant N_notes          : notes_N_range   := 4;
+  constant N_notes          : notes_N_range   := 5;
   --! @brief Number of octaves.
   --!
   --! It should be at least two, due some restrictions\n

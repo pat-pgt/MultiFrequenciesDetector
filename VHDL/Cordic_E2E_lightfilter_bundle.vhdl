@@ -114,7 +114,7 @@ architecture arch of Cordic_E2E_lightfilter_Bundle is
   constant stages_catch_list    : cordic_stages_num_list(1 to 0) := (others => 1);  -- 0 length
   constant metadata_catch_list  : meta_data_list_t(1 to 0)       := (others => octave_note_to_meta_data(0, 0));  -- 0 length
 
-  constant stages_offsets : prefilter_stages_offset_list(0 to 0) := (others => 1.0);
+  constant stages_offsets : prefilter_stages_offset_list(0 to 1) := (others => 1.0);
 begin
 
   switch_proc : process (the_input, input_x_not_y) is
@@ -194,7 +194,7 @@ begin
       scz_out       => scz_pref_1_out
       );
 
-  full_simul_if : if full_simul generate
+  full_simul_if_1 : if full_simul generate
     Downsampling_bundle_instanc : Downsampling_bundle
       generic map (
         extra_downsampling => with_downsampling)
@@ -208,7 +208,8 @@ begin
         scz_out       => scz_DS_out,
         xy_is_neg     => xy_is_neg
         );
-
+  end generate full_simul_if_1;
+    
     --! The filter should be the final "real" filter
     --! In this test it is replaced by the pre-filter
     Prefilter_bundle_2 : Prefilter_bundle
@@ -226,6 +227,7 @@ begin
         scz_out       => scz_pref_2_out
         );
 
+  full_simul_if_2 : if full_simul generate
     cordic_first_stage_Y_2_0_instanc_DS : Cordic_FirstStage_Y_to_0
       port map (
         CLK           => CLK,
@@ -257,7 +259,7 @@ begin
         report_in     => report_cordic_bundle_2,
         strobe_stable => strobe_stable);
 
-  end generate full_simul_if;
+  end generate full_simul_if_2;
   if_not_full_simul : if full_simul = false generate
 
     SCZ_pref_2_out.the_sin      <= (others => '0');
@@ -266,6 +268,11 @@ begin
     SCZ_out_Y_2_0.the_sin       <= (others => '0');
     SCZ_out_Y_2_0.the_cos       <= (others => '0');
     SCZ_out_Y_2_0.angle_z       <= (others => '0');
+    meta_data_DS_out.octave     <= (others => '0');
+    meta_data_DS_out.note       <= (others => '0');
+    scz_DS_out.the_sin          <= (others => '0');
+    scz_DS_out.the_cos          <= (others => '0');
+    scz_DS_out.angle_z          <= (others => '0');      
     meta_data_pref_2_out.octave <= (others => '0');
     meta_data_pref_2_out.note   <= (others => '0');
     meta_data_Y_2_0_out.octave  <= (others => '0');

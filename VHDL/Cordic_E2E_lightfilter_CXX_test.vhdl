@@ -149,7 +149,7 @@ configuration Cordic_E2E_lightfilter_CXX_test_Barrel_shifter of Cordic_E2E_light
       for Cordic_E2E_lightfilter_Bundle_instanc : Cordic_E2E_lightfilter_Bundle
         use entity work.Cordic_E2E_lightfilter_Bundle;
         for arch
-          for all : work.Prefilter_package.Prefilter_bundle
+          for Prefilter_bundle_1 : work.Prefilter_package.Prefilter_bundle
             use entity work.Prefilter_bundle;
             for arch
               for Prefilter_generate
@@ -166,6 +166,21 @@ configuration Cordic_E2E_lightfilter_CXX_test_Barrel_shifter of Cordic_E2E_light
           end for;
           --! The barrel shifter is not possible for the light filter
           --! It should be replaced by the direct storage
+          for Prefilter_bundle_2 : work.Prefilter_package.Prefilter_bundle
+            use entity work.Prefilter_bundle;
+            for arch
+              for Prefilter_generate
+                for bundle_elem : work.Prefilter_package.Prefilter_stage
+                  use entity work.Prefilter_stage;                            
+                  for arch
+                    for selected_storage : work.Prefilter_package.Prefilter_RAM_Storage
+                      use entity work.Prefilter_Direct_storage(arch);
+                    end for;
+                  end for;
+                end for;
+              end for;
+            end for;
+          end for;
         end for;
       end for;
   end for;

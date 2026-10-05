@@ -9,11 +9,8 @@ Value_Data<cxx_reg_type,reg_size>::Value_Data(const cxx_reg_type&value_init):
   value_init(value_init)
 {};
 
-/** @brief InitialValueData constructor
- *
- * Constructs for reg_size equal to 32
- * Other sizes are not yet supported, see in the .hxx file
- */
+
+
 template <>
 void Value_Data<int,32>::TwoDividedValidation()const
 {

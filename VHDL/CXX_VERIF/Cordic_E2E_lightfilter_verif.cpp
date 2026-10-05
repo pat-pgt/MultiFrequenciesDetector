@@ -71,13 +71,17 @@ int main(int argc,char*argv[])
    * The value should be at least 2 to run the differences.
    */
   unsigned short half_cycles_number = 20;
+  unsigned short half_cycles_start_stats = 0;
   unsigned short nbre_initial_vextors = 2;
   unsigned char forced_octave = numeric_limits<unsigned char>::max();
   bool input_DC = false;
 
-  while((opt = getopt( argc,argv,"cl:n:o:hv"))!=EOF)
+  while((opt = getopt( argc,argv,"a:cl:n:o:hv"))!=EOF)
 	switch( opt)
 	  {
+	  case 'a':
+		half_cycles_start_stats = atoi(optarg);
+		break;
 	  case 'c':
 		input_DC = true;
 		break;
@@ -102,6 +106,24 @@ int main(int argc,char*argv[])
   if ( nbre_initial_vextors != 2 && forced_octave != numeric_limits<unsigned char>::max() )
 	cout << "WARNING the -n option (" << nbre_initial_vextors << ") should not be used with the forced octave option " << forced_octave << ")" << endl;
 
+  if ( half_cycles_start_stats == 0 )
+	half_cycles_start_stats = half_cycles_number / 2;
+
+  if ( half_cycles_start_stats > ( half_cycles_number - 10 ) )
+	cout << "WARNING. The statistics start at " << half_cycles_start_stats << " as there are 'only' " << half_cycles_number << " half cycles" << endl;
+
+
+  if ( has_hv )
+	return -1;
+  if ( half_cycles_number < 20 )
+	{
+	  // There is a need to spin the clock at lot
+	  //   as the filters need to converge to their values.
+	  // There is a warm up before collecting the results, see below.
+	  cout << "-l The number of half cycles should not be lower then 20" << endl;
+	  return -2;
+	}
+
   /* Only to get a runable veriosn, to be changed later
    *
    * The initial data is only one vector
@@ -115,16 +137,6 @@ int main(int argc,char*argv[])
   else
 	freq_octave_list.push_back( forced_octave );
 
-  if ( has_hv )
-	return -1;
-  if ( half_cycles_number < 20 )
-	{
-	  // There is a need to spin the clock at lot
-	  //   as the filters need to converge to their values.
-	  // There is a warm up before collecting the results, see below.
-	  cout << "-l The number of half cycles should not be lower then 20" << endl;
-	  return -2;
-	}
   /** In some cases, the same result is expected for different initial values.
    *  A statistic (of the statistic) displays one time. TODO TODO
    * However, the detail can be displayed
@@ -373,7 +385,7 @@ int main(int argc,char*argv[])
 						 full_cycle_loop += 1;
 
 						 // Start a litle bit later to stabilise the filters
-						 if ( ind_half_cycles > (half_cycles_number / 2) )
+						 if ( ind_half_cycles > half_cycles_start_stats )
 						   {
 							 /** Fetch Z to confirm it works
 							  */

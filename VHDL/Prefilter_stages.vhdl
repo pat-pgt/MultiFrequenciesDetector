@@ -225,6 +225,9 @@ architecture arch of Prefilter_IIR_stage_shift is
 --  signal data_selected_low : integer;
 --  signal submask_high : integer;
 --  signal submask_low : integer;
+
+  signal temp_data_in : std_logic_vector( reg_size + shifts_max - 1 downto 0 );
+
 begin
   assert shifts_max < reg_size
     report "The maximum number of shifts (" & integer'image(shifts_max) & " + " & integer'image(delta_shifts) &
@@ -251,7 +254,20 @@ begin
         REGSYNC_IF : if reg_sync = '1' then
           sign_bit         <= data_in(data_in'high);
           sign_mask <= (others => '0');
+
+          temp_data_in( temp_data_in'low + reg_size - 1 downto temp_data_in'low ) <= data_in;
+          temp_data_in( temp_data_in'high downto temp_data_in'low + reg_size ) <=
+            ( others => data_in(data_in'high ));
+          
         else
+
+
+          temp_data_in(temp_data_in'high - arithm_size downto temp_data_in'low) <=
+            temp_data_in(temp_data_in'high downto temp_data_in'low + arithm_size);
+--          data_out(data_out'high downto data_out'high - arithm_size + 1 ) <=
+--            temp_data_in(temp_data_in'low + shifts_max - to_integer(unsigned(shifts_calc) + arithm_size - 1) downto
+--                         temp_data_in'low + shifts_max - to_integer(unsigned(shifts_calc)));
+          
           -- Keep that until multiple values of the arithmetic size has been tested.
           -- data_selected_high <= data_in'low + shifts_max - to_integer(unsigned(shifts_calc) + arithm_size - 1);
           -- data_selected_low <= data_in'low + shifts_max - to_integer(unsigned(shifts_calc));
