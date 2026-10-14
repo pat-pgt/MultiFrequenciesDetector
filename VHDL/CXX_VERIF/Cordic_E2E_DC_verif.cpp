@@ -165,7 +165,7 @@ int main(int argc,char*argv[])
   transform( execution::par,
 			 theInitialData.begin(), theInitialData.end(),
 			 theSimulData.begin(),
-			 [&](const XY_Data<int,32>&dat) {
+			 [full_cycles_number=cref(full_cycles_number)](const XY_Data<int,32>&dat) {
 
 			   dat.TwoDividedValidation();
 

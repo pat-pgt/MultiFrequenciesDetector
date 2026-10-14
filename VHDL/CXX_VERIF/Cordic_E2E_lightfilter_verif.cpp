@@ -16,6 +16,15 @@
 
 #include <getopt.h>
 
+/*
+ * The initial data is only one vector
+ * the simulation runs for multiple cuttoff frequencies
+ */
+template <typename cxx_reg_type, unsigned short reg_size>
+wave_data<cxx_reg_type, reg_size>::wave_data(const unsigned char&octave,const waveform_t&waveform):
+  octave( octave ), note( 0 ), the_wave_form( waveform ),the_vector(0x3fffffff)
+{}
+
 
 template <typename stats_type, typename stats_long_type,typename cxx_reg_type, unsigned short reg_size>
 void SimulDataType<stats_type,stats_long_type,cxx_reg_type,reg_size>::
@@ -75,8 +84,9 @@ int main(int argc,char*argv[])
   unsigned short nbre_initial_vextors = 2;
   unsigned char forced_octave = numeric_limits<unsigned char>::max();
   bool input_DC = false;
+  bool input_square = false;
 
-  while((opt = getopt( argc,argv,"a:cl:n:o:hv"))!=EOF)
+  while((opt = getopt( argc,argv,"a:csl:n:o:hv"))!=EOF)
 	switch( opt)
 	  {
 	  case 'a':
@@ -84,6 +94,9 @@ int main(int argc,char*argv[])
 		break;
 	  case 'c':
 		input_DC = true;
+		break;
+	  case 's':
+		input_square = true;
 		break;
 	  case 'n':
 		nbre_initial_vextors = atoi(optarg);
@@ -124,19 +137,23 @@ int main(int argc,char*argv[])
 	  return -2;
 	}
 
-  /* Only to get a runable veriosn, to be changed later
-   *
-   * The initial data is only one vector
-   * the simulation runs for multiple cuttoff frequencies
-   */
-  Value_Data<int,32>dat = Value_Data<int,32>( 0x3fffffff );
 
-  vector<unsigned char>freq_octave_list;
-  if ( forced_octave == numeric_limits<unsigned char>::max() )
-	freq_octave_list = { 2, 4 };
+  vector<wave_data<int, 32> >wave_data_list;
+  waveform_t waveform_used;
+  if ( input_DC )
+	waveform_used = waveform_t::DC;
+  else if ( input_square )
+	waveform_used = waveform_t::square;
   else
-	freq_octave_list.push_back( forced_octave );
+	waveform_used = waveform_t::sine;
 
+  if ( forced_octave == numeric_limits<unsigned char>::max() )
+	{
+	  wave_data_list.push_back( wave_data<int, 32>( 2, waveform_used ));
+	  wave_data_list.push_back( wave_data<int, 32>( 4, waveform_used ));
+	}
+  else
+	wave_data_list.push_back( wave_data<int, 32>( forced_octave, waveform_used ));
   /** In some cases, the same result is expected for different initial values.
    *  A statistic (of the statistic) displays one time. TODO TODO
    * However, the detail can be displayed
@@ -152,7 +169,7 @@ int main(int argc,char*argv[])
   cout << "--------------------------------------------------------------------------------------------" << endl;
 
   vector<SimulDataType<double,long double,int,32>>theSimulData;
-  for( auto ind_ID : freq_octave_list )
+  for( auto ind_ID : wave_data_list )
 	theSimulData.push_back(SimulDataType<double,long double,int,32>());
 
 
@@ -162,9 +179,11 @@ int main(int argc,char*argv[])
    *  Indeed a future version is going to run in parallel on multiple CPU machines
    */
   transform( execution::par,
-			 freq_octave_list.begin(), freq_octave_list.end(),
+			 wave_data_list.begin(), wave_data_list.end(),
 			 theSimulData.begin(),
-			 [&](const unsigned char&freq_octave) {
+			 [half_cycles_number=cref(half_cycles_number),
+			  half_cycles_start_stats= cref(half_cycles_start_stats) ]
+			 (const wave_data<int, 32>&wave) {
 
 			   unsigned long long strobe_stable_1=0, strobe_stable_0=0;
 
@@ -195,30 +214,22 @@ int main(int argc,char*argv[])
 				 }
 			   top.p_RST.set<bool>(false);
 
-			   if ( dat.GetRegSize() != top.p_reg__size__4__verif.get<unsigned char>() )
+			   if ( wave.the_vector.GetRegSize() != top.p_reg__size__4__verif.get<unsigned char>() )
 				 throw length_error("The C++ and the VHDL registers size mismatch");
 
 			   SimulDataType<double,long double,int,32> simulData;
-			   simulData.Init(sqrt((long double)dat.GetValueSquared()),
+			   simulData.Init(sqrt((long double)wave.the_vector.GetValueSquared()),
 							  top.p_nbre__Z__2__0__stages__out.get<unsigned short>(),
 							  top.p_nbre__Y__2__0__stages__out.get<unsigned short>());
 
 			   /** Since many input angles has been tested in the end to end DC test
 				*  We consider, here, only the X=input, Y=0 or the X=0, Y=input
-				*  TODO TODO
 				*/
-			   bool input_Value_isNeg = false;
-			   auto set_input_values=[&top,&input_Value_isNeg,&dat](){
-				 top.p_the__input.set<decltype(dat.value_type())>
-				    (dat.Get_Positive_Negative_Value(input_Value_isNeg));
-				 //				 cout << '>' << dat.Get_Positive_Negative_Value(input_Value_isNeg) << " ";
-				 //				 cout.flush();
-				 top.p_input__x__not__y.set<bool>(true);
-			   };
+			   top.p_the__input.set<decltype(wave.the_vector.value_type())>
+				 (wave.the_vector.Get_Positive_Negative_Value(false));
+			   top.p_input__x__not__y.set<bool>(true);
 
-			   set_input_values();
-
-			   cout << '(' << (int)dat << ")\t";  
+			   cout << '(' << (int)wave.the_vector << ")\t";  
 
 			   cout << "Running until the reset and the input values propagated to the output ..." << endl;
 			   cout.flush();
@@ -269,7 +280,8 @@ int main(int argc,char*argv[])
 				*/
 
 
-			   simulData.octave_of_input = freq_octave;
+			   simulData.octave_of_input = wave.octave;
+			   simulData.note_of_input = wave.note;
 			   /* To avoid a verification of the frequency (done elsewhere), a first "dry-run"
 				*   similar to the end to end DC test checks how many cycles are required to get
 				*   an half turn of the Z output
@@ -278,7 +290,7 @@ int main(int argc,char*argv[])
 				*/
 			   long input_half_periode;
 			   unsigned long HP_counter = 0;
-			   cout << "Spin the clock to find the half periode of the octave " << (unsigned short)freq_octave << " note 0" << endl;
+			   cout << "Spin the clock to find the half periode of the octave " << (unsigned short)wave.octave << " note 0" << endl;
 			   enum auto_detect_state_t { wait4start, wait4first1, isstarted, isdone };
 			   auto_detect_state_t auto_detect_state;
 			   unsigned short Z_high_note0;
@@ -297,7 +309,7 @@ int main(int argc,char*argv[])
 
 					  bitset<32>bsX(Z_high_note0);
 					  //cout << setfill('0') << setw(2) << hex << Z_high_note0;
-					  if ( bsX.test( freq_octave ) )
+					  if ( bsX.test( wave.octave ) )
 						{
 						  //cout << "- ";
 						  //cout.flush();
@@ -323,14 +335,14 @@ int main(int argc,char*argv[])
 						}
 					}
 			   }while ( auto_detect_state != auto_detect_state_t::isdone  );
-			   cout << "Frequency found at octave " << dec << (unsigned short)freq_octave;
+			   cout << "Frequency found at octave " << dec << (unsigned short)wave.octave;
 			   cout << ", requires " << input_half_periode;
 			   cout << " reg_sync cycles for a half periode " << endl;
 
 
 			   // According with the end to end DC test, octave 4 note 0 takes 128 reg_sync to spin one full turn.
 			   // Then the helf is 64. Since there are 4 notes and 6 octaves, the result is:
-			   //			   input_half_periode = 24576 / pow( 2, freq_octave );
+			   //			   input_half_periode = 24576 / pow( 2, wave.octave );
 			   //cout << "To speed up the simulation, set to " << input_half_periode << endl;
 
 
@@ -346,16 +358,17 @@ int main(int argc,char*argv[])
 			   for ( ind_half_cycles = 0; ind_half_cycles < half_cycles_number ; ind_half_cycles ++ )
 				 {
 				   // For now the input changes at each full cycle
+				   bool input_Value_isNeg;
 				   if( ind_half_cycles % 2 == 0 )
 					 {
 					   input_Value_isNeg =  false;
-					   if( ind_half_cycles % 50 == 0 )
+					   if( ind_half_cycles % 30 == 0 )
 						 {
-						   cout << ind_half_cycles / 50 << "/" << half_cycles_number / 50 << '\t';
+						   cout << ind_half_cycles / 30 << "/" << half_cycles_number / 30 << '\t';
 						   cout.flush();
 						 }
 					 } else {
-					 if ( input_DC )
+					 if ( wave.the_wave_form == waveform_t::DC )
 					   input_Value_isNeg = false;
 					 else
 					   input_Value_isNeg = true;
@@ -364,11 +377,17 @@ int main(int argc,char*argv[])
 
 				   full_cycle_loop = 0;
 				   do {
- 					 dat = Value_Data<int,32>( (signed long)( 0x3fffffff * sin(full_cycle_loop*2*numbers::pi/(input_half_periode*2))) );
-					 //					 dat = Value_Data<int,32>( 0x3fffffff );
+					 Value_Data<int,32>value_data(wave.the_vector);
+					 if( wave.the_wave_form == waveform_t::sine )
+					   value_data = Value_Data<int,32>( (signed long)( wave.the_vector *
+																	   sin(full_cycle_loop *
+																	   2 *
+																	   numbers::pi/(input_half_periode*2))) );
 
-					 set_input_values();
+					 top.p_the__input.set<decltype(wave.the_vector.value_type())>
+					   (value_data.Get_Positive_Negative_Value(input_Value_isNeg));
 
+					 top.p_input__x__not__y.set<bool>(true);
 
 					 top.p_CLK.set<bool>(true);
 					 top.step();
@@ -389,14 +408,14 @@ int main(int argc,char*argv[])
 						   {
 							 /** Fetch Z to confirm it works
 							  */
-							 decltype(dat.value_type()) Z_pref_1 = top.p_Z__prefilter__1.get<decltype(dat.value_type())>();
+							 decltype(wave.the_vector.value_type()) Z_pref_1 = top.p_Z__prefilter__1.get<decltype(wave.the_vector.value_type())>();
 
 							 simulData.prefilter_1.confirm_Z_2_0 += (float)Z_pref_1;
 
 							 // cout << '\t' << Z_pref_1;
 
-							 decltype(dat.value_type()) X_pref_1 = top.p_X__prefilter__1.get<decltype(dat.value_type())>();
-							 decltype(dat.value_type()) Y_pref_1 = top.p_Y__prefilter__1.get<decltype(dat.value_type())>();
+							 decltype(wave.the_vector.value_type()) X_pref_1 = top.p_X__prefilter__1.get<decltype(wave.the_vector.value_type())>();
+							 decltype(wave.the_vector.value_type()) Y_pref_1 = top.p_Y__prefilter__1.get<decltype(wave.the_vector.value_type())>();
 
 							 XY_Data<int,32> currentPoint_pref_1( X_pref_1, Y_pref_1);
 							 /** Get the octave note couple, as it is independent statistics. The frequencies are different.
@@ -434,7 +453,7 @@ int main(int argc,char*argv[])
 								 // Found, then process the diff, replace the old value and add the diff in the statistics
 								 pair<XY_Data<int,32>,stats<long double>>&data_info =
 								   simulData.prefilter_1.check_module_per_ON.find( key_ON_pref_1 )->second;
-								 data_info.second += sqrt( (decltype(dat.module_value_type()))
+								 data_info.second += sqrt( (decltype(wave.the_vector.module_value_type()))
 														   currentPoint_pref_1.GetModuleSquared());
 								 data_info.first = currentPoint_pref_1;
 								 // cout << 'z';
@@ -444,7 +463,7 @@ int main(int argc,char*argv[])
 								 // Not found, create the records and initialize the statistics
 								 stats<long double>theNewPrefStats;
 								 // Set the value that should be found
-								 theNewPrefStats += sqrt( (decltype(dat.module_value_type()))
+								 theNewPrefStats += sqrt( (decltype(wave.the_vector.module_value_type()))
 														  currentPoint_pref_1.GetModuleSquared());
 								 simulData.
 								   prefilter_1.
@@ -463,9 +482,9 @@ int main(int argc,char*argv[])
 
 							 /** Fetch the X, Y, Z
 							  */
-							 decltype(dat.value_type()) X_Y_2_0 = top.p_X__Y__2__0.get<decltype(dat.value_type())>();
-							 decltype(dat.value_type()) Y_Y_2_0 = top.p_Y__Y__2__0.get<decltype(dat.value_type())>();
-							 decltype(dat.value_type()) Z_Y_2_0 = top.p_Z__Y__2__0.get<decltype(dat.value_type())>();
+							 decltype(wave.the_vector.value_type()) X_Y_2_0 = top.p_X__Y__2__0.get<decltype(wave.the_vector.value_type())>();
+							 decltype(wave.the_vector.value_type()) Y_Y_2_0 = top.p_Y__Y__2__0.get<decltype(wave.the_vector.value_type())>();
+							 decltype(wave.the_vector.value_type()) Z_Y_2_0 = top.p_Z__Y__2__0.get<decltype(wave.the_vector.value_type())>();
 
 							 /** Get the octave note couple, as it is independent statistics. The frequencies are different.
 							  *  Each Z value is stored in the object for the next occurrence.
@@ -585,12 +604,12 @@ int main(int argc,char*argv[])
   cout << "of points         max-min average standard dev                        max-min average standard dev" << endl;
 	for_each( execution::seq,
 			theSimulData.begin(), theSimulData.end(),
-			  [](auto&dat){
-			  if ( dat.GetAndCheck_nbre_points() )
+			  [](auto&sim){
+			  if ( sim.GetAndCheck_nbre_points() )
 				{
-				  cout << "  " << *dat.GetAndCheck_nbre_points() << ",  ";
-				  cout << dat.prefilter_1.confirm_Z_2_0.Basic_display() << "\t\t";
-				  cout << dat.prefilter_1.confirm_Z_2_0.Display_without_offset_normalize() << endl;
+				  cout << "  " << *sim.GetAndCheck_nbre_points() << ",  ";
+				  cout << sim.prefilter_1.confirm_Z_2_0.Basic_display() << "\t\t";
+				  cout << sim.prefilter_1.confirm_Z_2_0.Display_without_offset_normalize() << endl;
 				}
 			  else
 				cout << "Problem: the number of points is not the same for all the tests" << endl;
@@ -601,13 +620,13 @@ int main(int argc,char*argv[])
 	cout << "Module of X and Y after the prefilter" << endl;
   for_each( execution::seq,
 			theSimulData.begin(), theSimulData.end(),
-			[](auto&dat){
+			[](auto&sim){
 
 			for_each( execution::seq,
-					  dat.prefilter_1.check_module_per_ON.begin(),
-					  dat.prefilter_1.check_module_per_ON.end(),
-					  [&dat](auto&ON_iter){
-						if ( ON_iter.first.first == dat.octave_of_input && ON_iter.first.second == 0 )
+					  sim.prefilter_1.check_module_per_ON.begin(),
+					  sim.prefilter_1.check_module_per_ON.end(),
+					  [&sim](auto&ON_iter){
+						if ( ON_iter.first.first == sim.octave_of_input && ON_iter.first.second == sim.note_of_input )
 						  cout << "* ";
 						else
 						  cout << "  ";
@@ -630,12 +649,12 @@ int main(int argc,char*argv[])
   cout << "of points         max-min average standard dev                      max-min average standard dev " << endl;
   for_each( execution::seq,
 			theSimulData.begin(), theSimulData.end(),
-			[](auto&dat){
-			  if ( dat.GetAndCheck_nbre_points() )
+			[](auto&sim){
+			  if ( sim.GetAndCheck_nbre_points() )
 				{
-				  cout << "  " << *dat.GetAndCheck_nbre_points() << ",  ";
-				  cout << dat.Y_2_0.check_Y_converges.Display_without_offset_normalize() << "\t\t";
-				  cout << dat.Y_2_0.check_Y_converges.Basic_display() << endl;
+				  cout << "  " << *sim.GetAndCheck_nbre_points() << ",  ";
+				  cout << sim.Y_2_0.check_Y_converges.Display_without_offset_normalize() << "\t\t";
+				  cout << sim.Y_2_0.check_Y_converges.Basic_display() << endl;
 				}
 			  else
 				cout << "Problem: the number of points is not the same for all the tests" << endl;
@@ -646,29 +665,41 @@ int main(int argc,char*argv[])
   cout << "of points         max-min average standard dev                      max-min average standard dev" << endl;
   for_each( execution::seq,
 			theSimulData.begin(), theSimulData.end(),
-			[](auto&dat){
-			for_each( execution::seq,
-					  dat.Y_2_0.check_X_converges_per_ON.begin(),
-					  dat.Y_2_0.check_X_converges_per_ON.end(),
-					  [&dat](auto&ON_iter){
-						if ( ON_iter.first.first != numeric_limits<decltype(ON_iter.first.first)>::max() ||
-							 ON_iter.first.second != numeric_limits<decltype(ON_iter.first.second)>::max() ) {
-						  if ( ON_iter.first.first == dat.octave_of_input && ON_iter.first.second == 0 )
-							cout << "* ";
-						  else
-							cout << "  ";
-						  cout << "O: " << (unsigned short)ON_iter.first.first;
-						  cout << ", N: " << (unsigned short)ON_iter.first.second << '\t';
-						  cout << (unsigned int)ON_iter.second << '\t';
-						  cout << ON_iter.second.Basic_display() << "\t\t";
-						  cout << ON_iter.second.Display_without_offset_normalize();
-						}else{
-						  cout << "  O: /, N: /\t";
-						  cout << (unsigned int)ON_iter.second;
-						}
-						cout << endl;
-					  });
-			cout << endl;
+			[](auto&sim){
+			  unsigned char max_number_notes = 0;
+			  for_each( execution::seq,
+						sim.Y_2_0.check_X_converges_per_ON.begin(),
+						sim.Y_2_0.check_X_converges_per_ON.end(),
+						[&sim,&max_number_notes](auto&ON_iter){
+						  if ( ON_iter.first.second > max_number_notes &&
+							  ON_iter.first.second != numeric_limits<decltype(ON_iter.first.second)>::max() )
+							max_number_notes = ON_iter.first.second;
+						});
+			  max_number_notes += 1;
+			  for_each( execution::seq,
+						sim.Y_2_0.check_X_converges_per_ON.begin(),
+						sim.Y_2_0.check_X_converges_per_ON.end(),
+						[&sim,&max_number_notes](auto&ON_iter){
+						  if ( ON_iter.first.first != numeric_limits<decltype(ON_iter.first.first)>::max() ||
+							   ON_iter.first.second != numeric_limits<decltype(ON_iter.first.second)>::max() ) {
+							cout << "O: " << (unsigned short)ON_iter.first.first;
+							cout << ", N: " << (unsigned short)ON_iter.first.second << '\t';
+							float ratio = pow( 2, ON_iter.first.first - sim.octave_of_input );
+							ratio *= pow( pow( 2.0, 1.0 / float( max_number_notes ) ), ON_iter.first.second );
+							// TODO consider the starting note is NOT 0
+							ratio = round( ratio * 100.0 ) / 100.0;
+							cout << format( "{:6.3f}", ratio);
+							cout << '\t';
+							cout << (unsigned int)ON_iter.second << '\t';
+							cout << ON_iter.second.Basic_display() << "\t\t";
+							cout << ON_iter.second.Display_without_offset_normalize();
+						  }else{
+							cout << "O: /, N: /\t";
+							cout << (unsigned int)ON_iter.second;
+						  }
+						  cout << endl;
+						});
+			  cout << endl;
 			});
 
   /*
@@ -676,7 +707,7 @@ TODO create object and include in the loop above
   set<pair<unsigned char, unsigned char>> check_spin_per_ON_constant_keys;
   for_each( execution::seq,
 			theSimulData.begin(), theSimulData.end(),
-			[&](auto&dat){
+			[&](auto&sim){
 			  check_spin_per_ON_constant_keys.insert( views::keys(ON_iter.first ));
 			});
   for_each( check_spin_per_ON_constant_keys.begin(), check_spin_per_ON_constant_keys.end(),

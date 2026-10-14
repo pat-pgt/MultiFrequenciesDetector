@@ -29,7 +29,23 @@
  * It verifies the computations and if there are some "cross talk" in the design.
  */
 
+enum waveform_t { DC, square, sine };
 
+
+template <typename cxx_reg_type, unsigned short reg_size>
+struct wave_data
+{
+  const unsigned char octave;
+  const unsigned char note;
+  waveform_t the_wave_form;
+  /** Initialisation with note = 0
+   * Another constructor is going to get a note as weel,
+   * but not before verifying the note can be non 0 in all the software
+   */
+  wave_data() = delete;
+  wave_data(const unsigned char&octave, const waveform_t&);
+  Value_Data<cxx_reg_type,reg_size> the_vector;
+};
 /** @brief Stores the result of all the verifications
  *
  * The types are hard-coded.\n
@@ -57,6 +73,7 @@ struct SimulDataType
 	  stats<stats_type>check_Y_converges;
 	}  Y_2_0;
 	unsigned char octave_of_input;
+	unsigned char note_of_input;
 
 	void Init(const stats_long_type&module_vector,
 		 const unsigned short &Z_2_0_stages,const unsigned short&Y_2_0_stages);
