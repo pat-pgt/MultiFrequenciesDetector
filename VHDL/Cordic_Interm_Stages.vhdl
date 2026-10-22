@@ -368,7 +368,7 @@ architecture rtl of Cordic_IntermStage is
     StateNumbers_2_BitsNumbers(extra_shifts + 1) - 1 downto 0);
   signal Z_current_slice                        : std_logic_vector(arithm_size - 1 downto 0);
   signal mask_register                          : std_logic_vector(arithm_size - 1 downto 0);
-  type meta_data_array_t is array (extra_shifts + 1 downto 0) of meta_data_t;
+  type meta_data_array_t is array (extra_shifts downto 0) of meta_data_t;
   signal meta_data_array                        : meta_data_array_t;
   signal last_clk_cycle_strobe                  : std_logic;
 begin
@@ -396,7 +396,6 @@ begin
   scz_out <= scz_out_s;
 
   meta_data_out <= meta_data_array( meta_data_array'low );
-  meta_data_array( meta_data_array'high ) <= meta_data_in;
   
   main_proc : process(CLK)
     variable carry_in_vector_X            : std_logic_vector(arithm_size downto 0);
@@ -430,8 +429,11 @@ begin
             sign_X                <= scz_out.the_cos(scz_out.the_cos'high);
             sign_Y                <= scz_out.the_sin(scz_out.the_sin'high);
           end if;
-          meta_data_array(meta_data_array'high - 1 downto meta_data_array'low) <=
-            meta_data_array(meta_data_array'high downto meta_data_array'low + 1);
+          meta_data_array(meta_data_array'high ) <= meta_data_in;
+          if meta_data_array'length > 1 then
+            meta_data_array(meta_data_array'high - 1 downto meta_data_array'low) <=
+              meta_data_array(meta_data_array'high downto meta_data_array'low + 1);
+          end if;
           remaining_shift_count <= std_logic_vector(to_unsigned(reg_size - shifts_calc, remaining_shift_count'length));
           is_first              <= '1';
           if shifts_calc < 4 and false then
@@ -589,6 +591,9 @@ begin
         end if REGSYNC_IF;
       else
         remaining_shift_count <= (others => '0');
+        for ind in meta_data_array'high downto meta_data_array'low loop
+          meta_data_array(ind).data_valid <= '0';
+        end loop;
       end if RST_IF;
       last_clk_cycle_strobe <= meta_data_in.strobe;
     end if CLK_IF;
