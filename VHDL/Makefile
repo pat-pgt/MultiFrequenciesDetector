@@ -60,7 +60,8 @@ simul_Cordic_E2E_DC_spin_angles : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_I
 	@echo "/Cordic_bundle_test_Z_to_0_Y_to_0/cordic_e2e_dc_bundle_instanc_000/cordic_bundle_Z_2_0_instanc/*" >> $(BUILDDIR)GHDL_wave_opt_toplevel	
 	@echo "/Cordic_bundle_test_Z_to_0_Y_to_0/cordic_e2e_dc_bundle_instanc_000/cordic_first_stage_Y_2_0_instanc/*" >> $(BUILDDIR)GHDL_wave_opt_toplevel
 	@echo "/Cordic_bundle_test_Z_to_0_Y_to_0/cordic_e2e_dc_bundle_instanc_000/cordic_bundle_Y_2_0_instanc/*" >> $(BUILDDIR)GHDL_wave_opt_toplevel
-	$(GHDL_PROG) -r $(VFLAGS) Cordic_bundle_test_Z_to_0_Y_to_0 -gnbre_Y_2_0_stages=14 -gnbre_Z_2_0_stages=16 -gwith_4_angles_test=false -gwith_angles_vs_MD=true --vcd=$(WAVDESTDIR)Cordic_E2E_dc_spin_angles.wav --read-wave-opt=$(BUILDDIR)GHDL_wave_opt_toplevel 2>&1 | tee $(DESTDIR)Cordic.out.txt
+#	$(GHDL_PROG) -r $(VFLAGS) Cordic_bundle_test_Z_to_0_Y_to_0 -gnbre_Y_2_0_stages=14 -gnbre_Z_2_0_stages=16 -gwith_4_angles_test=false -gwith_angles_vs_MD=true --vcd=$(WAVDESTDIR)Cordic_E2E_dc_spin_angles.wav --read-wave-opt=$(BUILDDIR)GHDL_wave_opt_toplevel 2>&1 | tee $(DESTDIR)Cordic.out.txt
+	$(GHDL_PROG) -r $(VFLAGS) Cordic_bundle_test_Z_to_0_Y_to_0 -gnbre_Y_2_0_stages=14 -gnbre_Z_2_0_stages=16 -gwith_4_angles_test=false -gwith_angles_vs_MD=true --vcd=$(WAVDESTDIR)Cordic_E2E_dc_spin_angles.wav 2>&1 | tee $(DESTDIR)Cordic.out.txt
 	echo "The wav file is ***NOT*** an audio file, it can be opened, for instance, using gtk-wave" > $(WAVDESTDIR)README.important
 
 simul_Cordic_E2E_DC_four_inits : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages.vhdl $(SCRDIR)Cordic_Interm_Stages.vhdl $(SCRDIR)Cordic_Bundle_Stages.vhdl $(SCRDIR)AnglesGene.vhdl $(SCRDIR)DataMonitor.vhdl $(SCRDIR)Cordic_E2E_DC_test.vhdl
@@ -137,11 +138,11 @@ $(BUILDDIR)Cordic_E2E_lightfilter_CXX_compiled : $(BUILDDIR)packages_compiled $(
 	touch $(BUILDDIR)Cordic_E2E_lightfilter_CXX_compiled
 
 $(SYNTHDESTDIR)Cordic_E2E_lightfilter_CXX_DS1.cpp : $(BUILDDIR)Cordic_E2E_lightfilter_CXX_compiled
-	$(YOSYS_PROG) -m ghdl -p '$(GHDL_PROG) $(VFLAGS) -gwith_downsampling=1 -gextra_shifts=2 -gfull_simul=true Cordic_E2E_lightfilter_CXX_test_Direct_storage; write_cxxrtl  -namespace Cordic_E2E_lightfilter_1 $(SYNTHDESTDIR)Cordic_E2E_lightfilter_CXX_DS1.cpp' 2>&1 |tee $(SYNTHDESTDIR)Cordic_E2E_lightfilter_1.synth.out.txt
-#	$(YOSYS_PROG) -m ghdl -p '$(GHDL_PROG) $(VFLAGS) -gwith_downsampling=1 -gextra_shifts=2 -gfull_simul=true Cordic_E2E_lightfilter_CXX_test_Barrel_shifter; write_cxxrtl  -namespace Cordic_E2E_lightfilter_1 $(SYNTHDESTDIR)Cordic_E2E_lightfilter_CXX_DS1.cpp' 2>&1 |tee $(SYNTHDESTDIR)Cordic_E2E_lightfilter_1.synth.out.txt
+#	$(YOSYS_PROG) -m ghdl -p '$(GHDL_PROG) $(VFLAGS) -gwith_downsampling=1 -gextra_shifts=2 -gfull_simul=true Cordic_E2E_lightfilter_CXX_test_Direct_storage; write_cxxrtl  -namespace Cordic_E2E_lightfilter_1 $(SYNTHDESTDIR)Cordic_E2E_lightfilter_CXX_DS1.cpp' 2>&1 |tee $(SYNTHDESTDIR)Cordic_E2E_lightfilter_1.synth.out.txt
+	$(YOSYS_PROG) -m ghdl -p '$(GHDL_PROG) $(VFLAGS) -gwith_downsampling=1 -gextra_shifts=2 -gfull_simul=true Cordic_E2E_lightfilter_CXX_test_Barrel_shifter; write_cxxrtl  -namespace Cordic_E2E_lightfilter_1 $(SYNTHDESTDIR)Cordic_E2E_lightfilter_CXX_DS1.cpp' 2>&1 |tee $(SYNTHDESTDIR)Cordic_E2E_lightfilter_1.synth.out.txt
 
 $(CXXDESTDIR)Cordic_E2E_lightfilter_verif_DS1 : $(SYNTHDESTDIR)Cordic_E2E_lightfilter_CXX_DS1.cpp $(CXXSRCDIR)Cordic_E2E_lightfilter_verif.cpp $(CXXSRCDIR)Cordic_E2E_lightfilter_verif.hxx $(CXXSRCDIR)Utils_CXX_verif.hxx $(CXXSRCDIR)Utils_CXX_verif.cpp
-	$(GCC_PROG) $(CXXFLAGS) $(CXXSRCDIR)Cordic_E2E_lightfilter_verif.cpp -DCordic_E2E_lightfilter_CXX_DS1 -o $(CXXDESTDIR)Cordic_E2E_lightfilter_verif_DS1 -I$(SYNTHDESTDIR) -I/usr/local/share/yosys/include/backends/cxxrtl/runtime
+	$(GCC_PROG) $(CXXFLAGS) $(CXXPARFLAGS) $(CXXSRCDIR)Cordic_E2E_lightfilter_verif.cpp -DCordic_E2E_lightfilter_CXX_DS1 -o $(CXXDESTDIR)Cordic_E2E_lightfilter_verif_DS1 -I$(SYNTHDESTDIR) -I/usr/local/share/yosys/include/backends/cxxrtl/runtime
 
 
 simul_Prefilter_Storage : $(BUILDDIR)packages_compiled $(SCRDIR)Cordic_IO_Stages.vhdl $(SCRDIR)Cordic_Interm_Stages.vhdl $(SCRDIR)Cordic_Bundle_Stages.vhdl $(SCRDIR)DataMonitor.vhdl
