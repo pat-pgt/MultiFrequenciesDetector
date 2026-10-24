@@ -61,6 +61,8 @@ struct SimulDataType
 
 	const float GetInitAngle()const;
 
+	uint8_t N_notes;
+
 	struct {
 	  stats<stats_long_type>confirm_Z_2_0;
 	  map< pair< unsigned char, unsigned char >,

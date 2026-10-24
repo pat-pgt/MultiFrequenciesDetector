@@ -21,88 +21,95 @@ use IEEE.STD_LOGIC_1164.all,
 
 entity Cordic_E2E_DC_CXX_test is
   generic (
-    with_downsampling   : natural := 1;
-    nbre_Z_2_0_stages   : integer range 4 to reg_size := 24;
-    nbre_Y_2_0_stages   : integer range 4 to reg_size := 24;
-    extra_shifts        : integer range 0 to 7 := 0
+    with_downsampling : natural                     := 1;
+    nbre_Z_2_0_stages : integer range 4 to reg_size := 24;
+    nbre_Y_2_0_stages : integer range 4 to reg_size := 24;
+    extra_shifts      : integer range 0 to 7        := 0
     );
   port (
-    CLK                   : in  std_logic                   := '0';
-    RST                   : in  std_logic;
-    full_sync             : out std_logic;
-    reg_sync              : out std_logic;
-    input_X               : in  std_logic_vector( reg_size - 1 - 1 downto 0 );
-    input_Y               : in  std_logic_vector( reg_size - 1 - 1 downto 0 );
-    X_Z_2_0               : out reg_type;
-    Y_Z_2_0               : out reg_type;
-    Z_Z_2_0               : out reg_type;
-    X_Y_2_0               : out reg_type;
-    Y_Y_2_0               : out reg_type;
-    Z_Y_2_0               : out reg_type;
-    nbre_Z_2_0_stages_out : out integer range 4 to reg_size;
-    nbre_Y_2_0_stages_out : out integer range 4 to reg_size;
-    reg_size_4_verif      : out integer range 16 to 255;
-    metadata_Z_2_0_note   : out std_logic_vector(StateNumbers_2_BitsNumbers(N_notes) - 1 downto 0);
-    metadata_Z_2_0_octave : out std_logic_vector(StateNumbers_2_BitsNumbers(N_octaves) - 1  downto 0);
-    metadata_Y_2_0_note   : out std_logic_vector(StateNumbers_2_BitsNumbers(N_notes) - 1 downto 0);
-    metadata_Y_2_0_octave : out std_logic_vector(StateNumbers_2_BitsNumbers(N_octaves) - 1  downto 0);
-    metadata_Y_2_0_strobe : out std_logic;
-    strobe_stable         : out std_logic
+    CLK                       : in  std_logic := '0';
+    RST                       : in  std_logic;
+    full_sync                 : out std_logic;
+    reg_sync                  : out std_logic;
+    input_X                   : in  std_logic_vector(reg_size - 1 - 1 downto 0);
+    input_Y                   : in  std_logic_vector(reg_size - 1 - 1 downto 0);
+    X_Z_2_0                   : out reg_type;
+    Y_Z_2_0                   : out reg_type;
+    Z_Z_2_0                   : out reg_type;
+    X_Y_2_0                   : out reg_type;
+    Y_Y_2_0                   : out reg_type;
+    Z_Y_2_0                   : out reg_type;
+    nbre_Z_2_0_stages_out     : out integer range 4 to reg_size;
+    nbre_Y_2_0_stages_out     : out integer range 4 to reg_size;
+    nbre_N_notes              : out integer range 2 to 255;
+    reg_size_4_verif          : out integer range 16 to 255;
+    metadata_Z_2_0_note       : out std_logic_vector(StateNumbers_2_BitsNumbers(N_notes) - 1 downto 0);
+    metadata_Z_2_0_octave     : out std_logic_vector(StateNumbers_2_BitsNumbers(N_octaves) - 1 downto 0);
+    metadata_Z_2_0_data_valid : out std_logic;
+    metadata_Y_2_0_note       : out std_logic_vector(StateNumbers_2_BitsNumbers(N_notes) - 1 downto 0);
+    metadata_Y_2_0_octave     : out std_logic_vector(StateNumbers_2_BitsNumbers(N_octaves) - 1 downto 0);
+    metadata_Y_2_0_strobe     : out std_logic;
+    metadata_Y_2_0_data_valid : out std_logic;
+    strobe_stable             : out std_logic
     );
 end entity Cordic_E2E_DC_CXX_test;
 
 
 architecture arch of Cordic_E2E_DC_CXX_test is
-  signal RST_monitor_Z_2_0    : natural := nbre_Z_2_0_stages + 5;
-  signal RST_monitor_Y_2_0    : natural := nbre_Y_2_0_stages + 5;
-  signal meta_data_Z_2_0_out  : meta_data_t;
-  signal meta_data_Y_2_0_out  : meta_data_t;
+  signal RST_monitor_Z_2_0   : natural := nbre_Z_2_0_stages + 5;
+  signal RST_monitor_Y_2_0   : natural := nbre_Y_2_0_stages + 5;
+  signal meta_data_Z_2_0_out : meta_data_t;
+  signal meta_data_Y_2_0_out : meta_data_t;
 
   signal report_cordic_bundle : std_logic := '0';
   signal SCZ_out_Z_2_0        : reg_sin_cos_z;
   signal SCZ_out_Y_2_0        : reg_sin_cos_z;
 begin
-    nbre_Z_2_0_stages_out <= nbre_Z_2_0_stages;
-    nbre_Y_2_0_stages_out <= nbre_Y_2_0_stages;
+  nbre_Z_2_0_stages_out <= nbre_Z_2_0_stages;
+  nbre_Y_2_0_stages_out <= nbre_Y_2_0_stages;
+  nbre_N_notes          <= N_notes;
 
-    reg_size_4_verif      <= reg_size;
+  reg_size_4_verif <= reg_size;
 
-    --! Since the C++ software may not know the reg_sin_cos_z type
-    --!   we split into multiples signals.
-    --! Since it is supposed to be read by a verification software,
-    --!   we expose directly the shift registers,
-    --!   it is supposed to read during the reg_sync.
-    --! 
-    metadata_Z_2_0_note   <= meta_data_Z_2_0_out.note;
-    metadata_Z_2_0_octave <= meta_data_Z_2_0_out.octave;
-    metadata_Y_2_0_note   <= meta_data_Y_2_0_out.note;
-    metadata_Y_2_0_octave <= meta_data_Y_2_0_out.octave;
-    metadata_Y_2_0_strobe <= meta_data_Y_2_0_out.strobe;
+  --! Since the C++ software may not know the reg_sin_cos_z type
+  --!   we split into multiples signals.
+  --! Since it is supposed to be read by a verification software,
+  --!   we expose directly the shift registers,
+  --!   it is supposed to read during the reg_sync.
+  --! 
+  metadata_Z_2_0_note       <= meta_data_Z_2_0_out.note;
+  metadata_Z_2_0_octave     <= meta_data_Z_2_0_out.octave;
+  metadata_Z_2_0_data_valid <= meta_data_Z_2_0_out.data_valid;
+  metadata_Y_2_0_note       <= meta_data_Y_2_0_out.note;
+  metadata_Y_2_0_octave     <= meta_data_Y_2_0_out.octave;
+  metadata_Y_2_0_strobe     <= meta_data_Y_2_0_out.strobe;
+  metadata_Y_2_0_data_valid <= meta_data_Y_2_0_out.data_valid;
 
-    X_Y_2_0 <= SCZ_out_Y_2_0.the_cos;
-    Y_Y_2_0 <= SCZ_out_Y_2_0.the_sin;
-    Z_Y_2_0 <= SCZ_out_Y_2_0.angle_z;
+  X_Y_2_0 <= SCZ_out_Y_2_0.the_cos;
+  Y_Y_2_0 <= SCZ_out_Y_2_0.the_sin;
+  Z_Y_2_0 <= SCZ_out_Y_2_0.angle_z;
 
-    X_Z_2_0 <= SCZ_out_Z_2_0.the_cos;
-    Y_Z_2_0 <= SCZ_out_Z_2_0.the_sin;
-    Z_Z_2_0 <= SCZ_out_Z_2_0.angle_z;
+  X_Z_2_0 <= SCZ_out_Z_2_0.the_cos;
+  Y_Z_2_0 <= SCZ_out_Z_2_0.the_sin;
+  Z_Z_2_0 <= SCZ_out_Z_2_0.angle_z;
 
-    Cordic_E2E_DC_Bundle_instanc : Cordic_E2E_DC_Bundle
+  Cordic_E2E_DC_Bundle_instanc : Cordic_E2E_DC_Bundle
     generic map(
       --! 0         : no down-sampling
       --! 1 or more : down-sampling without or with N extra rate
       with_downsampling,
-      nbre_Z_2_0_stages   => nbre_Z_2_0_stages,
-      nbre_Y_2_0_stages   => nbre_Y_2_0_stages,
-      extra_shifts        => extra_shifts
+      nbre_Z_2_0_stages => nbre_Z_2_0_stages,
+      nbre_Y_2_0_stages => nbre_Y_2_0_stages,
+      extra_shifts      => extra_shifts
       )
     port map(
-      CLK                    => CLK,
-      RST                    => RST,
-      input_x                => input_X,
-      input_y                => input_Y,
-      reg_sync               => reg_sync,
-      full_sync              => full_sync,
+      CLK                    ,
+      RST                    ,
+      input_x                ,
+      input_y                ,
+      reg_sync               ,
+      full_sync              ,
+      Z_high_N0              => open,
       SCZ_out_Z_2_0          => SCZ_out_Z_2_0,
       SCZ_out_Y_2_0          => SCZ_out_Y_2_0,
       report_cordic_bundle_1 => report_cordic_bundle,

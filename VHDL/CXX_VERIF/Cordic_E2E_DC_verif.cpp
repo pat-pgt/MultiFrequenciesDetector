@@ -203,6 +203,9 @@ int main(int argc,char*argv[])
 				 throw length_error("The C++ and the VHDL registers size mismatch");
 
 			   SimulDataType<double,long double,int,32> simulData;
+
+			   simulData.N_notes = top.p_nbre__N__notes.get<uint8_t>();
+
 			   simulData.Init(sqrt((long double)dat.GetModuleSquared()),
 							  top.p_nbre__Z__2__0__stages__out.get<unsigned short>(),
 							  top.p_nbre__Y__2__0__stages__out.get<unsigned short>());
@@ -219,11 +222,12 @@ int main(int argc,char*argv[])
 			   cout.flush();
 			   /** Run until the DC input reaches the output.
 				   It is mostly a number of frames (reg_sync) equal to
-				   the sum of the number of Z to 0 stages plus the number of Y to 0 stages
-				   plus 6, plus 7 and plus 3 to count the first stages, the last stages and the down-sampling
+				   the sum of the number of Z to 0 stages plus the number of Y to 0 stages.
+				   The number is a bit higher as there are pre processings
 			   */
-			   unsigned short ind_Z = 0, ind_Y = 0;
-			   while ( ind_Y != numeric_limits<decltype(ind_Y)>::max() )
+			   uint16_t reset_count = 0;
+			   uint16_t reset_count_stage_1;
+			   while ( true )
 				 {
 				   top.p_CLK.set<bool>(true);
 				   top.step();
@@ -231,27 +235,16 @@ int main(int argc,char*argv[])
 				   top.step();
 				   if ( top.p_reg__sync.get<bool>() == true )
 					 {
-					   if ( ind_Z == numeric_limits<decltype(ind_Z)>::max() )
+					   if ( top.p_metadata__Y__2__0__data__valid.get<bool>() == true )
 						 {
-						   if ( ind_Y == numeric_limits<decltype(ind_Y)>::max() )
-							 {}
-						   else if ( ind_Y == ((unsigned long)top.p_nbre__Y__2__0__stages__out.get<short>() + 7 + 3 ) )
-							 {
-							   // cout << "Y converges to " << top.p_Y__Y__2__0.get<decltype(dat::value_type())>();
-							   // cout << "\tat the first valid time " << ind_Y << " after Z" << endl;
-							   ind_Y = numeric_limits<decltype(ind_Y)>::max();
-							 }
-						   else
-							 ind_Y += 1;
-						 }
-					   else if ( ind_Z == ((unsigned long)top.p_nbre__Z__2__0__stages__out.get<short>() + 6 ))
-						 {
-						   // cout << "Z converges to " << top.p_Z__Z__2__0.get<decltype(dat::value_type())>();
-						   // cout << "\tat the first valid time " << ind_Z << endl;
-						   ind_Z = numeric_limits<decltype(ind_Z)>::max();
-						 }
-					   else
-						 ind_Z += 1;
+						   cout << "Data valid received after " << reset_count_stage_1 << " Z to 0 reg syncs";
+						   cout << " and " << reset_count << " full end to end reg syncs "<< endl;
+						   break;
+						 } else {
+						 if ( top.p_metadata__Z__2__0__data__valid.get<bool>() == false )
+						   reset_count_stage_1 = reset_count;
+						 reset_count += 1;
+					   }
 					 }
 				 }
 			   // 
@@ -287,6 +280,8 @@ int main(int argc,char*argv[])
 
 					 if ( top.p_reg__sync.get<bool>() == true )
 					   {
+						 if ( top.p_metadata__Y__2__0__data__valid.get<bool>() == false )
+						   cout << "ERROR valid data returned to 0" << endl;
 						 /** Fetch the X, Y, Z
 						  *  Add the module of X and Y, which should increase of 16% from the initial value module, to the statistic
 						  *  Add the Z value, which should converge to 0 to the statistics
@@ -595,24 +590,25 @@ int main(int argc,char*argv[])
   for_each( execution::seq,
 			theSimulData.begin(), theSimulData.end(),
 			[](auto&dat){
-			for_each( execution::seq,
-					  dat.Y_2_0.check_spin_per_ON_constant.begin(),
-					  dat.Y_2_0.check_spin_per_ON_constant.end(),
-					  [](auto&ON_iter){
-						if ( ON_iter.first.first != numeric_limits<decltype(ON_iter.first.first)>::max() ||
-							 ON_iter.first.second != numeric_limits<decltype(ON_iter.first.second)>::max() ) {
-						  cout << "O: " << (unsigned short)ON_iter.first.first <<
-							", N: " << (unsigned short)ON_iter.first.second << '\t';
-						}else
-						  cout << "O: /, N: /\t";
-						cout << (unsigned int)ON_iter.second.the_stats << '\t';
-						cout << ON_iter.second.the_stats.Basic_display() << "\t\t";
-						cout << ON_iter.second.the_stats.Display_without_offset_normalize() << "\t\t";
-						//	cout << ON_iter.second.second.Display_without_offset_normalize() << "\t\t";
-						cout << (string)ON_iter.second.the_X_counter;
-						cout << endl;
-					  });
-			cout << endl;
+			  uint8_t N_notes = dat.N_notes;
+			  for_each( execution::seq,
+						dat.Y_2_0.check_spin_per_ON_constant.begin(),
+						dat.Y_2_0.check_spin_per_ON_constant.end(),
+						[N_notes=cref(N_notes)](auto&ON_iter){
+						  if ( ON_iter.first.first != numeric_limits<decltype(ON_iter.first.first)>::max() ||
+							   ON_iter.first.second != numeric_limits<decltype(ON_iter.first.second)>::max() ) {
+							cout << "O: " << (unsigned short)ON_iter.first.first <<
+							  ", N: " << (unsigned short)ON_iter.first.second << '/' << (uint16_t)N_notes << '\t';
+						  }else
+							cout << "O: /, N: /\t";
+						  cout << (unsigned int)ON_iter.second.the_stats << '\t';
+						  cout << ON_iter.second.the_stats.Basic_display() << "\t\t";
+						  cout << ON_iter.second.the_stats.Display_without_offset_normalize() << "\t\t";
+						  //	cout << ON_iter.second.second.Display_without_offset_normalize() << "\t\t";
+						  cout << (string)ON_iter.second.the_X_counter;
+						  cout << endl;
+						});
+			  cout << endl;
 			});
 
   /*

@@ -97,10 +97,15 @@ begin
   main_proc : process(CLK)
     variable temp_reg_X, temp_reg_Y : reg_type;
     variable high_bits_Z            : std_logic_vector(2 downto 0);
+    variable meta_data_v            : meta_data_t;
   begin
     CLK_IF : if rising_edge(CLK) then
       REGSYNC_IF : if reg_sync_in = '1' then
-        meta_data_out <= meta_data_in;
+        meta_data_v := meta_data_in;
+        if RST = '1' then
+          meta_data_v.data_valid := '0';
+        end if;
+        meta_data_out <= meta_data_v;
         -- Sync, parallel load the input registers
         --
         -- Load the registers X and Y, while formatting
@@ -405,6 +410,7 @@ begin
 
 
   proc_first_stage : process(CLK)
+    variable Meta_data_v : meta_data_t;
   begin
     CLK_IF : if rising_edge(CLK) then
       REGSYNC_IF : if reg_sync = '1' then
@@ -423,7 +429,12 @@ begin
         end if;
         y_gt_x <= 'X';
         -- If the values are equal, the angle is PI/4 modulo PI/2
-        meta_data_12 <= meta_data_in;
+        meta_data_v := meta_data_in;
+        if RST = '1' then
+          meta_data_v.data_valid := '0';
+        end if;
+        meta_data_12 <= meta_data_v;
+
       else
         -- Check which one has the greater absolute value
         greater_by_quadrant : case xy_in_is_neg is
@@ -483,10 +494,15 @@ begin
   proc_second_stage : process(CLK)
     variable xy_in_is_neg_y_gt_x_v : std_logic_vector(2 downto 0);
     variable quadrant_to_rotate_v : std_logic_vector( 1 downto 0 );
+    variable Meta_data_v : meta_data_t;
   begin
     CLK_IF : if rising_edge(CLK) then
       REGSYNC_IF : if reg_sync = '1' then
-        meta_data_out                                                      <= meta_data_12;
+        meta_data_v := meta_data_12;
+        if RST = '1' then
+          meta_data_v.data_valid := '0';
+        end if;
+        meta_data_out <= meta_data_v;
 
         xy_in_is_neg_y_gt_x_v(0) := y_gt_x;
         xy_in_is_neg_y_gt_x_v(2 downto 1) := xy_in_is_neg;

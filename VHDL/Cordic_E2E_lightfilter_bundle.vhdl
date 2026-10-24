@@ -41,6 +41,7 @@ package Cordic_E2E_lightfilter_Bundle_pac is
       report_cordic_bundle_1 : in  std_logic;
       meta_data_pref_1_out   : out meta_data_t;
       meta_data_pref_2_out   : out meta_data_t;
+      meta_data_Z_2_0_out    : out meta_data_t;
       meta_data_Y_2_0_out    : out meta_data_t;
       strobe_stable          : out std_logic
       );
@@ -88,6 +89,7 @@ entity Cordic_E2E_lightfilter_Bundle is
     report_cordic_bundle_1 : in  std_logic;
     meta_data_pref_1_out   : out meta_data_t;
     meta_data_pref_2_out   : out meta_data_t;
+    meta_data_Z_2_0_out    : out meta_data_t;
     meta_data_Y_2_0_out    : out meta_data_t;
     strobe_stable          : out std_logic
     );
@@ -102,7 +104,6 @@ architecture arch of Cordic_E2E_lightfilter_Bundle is
   signal meta_data_1            : meta_data_t;
   signal meta_data_2            : meta_data_t;
   signal meta_data_5            : meta_data_t;
-  signal meta_data_Z_2_0_out    : meta_data_t;
   signal meta_data_DS_out       : meta_data_t;
   signal scz_1                  : reg_sin_cos_z;
   signal scz_DS_out             : reg_sin_cos_z;

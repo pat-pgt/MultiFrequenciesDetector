@@ -44,9 +44,15 @@ begin
   begin
     CLK_IF : if rising_edge(CLK) then
       REGSYNC_IF : if reg_sync = '1' then
-        meta_data_list(meta_data_list'high) <= meta_data_in;
-        meta_data_list(meta_data_list'high - 1 downto meta_data_list'low) <=
-          meta_data_list(meta_data_list'high downto meta_data_list'low + 1);
+        if RST = '0' then
+          meta_data_list(meta_data_list'high) <= meta_data_in;
+          meta_data_list(meta_data_list'high - 1 downto meta_data_list'low) <=
+            meta_data_list(meta_data_list'high downto meta_data_list'low + 1);
+        else
+          for ind in meta_data_list'range loop
+            meta_data_list(ind).data_valid <= '0';
+          end loop;
+        end if;
       end if REGSYNC_IF;
     end if CLK_IF;
   end process meta_data_proc_proc;

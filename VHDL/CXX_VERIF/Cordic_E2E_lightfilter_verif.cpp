@@ -218,6 +218,9 @@ int main(int argc,char*argv[])
 				 throw length_error("The C++ and the VHDL registers size mismatch");
 
 			   SimulDataType<double,long double,int,32> simulData;
+
+			   simulData.N_notes = top.p_nbre__N__notes.get<uint8_t>();
+
 			   simulData.Init(sqrt((long double)wave.the_vector.GetValueSquared()),
 							  top.p_nbre__Z__2__0__stages__out.get<unsigned short>(),
 							  top.p_nbre__Y__2__0__stages__out.get<unsigned short>());
@@ -233,17 +236,18 @@ int main(int argc,char*argv[])
 
 			   cout << "Running until the reset and the input values propagated to the output ..." << endl;
 			   cout.flush();
-			   /** Run until the input reaches the output.
+			   /* Despite the end to end DC test, which should test a couple of full Z spins of the lowest frequency,
+				*   this should consider the time to converge to the destination.
+				* In this test, the input signals are a square of the lowest note at the octave under test.
+				*/
+			   /** Run until the DC input reaches the output.
 				   It is mostly a number of frames (reg_sync) equal to
-				   the sum of the number of Z to 0 stages plus the number of Y to 0 stages
-				   plus 6, plus 7 and plus 3 to count the first stages, the last stages and the down-sampling
+				   the sum of the number of Z to 0 stages plus the number of Y to 0 stages.
+				   The number is a bit higher as there are pre processings
 			   */
-			   /** This may be removed.
-				   The code below is intended to wait until the filter are stabilized.
-				   Then this one is redundant.
-			   */
-			   unsigned short ind_Z = 0, ind_Y = 0;
-			   while ( ind_Y != numeric_limits<decltype(ind_Y)>::max() )
+			   uint16_t reset_count = 0;
+			   uint16_t reset_count_stage_1;
+			   while ( true )
 				 {
 				   top.p_CLK.set<bool>(true);
 				   top.step();
@@ -251,33 +255,18 @@ int main(int argc,char*argv[])
 				   top.step();
 				   if ( top.p_reg__sync.get<bool>() == true )
 					 {
-					   if ( ind_Z == numeric_limits<decltype(ind_Z)>::max() )
+					   if ( top.p_metadata__Y__2__0__data__valid.get<bool>() == true )
 						 {
-						   if ( ind_Y == numeric_limits<decltype(ind_Y)>::max() )
-							 {}
-						   else if ( ind_Y == ((unsigned long)top.p_nbre__Y__2__0__stages__out.get<short>() + 7 + 3 ) )
-							 {
-							   // cout << "Y converges to " << top.p_Y__Y__2__0.get<decltype(dat::value_type())>();
-							   // cout << "\tat the first valid time " << ind_Y << " after Z" << endl;
-							   ind_Y = numeric_limits<decltype(ind_Y)>::max();
-							 }
-						   else
-							 ind_Y += 1;
-						 }
-					   else if ( ind_Z == ((unsigned long)top.p_nbre__Z__2__0__stages__out.get<short>() + 6 ))
-						 {
-						   // cout << "Z converges to " << top.p_Z__Z__2__0.get<decltype(dat::value_type())>();
-						   // cout << "\tat the first valid time " << ind_Z << endl;
-						   ind_Z = numeric_limits<decltype(ind_Z)>::max();
-						 }
-					   else
-						 ind_Z += 1;
+						   cout << "Data valid received after " << reset_count_stage_1 << " Z to 0 reg syncs";
+						   cout << " and " << reset_count << " full end to end reg syncs "<< endl;
+						   break;
+						 } else {
+						 if ( top.p_metadata__Z__2__0__data__valid.get<bool>() == false )
+						   reset_count_stage_1 = reset_count;
+						 reset_count += 1;
+					   }
 					 }
 				 }
-			   /* Despite the end to end DC test, which should test a couple of full Z spins of the lowest frequency,
-				*   this should consider the time to converge to the destination.
-				* In this test, the input signals are a square of the lowest note at the octave under test.
-				*/
 
 
 			   simulData.octave_of_input = wave.octave;
@@ -666,26 +655,17 @@ int main(int argc,char*argv[])
   for_each( execution::seq,
 			theSimulData.begin(), theSimulData.end(),
 			[](auto&sim){
-			  unsigned char max_number_notes = 0;
+			  uint8_t N_notes = sim.N_notes;
 			  for_each( execution::seq,
 						sim.Y_2_0.check_X_converges_per_ON.begin(),
 						sim.Y_2_0.check_X_converges_per_ON.end(),
-						[&sim,&max_number_notes](auto&ON_iter){
-						  if ( ON_iter.first.second > max_number_notes &&
-							  ON_iter.first.second != numeric_limits<decltype(ON_iter.first.second)>::max() )
-							max_number_notes = ON_iter.first.second;
-						});
-			  max_number_notes += 1;
-			  for_each( execution::seq,
-						sim.Y_2_0.check_X_converges_per_ON.begin(),
-						sim.Y_2_0.check_X_converges_per_ON.end(),
-						[&sim,&max_number_notes](auto&ON_iter){
+						[&sim,N_notes=cref(N_notes)](auto&ON_iter){
 						  if ( ON_iter.first.first != numeric_limits<decltype(ON_iter.first.first)>::max() ||
 							   ON_iter.first.second != numeric_limits<decltype(ON_iter.first.second)>::max() ) {
 							cout << "O: " << (unsigned short)ON_iter.first.first;
 							cout << ", N: " << (unsigned short)ON_iter.first.second << '\t';
 							float ratio = pow( 2, ON_iter.first.first - sim.octave_of_input );
-							ratio *= pow( pow( 2.0, 1.0 / float( max_number_notes ) ), ON_iter.first.second );
+							ratio *= pow( pow( 2.0, 1.0 / float( N_notes ) ), ON_iter.first.second );
 							// TODO consider the starting note is NOT 0
 							ratio = round( ratio * 100.0 ) / 100.0;
 							cout << format( "{:6.3f}", ratio);

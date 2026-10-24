@@ -55,7 +55,7 @@ begin  -- architecture arch
     variable meta_data_temp : meta_data_t;
   begin
     CLK_IF : if rising_edge(CLK) then
-      if RST = '0' then
+      RST_IF : if RST = '0' then
         REGSYNC_IF : if reg_sync = '1' then
           if meta_data_in.octave = std_logic_vector(to_unsigned(N_octaves - 1, meta_data_in.octave'length)) then
             if extra_downsampling = 1 then
@@ -125,13 +125,18 @@ begin  -- architecture arch
         end if REGSYNC_IF;
         regsync_delayed <= reg_sync;
       else
-        octave_counter     <= (others => '0');
-        downsample_counter <= (others => '0');
-        if extra_downsampling /= 1 then
+        octave_counter          <= (others => '0');
+        downsample_counter      <= (others => '0');
+        if extra_downsampling > 1 then
           extra_downsampling_counter <= (others => '0');
           extra_downsampling_note    <= (others => '0');
         end if;
-      end if;
+        -- downsample_shiftreg <= ( others => '0' );
+        -- octave_found <= '0';
+        -- does_catch  <='0';
+        -- does_forward <= '0';
+        -- pre_forward  <= '0';
+      end if RST_IF;
     end if CLK_IF;
   end process main_proc;
 end architecture arch;
@@ -186,7 +191,7 @@ architecture arch of Downsampling_buffer is
   signal meta_data_latch : meta_data_t;
 begin
 
-  meta_data_proc : process (scz_in, scz_out, pre_forward, does_catch, meta_data_latch) is
+  meta_data_proc : process (scz_in, scz_out, pre_forward, does_catch, meta_data_latch, RST) is
     variable meta_data_v : meta_data_t;
   begin
     meta_data_v := meta_data_latch;
@@ -216,6 +221,9 @@ begin
       meta_data_v.strobe := '0';
       xy_is_neg            <= (others => '-');
     end if;
+    if RST = '1' then
+      meta_data_v.data_valid := '0';
+    end if;
     meta_data_out <= meta_data_v;
   end process meta_data_proc;
 
@@ -242,9 +250,9 @@ begin
             scz_out.the_sin(scz_out.the_sin'high downto scz_out.the_sin'low + arithm_size);
                                         -- For debug reasons, insert don't cares at the top
           scz_out.the_cos(scz_out.the_cos'high downto scz_out.the_cos'high - arithm_size + 1) <=
-            (others => '0');
+            (others => '-');
           scz_out.the_sin(scz_out.the_sin'high downto scz_out.the_sin'high - arithm_size + 1) <=
-            (others => '0');
+            (others => '-');
         end if;
       end if;
     end if;
@@ -285,7 +293,6 @@ architecture arch of Downsampling_bundle is
   signal does_catch                   : std_logic;
   signal does_forward                 : std_logic;
   signal pre_forward                  : std_logic;
-  signal meta_data_local              : meta_data_t;
   signal debug_does_catch_and_forward : std_logic;
 begin
 
@@ -295,25 +302,25 @@ begin
     generic map (
       extra_downsampling)
     port map (
-      CLK,
-      RST,
-      reg_sync,
-      meta_data_in,
-      does_catch,
-      does_forward,
-      pre_forward
+      CLK          => CLK,
+      RST          => RST,
+      reg_sync     => reg_sync,
+      meta_data_in => meta_data_in,
+      does_catch   => does_catch,
+      does_forward => does_forward,
+      pre_forward  => pre_forward
       );
 
   Downsampling_buffer_instanc : Downsampling_buffer
     generic map (
       extra_downsampling)
     port map (
-      CLK,
-      RST,
-      reg_sync,
-      does_catch,
-      does_forward,
-      pre_forward,
+      CLK           => CLK,
+      RST           => RST,
+      reg_sync      => reg_sync,
+      does_catch    => does_catch,
+      does_forward  => does_forward,
+      pre_forward   => pre_forward,
       meta_data_in  => meta_data_in,
       meta_data_out => meta_data_out,
       scz_in        => scz_in,

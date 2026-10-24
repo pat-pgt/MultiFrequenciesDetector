@@ -23,7 +23,7 @@ package Meta_data_package is
   --! This is nice for testing or checking an FPGA size.\n
   --! The maximum is 16, due to the number of bits in the metadata_t.
   --! TODO make this dynamic.
-  constant N_notes          : notes_N_range   := 5;
+  constant N_notes          : notes_N_range   := 6;
   --! @brief Number of octaves.
   --!
   --! It should be at least two, due some restrictions\n
@@ -35,7 +35,7 @@ package Meta_data_package is
   --!   In fact the minimum number of cycles may be driven by the filter.\n
   --! The maximum is 7, due to the number of bits in the metadata_t.
   --! TODO make this dynamic
-  constant N_octaves        : integer range 2 to 7    := 6;
+  constant N_octaves        : integer range 2 to 7    := 7;
   --! @brief starting octave.
   --!
   --! Lowest A note to handle.
@@ -46,7 +46,7 @@ package Meta_data_package is
   -- This part contains privates definitions
   -- It should not be modified
 
-  --! @brief Met data of the frequencies
+  --! @brief Meta data of the frequencies
   --!
   --! This data follows each value.\n
   --! Since the computations run is sequence, it is not that relevant.
@@ -63,6 +63,15 @@ package Meta_data_package is
     --! After the down-sampling, then during the second Cordic stages,
     --!   it validates the data.
     strobe : std_logic;
+    --! * For simulation, it automatically inform the data from the begining 
+    --!   has reach an intermediary module or the end.\n
+    --! * For 99 of the run cases, it is open at the end and
+    --!   all the chain is cleaned up for resource consumption.\n
+    --! * For some run cases, it is used to display or inform
+    --!   the system is in the warm up state.\n
+    --! The difference with the strobe is it is cleared duing the reset and
+    --! passed from end to end.
+    data_valid : std_logic;
   end record meta_data_t;
   --! Set from integers
   function octave_note_to_meta_data(constant octave : integer range 0 to N_octaves - 1;

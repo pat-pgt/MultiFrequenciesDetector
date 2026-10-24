@@ -21,7 +21,7 @@ package Cordic_E2E_DC_Bundle_pac is
       -- 0         : no downsampling
       -- 1         : downsampling without extra rate
       -- 2 or more : downsampling with N extra rate
-      with_downsampling   : natural := 0;
+      with_downsampling   : natural;
       nbre_Z_2_0_stages   : natural;
       nbre_Y_2_0_stages   : natural;
       extra_shifts        : integer range 0 to 7 := 0
@@ -63,7 +63,7 @@ entity Cordic_E2E_DC_Bundle is
   generic (
     --! 0         : no downsampling
     --! 1 or more : downsampling without or with N extra rate
-    with_downsampling   : natural := 0;
+    with_downsampling   : natural;
     nbre_Z_2_0_stages   : natural;
     nbre_Y_2_0_stages   : natural;
     extra_shifts        : integer range 0 to 7 := 0
@@ -92,7 +92,7 @@ architecture arch of Cordic_E2E_DC_Bundle is
   signal meta_data_1            : meta_data_t;
   signal meta_data_2            : meta_data_t;
   signal meta_data_5            : meta_data_t;
-  signal Meta_data_Y_2_0_in     : meta_data_t;
+  signal meta_data_Y_2_0_in     : meta_data_t;
   signal scz_1                  : reg_sin_cos_z;
   signal scz_Y_2_0_in           : reg_sin_cos_z;
   signal scz_3                  : reg_sin_cos_z;
@@ -101,8 +101,11 @@ architecture arch of Cordic_E2E_DC_Bundle is
   constant null_vector          : std_logic_vector(0 downto 1) := "";
   constant stages_catch_list    : cordic_stages_num_list(1 to 0) := (others => 1);  -- 0 length
   constant metadata_catch_list  : meta_data_list_t(1 to 0) := (others => octave_note_to_meta_data(0,0));      -- 0 length
+  signal meta_data_Z_2_0_note   : std_logic_vector( meta_data_Z_2_0_out.note'range );
+  signal meta_data_Z_2_0_octave : std_logic_vector( meta_data_Z_2_0_out.octave'range );
 begin
 
+  
   angle_gene_instanc : AngleGene
     generic map
     (
@@ -145,18 +148,22 @@ begin
       meta_data_in  => meta_data_2,
       meta_data_out => meta_data_Z_2_0_out,
       scz_in        => scz_1,
-      scz_out       => scz_out_Z_2_0,
+      scz_out       => SCZ_out_Z_2_0,
       report_in     => report_cordic_bundle_1,
       report_out    => report_cordic_bundle_2);
+  
+  meta_data_Z_2_0_note   <= meta_data_Z_2_0_out.note;
+  meta_data_Z_2_0_octave <= meta_data_Z_2_0_out.octave;
 
+  
   BYPASS_DOWNSAMPLING: if with_downsampling = 0 generate
-    scz_Y_2_0_in <= scz_out_Z_2_0;
+    scz_Y_2_0_in <= SCZ_out_Z_2_0;
     OPY_INSERT_STROBE: process ( meta_data_Z_2_0_out ) is
       variable meta_data_v : meta_data_t;
     begin
       meta_data_v := meta_data_Z_2_0_out;
       meta_data_v.strobe := '1';
-      Meta_data_Y_2_0_in <= meta_data_v;
+      meta_data_Y_2_0_in <= meta_data_v;
     end process OPY_INSERT_STROBE;
 
          
@@ -188,7 +195,7 @@ begin
       reg_sync      => reg_sync_interm,
       meta_data_in  => meta_data_Z_2_0_out,
       meta_data_out => meta_data_Y_2_0_in,
-      scz_in        => scz_out_Z_2_0,
+      scz_in        => SCZ_out_Z_2_0,
       scz_out       => scz_Y_2_0_in,
       xy_is_neg     => xy_is_neg
       );

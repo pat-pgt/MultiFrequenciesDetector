@@ -4,6 +4,7 @@ use IEEE.STD_LOGIC_1164.all,
   ieee.math_real.all,
   work.InterModule_formats.reg_type,
   work.InterModule_formats.reg_size,
+  work.InterModule_formats.reg_sin_cos_z,
   work.meta_data_package.N_octaves,
   work.meta_data_package.N_notes,
   work.meta_data_package.meta_data_t,
@@ -49,6 +50,7 @@ entity Cordic_bundle_test_Z_to_0_Y_to_0 is
     with_4_angles_test  : boolean                                 := true;
     --! Activate the angle against the metadata, only the first one is tested.
     with_angles_vs_MD   : boolean                                 := true;
+    with_downsampling   : natural := 1;
     --! Number of first set of stages,
     --! see in the Tek_and_gene folder for more information.
     nbre_Z_2_0_stages   : natural                                 := 18;
@@ -172,7 +174,10 @@ architecture rtl of Cordic_bundle_test_Z_to_0_Y_to_0 is
   signal meta_data_out            : meta_data_t;
   signal meta_data_note           : unsigned( meta_data_out.note'range );
   signal meta_data_octave         : unsigned( meta_data_out.octave'range );
+  signal meta_data_strobe         : std_logic;
+  signal meta_data_data_valid     : std_logic;
 begin
+  
   
   main_proc : process
   begin
@@ -348,13 +353,17 @@ begin
           meta_data_note <= unsigned( meta_data_out.note );
         end if IS_ANGLES_VS_MD;
       end if;
+      meta_data_strobe     <= meta_data_out.strobe;
+      meta_data_data_valid <= meta_data_out.data_valid;
     end if;
   end process module_Y_2_0;
 
   Cordic_E2E_DC_Bundle_instanc_000 : Cordic_E2E_DC_Bundle
     generic map(
+      with_downsampling,
       nbre_Z_2_0_stages   => nbre_Z_2_0_stages,
-      nbre_Y_2_0_stages   => nbre_Y_2_0_stages
+      nbre_Y_2_0_stages   => nbre_Y_2_0_stages,
+      extra_shifts        => 0
       )
     port map(
       CLK                    => CLK,
@@ -363,19 +372,23 @@ begin
       input_y                => input_low,
       reg_sync               => reg_sync,
       full_sync              => full_sync,
+      Z_high_N0              => open,
       SCZ_out_Z_2_0.the_cos  => X_out_Z_2_0_000,
       SCZ_out_Z_2_0.the_sin  => Y_out_Z_2_0_000,
       SCZ_out_Z_2_0.angle_Z  => Z_out_Z_2_0_000,
       SCZ_out_Y_2_0.the_cos  => X_out_Y_2_0_000,
       SCZ_out_Y_2_0.the_sin  => Y_out_Y_2_0_000,
-      SCZ_out_Y_2_0.angle_Z  => Z_out_Z_2_0_000,
+      SCZ_out_Y_2_0.angle_Z  => Z_out_Y_2_0_000,
+      meta_data_Z_2_0_out    => open,
       meta_data_Y_2_0_out    => meta_data_out,
-      report_cordic_bundle_1 => report_cordic_bundle
+      report_cordic_bundle_1 => report_cordic_bundle,
+      strobe_stable          => open
       );
 
   three_other_angles : if with_4_angles_test generate
     Cordic_E2E_DC_Bundle_instanc_090 : Cordic_E2E_DC_Bundle
       generic map(
+        with_downsampling,
         nbre_Z_2_0_stages   => nbre_Z_2_0_stages,
         nbre_Y_2_0_stages   => nbre_Y_2_0_stages
         )
@@ -386,18 +399,19 @@ begin
         input_y                => input_hi,
         reg_sync               => open,
         full_sync              => open,
-        SCZ_out_Z_2_0.the_cos  => X_out_Z_2_0_000,
-        SCZ_out_Z_2_0.the_sin  => Y_out_Z_2_0_000,
-        SCZ_out_Z_2_0.angle_Z  => Z_out_Z_2_0_000,
-        SCZ_out_Y_2_0.the_cos  => X_out_Y_2_0_000,
-        SCZ_out_Y_2_0.the_sin  => Y_out_Y_2_0_000,
-        SCZ_out_Y_2_0.angle_Z  => Z_out_Z_2_0_000,
+        SCZ_out_Z_2_0.the_cos  => X_out_Z_2_0_090,
+        SCZ_out_Z_2_0.the_sin  => Y_out_Z_2_0_090,
+        SCZ_out_Z_2_0.angle_Z  => Z_out_Z_2_0_090,
+        SCZ_out_Y_2_0.the_cos  => X_out_Y_2_0_090,
+        SCZ_out_Y_2_0.the_sin  => Y_out_Y_2_0_090,
+        SCZ_out_Y_2_0.angle_Z  => Z_out_Y_2_0_090,
         meta_data_Y_2_0_out    => open,
         report_cordic_bundle_1 => report_cordic_bundle
         );
 
     Cordic_E2E_DC_Bundle_instanc_180 : Cordic_E2E_DC_Bundle
       generic map(
+        with_downsampling,
         nbre_Z_2_0_stages   => nbre_Z_2_0_stages,
         nbre_Y_2_0_stages   => nbre_Y_2_0_stages
         )
@@ -408,18 +422,19 @@ begin
         input_y                => input_low,
         reg_sync               => open,
         full_sync              => open,
-        SCZ_out_Z_2_0.the_cos  => X_out_Z_2_0_000,
-        SCZ_out_Z_2_0.the_sin  => Y_out_Z_2_0_000,
-        SCZ_out_Z_2_0.angle_Z  => Z_out_Z_2_0_000,
-        SCZ_out_Y_2_0.the_cos  => X_out_Y_2_0_000,
-        SCZ_out_Y_2_0.the_sin  => Y_out_Y_2_0_000,
-        SCZ_out_Y_2_0.angle_Z  => Z_out_Z_2_0_000,
+        SCZ_out_Z_2_0.the_cos  => X_out_Z_2_0_180,
+        SCZ_out_Z_2_0.the_sin  => Y_out_Z_2_0_180,
+        SCZ_out_Z_2_0.angle_Z  => Z_out_Z_2_0_180,
+        SCZ_out_Y_2_0.the_cos  => X_out_Y_2_0_180,
+        SCZ_out_Y_2_0.the_sin  => Y_out_Y_2_0_180,
+        SCZ_out_Y_2_0.angle_Z  => Z_out_Y_2_0_180,
         meta_data_Y_2_0_out    => open,
         report_cordic_bundle_1 => report_cordic_bundle
         );
 
     Cordic_E2E_DC_Bundle_instanc_240 : Cordic_E2E_DC_Bundle
       generic map(
+        with_downsampling,
         nbre_Z_2_0_stages   => nbre_Z_2_0_stages,
         nbre_Y_2_0_stages   => nbre_Y_2_0_stages
         )
@@ -430,12 +445,12 @@ begin
         input_y                => input_minhi,
         reg_sync               => open,
         full_sync              => open,
-        SCZ_out_Z_2_0.the_cos  => X_out_Z_2_0_000,
-        SCZ_out_Z_2_0.the_sin  => Y_out_Z_2_0_000,
-        SCZ_out_Z_2_0.angle_Z  => Z_out_Z_2_0_000,
-        SCZ_out_Y_2_0.the_cos  => X_out_Y_2_0_000,
-        SCZ_out_Y_2_0.the_sin  => Y_out_Y_2_0_000,
-        SCZ_out_Y_2_0.angle_Z  => Z_out_Z_2_0_000,
+        SCZ_out_Z_2_0.the_cos  => X_out_Z_2_0_240,
+        SCZ_out_Z_2_0.the_sin  => Y_out_Z_2_0_240,
+        SCZ_out_Z_2_0.angle_Z  => Z_out_Z_2_0_240,
+        SCZ_out_Y_2_0.the_cos  => X_out_Y_2_0_240,
+        SCZ_out_Y_2_0.the_sin  => Y_out_Y_2_0_240,
+        SCZ_out_Y_2_0.angle_Z  => Z_out_Y_2_0_240,
         meta_data_Y_2_0_out    => open,
         report_cordic_bundle_1 => report_cordic_bundle
         );

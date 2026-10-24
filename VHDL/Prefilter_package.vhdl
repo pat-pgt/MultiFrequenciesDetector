@@ -438,7 +438,7 @@ package body PreFilter_package is
         --! TODO
           return 13;
       else
-          return 4;
+          return 3;
       end if;
     end function Get_Prefilter_Maximum_Shifts;
 

@@ -43,12 +43,17 @@ entity Cordic_E2E_lightfilter_CXX_test is
     Z_Y_2_0                     : out reg_type;
     nbre_Z_2_0_stages_out       : out integer range 4 to reg_size;
     nbre_Y_2_0_stages_out       : out integer range 4 to reg_size;
+    nbre_N_notes                : out integer range 2 to 255;
     reg_size_4_verif            : out integer range 16 to 255;
     metadata_prefilter_1_note   : out std_logic_vector(StateNumbers_2_BitsNumbers(N_notes) - 1 downto 0);
     metadata_prefilter_1_octave : out std_logic_vector(StateNumbers_2_BitsNumbers(N_octaves) - 1 downto 0);
+    metadata_Z_2_0_note         : out std_logic_vector(StateNumbers_2_BitsNumbers(N_notes) - 1 downto 0);
+    metadata_Z_2_0_octave       : out std_logic_vector(StateNumbers_2_BitsNumbers(N_octaves) - 1 downto 0);
+    metadata_Z_2_0_data_valid   : out std_logic;
     metadata_Y_2_0_note         : out std_logic_vector(StateNumbers_2_BitsNumbers(N_notes) - 1 downto 0);
     metadata_Y_2_0_octave       : out std_logic_vector(StateNumbers_2_BitsNumbers(N_octaves) - 1 downto 0);
     metadata_Y_2_0_strobe       : out std_logic;
+    metadata_Y_2_0_data_valid   : out std_logic;
     strobe_stable               : out std_logic
     );
 end entity Cordic_E2E_lightfilter_CXX_test;
@@ -58,6 +63,7 @@ architecture arch of Cordic_E2E_lightfilter_CXX_test is
   signal RST_monitor_Z_2_0         : natural := nbre_Z_2_0_stages + 5;
   signal RST_monitor_Y_2_0         : natural := nbre_Y_2_0_stages + 5;
   signal meta_data_prefilter_1_out : meta_data_t;
+  signal meta_data_Z_2_0_out       : meta_data_t;
   signal meta_data_Y_2_0_out       : meta_data_t;
 
   signal report_cordic_bundle : std_logic := '0';
@@ -66,7 +72,9 @@ architecture arch of Cordic_E2E_lightfilter_CXX_test is
 begin
   nbre_Z_2_0_stages_out <= nbre_Z_2_0_stages;
   nbre_Y_2_0_stages_out <= nbre_Y_2_0_stages;
+  nbre_N_notes          <= N_notes;
 
+  
   reg_size_4_verif <= reg_size;
 
   --! Since the C++ software may not know the reg_sin_cos_z type
@@ -77,8 +85,12 @@ begin
   --! 
   metadata_prefilter_1_note   <= meta_data_prefilter_1_out.note;
   metadata_prefilter_1_octave <= meta_data_prefilter_1_out.octave;
+  metadata_Z_2_0_note         <= meta_data_Z_2_0_out.note;
+  metadata_Z_2_0_octave       <= meta_data_Z_2_0_out.octave;
+  metadata_Z_2_0_data_valid   <= meta_data_Z_2_0_out.data_valid;
   metadata_Y_2_0_note         <= meta_data_Y_2_0_out.note;
   metadata_Y_2_0_octave       <= meta_data_Y_2_0_out.octave;
+  metadata_Y_2_0_data_valid   <= meta_data_Y_2_0_out.data_valid;
   metadata_Y_2_0_strobe       <= meta_data_Y_2_0_out.strobe;
 
   X_Y_2_0 <= SCZ_out_Y_2_0.the_cos;
@@ -111,6 +123,7 @@ begin
       SCZ_out_Y_2_0          => SCZ_out_Y_2_0,
       report_cordic_bundle_1 => report_cordic_bundle,
       meta_data_pref_1_out   => meta_data_prefilter_1_out,
+      meta_data_Z_2_0_out    => meta_data_Z_2_0_out, 
       meta_data_Y_2_0_out    => meta_data_Y_2_0_out,
       strobe_stable          => strobe_stable
       );

@@ -36,7 +36,9 @@ entity Cordic_E2E_DC_FPGA_test is
     Y_Y_2_0             : out std_logic_vector( 7 downto 0 ); 
     Z_Y_2_0             : out std_logic_vector( 17 downto 0 );
     metadata_note       : out std_logic_vector( 1 downto 0 );
-    metadata_octave     : out std_logic_vector( 2 downto 0 )  
+    metadata_octave     : out std_logic_vector( 2 downto 0 );
+    metadata_strobe     : out std_logic;
+    metadata_data_valid : out std_logic
     );
 end entity ;
 
@@ -77,8 +79,10 @@ begin
   latch_proc: process (CLK) is
   begin
     if rising_edge(CLK) then
-      metadata_note <= meta_data_out.note;
-      metadata_octave <= meta_data_out.octave;
+      metadata_note       <= meta_data_out.note;
+      metadata_octave     <= meta_data_out.octave;
+      metadata_strobe     <= meta_data_out.strobe;
+      metadata_data_valid <= meta_data_out.data_valid;
       
       X_out_Y_2_0 <= SCZ_out_Y_2_0.the_sin;
       Y_out_Y_2_0 <= SCZ_out_Y_2_0.the_cos;
