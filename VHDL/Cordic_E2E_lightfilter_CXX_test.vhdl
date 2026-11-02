@@ -24,7 +24,7 @@ entity Cordic_E2E_lightfilter_CXX_test is
     with_downsampling : natural                     := 1;
     nbre_Z_2_0_stages : integer range 4 to reg_size := 24;
     nbre_Y_2_0_stages : integer range 4 to reg_size := 24;
-    extra_shifts      : integer range 0 to 7        := 0;
+    extra_shifts      : integer range 0 to 7        ;
     full_simul        : boolean                     := true
     );
   port (

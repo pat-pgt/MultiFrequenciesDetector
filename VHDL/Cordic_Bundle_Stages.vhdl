@@ -8,7 +8,7 @@ use IEEE.STD_LOGIC_1164.all,
 
 entity Cordic_Bundle_Z_to_0 is
   generic (
-    stages_nbre         : natural := 20;
+    stages_nbre         : natural;
     metadata_catch_list : meta_data_list_t;
     stages_catch_list   : cordic_stages_num_list
     );
@@ -41,6 +41,9 @@ begin
   assert ( reg_size - stages_nbre ) > 6
     report "Number of Cordic stages Z to 0 set to " & integer'image( stages_nbre ) & " is a non-sense"
     severity warning;
+  assert false
+    report integer'image( stages_nbre ) & " Z to 0 Cordic stages been set"
+    severity note;
 
   has_catch_debugs : if stages_catch_list'length > 0 and metadata_catch_list'length > 0 generate
     Catch_monitor_stages : for ind in 1 to stages_catch_list'length generate
@@ -104,7 +107,7 @@ use IEEE.STD_LOGIC_1164.all,
 
 entity Cordic_Bundle_Y_to_0 is
   generic (
-    stages_nbre         : natural := 20;
+    stages_nbre         : natural;
     metadata_catch_list : meta_data_list_t;
     stages_catch_list   : cordic_stages_num_list;
     extra_shifts        : integer range 0 to 7 := 0
@@ -144,6 +147,11 @@ begin
     ") should be a multiple of the extra_shifts (" & integer'image(extra_shifts) &
     ") + 1"
     severity failure;
+  assert false report
+    integer'image( stages_nbre/(extra_shifts + 1) ) & " Y to 0 modules " &
+    "with " & integer'image(extra_shifts) & " extra shifts each" &
+    " for " & integer'image( stages_nbre ) & " cordic stages"
+    severity note;
 
   has_catch_debugs : if stages_catch_list'length > 0 and metadata_catch_list'length > 0 generate
     Catch_monitor_stages : for ind in 1 to stages_catch_list'length generate
