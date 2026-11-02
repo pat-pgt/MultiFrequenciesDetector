@@ -24,7 +24,7 @@ package Cordic_E2E_lightfilter_Bundle_pac is
       with_downsampling : natural              := 1;
       nbre_Z_2_0_stages : natural;
       nbre_Y_2_0_stages : natural;
-      extra_shifts      : integer range 0 to 7 := 0;
+      extra_shifts      : integer range 0 to 7 ;
       full_simul        : boolean              := true
       );
     port (
@@ -72,7 +72,7 @@ entity Cordic_E2E_lightfilter_Bundle is
     with_downsampling : natural              := 0;
     nbre_Z_2_0_stages : natural;
     nbre_Y_2_0_stages : natural;
-    extra_shifts      : integer range 0 to 7 := 0;
+    extra_shifts      : integer range 0 to 7 ;
     full_simul        : boolean              := true
     );
   port (
@@ -110,7 +110,6 @@ architecture arch of Cordic_E2E_lightfilter_Bundle is
   signal scz_Z_2_0_out          : reg_sin_cos_z;
   signal scz_3                  : reg_sin_cos_z;
   signal report_cordic_bundle_2 : std_logic                      := '0';
-  signal xy_is_neg              : std_logic_vector(1 downto 0);
   constant null_vector          : std_logic_vector(0 downto 1)   := "";
   constant stages_catch_list    : cordic_stages_num_list(1 to 0) := (others => 1);  -- 0 length
   constant metadata_catch_list  : meta_data_list_t(1 to 0)       := (others => octave_note_to_meta_data(0, 0));  -- 0 length
@@ -207,7 +206,7 @@ begin
         meta_data_out => meta_data_DS_out,
         scz_in        => SCZ_pref_1_out,
         scz_out       => scz_DS_out,
-        xy_is_neg     => xy_is_neg
+        xy_is_neg     => open
         );
   end generate full_simul_if_1;
     
@@ -229,6 +228,13 @@ begin
         );
 
   full_simul_if_2 : if full_simul generate
+    -- The Y to 0 first stage takes and store the sign during the reg_sync.
+    -- Despite the Z to 0, the Y to 0 can follow modules that still change
+    --   during the reg-sync.
+    -- In this bundle, it is not the case.
+    -- The pre-filter output is stable during the reg-sync
+    -- Then they are taken from the SCZ
+    
     cordic_first_stage_Y_2_0_instanc_DS : Cordic_FirstStage_Y_to_0
       port map (
         CLK           => CLK,
@@ -238,7 +244,7 @@ begin
         meta_data_out => meta_data_5,
         scz_in        => scz_pref_2_out,
         scz_out       => scz_3,
-        xy_is_neg     => xy_is_neg);
+        xy_is_neg     => null_vector);
 
 
 

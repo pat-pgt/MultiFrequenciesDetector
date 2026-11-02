@@ -24,7 +24,7 @@ package Cordic_E2E_DC_Bundle_pac is
       with_downsampling   : natural;
       nbre_Z_2_0_stages   : natural;
       nbre_Y_2_0_stages   : natural;
-      extra_shifts        : integer range 0 to 7 := 0
+      extra_shifts        : integer range 0 to 7 := 1
       );
     port (
       CLK                    : in  std_logic;
@@ -166,8 +166,11 @@ begin
       meta_data_Y_2_0_in <= meta_data_v;
     end process OPY_INSERT_STROBE;
 
-         
-  cordic_first_stage_Y_2_0_instanc_noDS : Cordic_FirstStage_Y_to_0
+    -- The Z to 0 output is stable during the reg-sync
+    -- Then the signs are not taken from the SCZ
+    -- For more information, see below.
+
+    cordic_first_stage_Y_2_0_instanc_noDS : Cordic_FirstStage_Y_to_0
     port map (
       CLK           => CLK,
       RST           => RST,
@@ -186,7 +189,14 @@ begin
   -- unfortunately, my VHDL mode does not handle properly.
   CONNECT_DS: if with_downsampling /= 0 generate
 
-  Downsampling_bundle_instanc : Downsampling_bundle
+    -- The Y to 0 first stage takes and store the sign during the reg_sync
+    -- Despite the Z to 0, the Y to 0 can follow modules that still change
+    -- during the reg-sync.
+    -- In this bundle, it is the case.
+    -- The down-sampling output is not stable during the reg-sync
+    -- Then they are taken from the module, and passed via xy_is_neg.
+
+    Downsampling_bundle_instanc : Downsampling_bundle
     generic map (
       extra_downsampling => with_downsampling)
     port map (
