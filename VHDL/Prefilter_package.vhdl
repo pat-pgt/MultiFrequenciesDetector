@@ -1,4 +1,3 @@
-
 library IEEE;
 use IEEE.STD_LOGIC_1164.all,
   ieee.numeric_std.all,
@@ -512,7 +511,7 @@ package body PreFilter_package is
                            report "Cut-off ratio " & real'image(cutoff_ratio) & " bigger than 3 is a non sense"
                            severity warning;
 
-    return 1.0 - exp(- 2.0 * 3.1415926 * cutoff_bandwidth_A00 * real(CLK_cycles_per_sample)/ CLK_freq);
+    return 1.0 - exp(- ( math_2_pi * cutoff_bandwidth_A00 * real(CLK_cycles_per_sample)/ CLK_freq));
   end function Meta_data_2_prefilter_coeff_real;
 
 end package body PreFilter_package;
