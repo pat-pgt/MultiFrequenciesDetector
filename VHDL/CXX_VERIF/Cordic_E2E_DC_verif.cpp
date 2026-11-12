@@ -413,7 +413,7 @@ int main(int argc,char*argv[])
 								  note_Y_2_0 != numeric_limits<decltype(note_Y_2_0)>::max() ) {
 							   data_info.the_stats += (double)((unsigned int)Z_Y_2_0 - (unsigned int)data_info.last_Z);
 							   data_info.last_Z = Z_Y_2_0;
-							   data_info.the_X_counter += Z_Y_2_0;
+							   data_info.the_X_counter += bitset<32>(Z_Y_2_0);
 							 }else
 							   {
 								 data_info.the_stats += 0.0;

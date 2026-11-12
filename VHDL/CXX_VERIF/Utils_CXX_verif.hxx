@@ -6,6 +6,7 @@
 #include <set>
 #include <map>
 #include <vector>
+#include <deque>
 #include <format>
 #include <cmath>
 #include <stdexcept>
@@ -194,45 +195,70 @@ public:
  * The last high bit is stored. If it was 1 and now it is 0,
  *   the counter is incremented
  */
-template<typename cxx_reg_type,unsigned short reg_size>
+template<unsigned short reg_size>
 class Axis_counter
 {
-  cxx_reg_type high_bit_mask;
-  bool last_sign;
-  unsigned char last_decimal;
+  uint8_t init_decimal;
+  uint8_t last_decimal;
   unsigned long the_counter;
 public:
-  Axis_counter():last_sign(false),last_decimal(0),the_counter(0){
-	high_bit_mask = 1;
+  Axis_counter(const bitset<reg_size>&val_Z):
+	init_decimal(Slice_4_high_bits( val_Z )),last_decimal(Slice_4_high_bits( val_Z )),
+	the_counter(0)
+  {}
+  constexpr uint8_t Slice_4_high_bits( const bitset< reg_size >&the_input )
+  {
+	uint8_t the_return = 0;
+	// Some new C++ versions handles slices, then this is for now
+	if ( the_input.test( reg_size - 1 ) )
+	  the_return += 8;
+	if ( the_input.test( reg_size - 2 ) )
+	  the_return += 4;
+	if ( the_input.test( reg_size - 3 ) )
+	  the_return += 2;
+	if ( the_input.test( reg_size - 4 ) )
+	  the_return += 1;
+	return the_return;
   }
-  constexpr Axis_counter<cxx_reg_type,reg_size>&operator+=(const cxx_reg_type&the_input){
-	bitset< reg_size >bs(the_input);
-	bool this_sign = bs.test( reg_size - 1 );
-	if ( this_sign == false && last_sign == true )
-	  the_counter += 1;
-	last_sign = this_sign;
-	last_decimal = 0x7 & ( the_input >> ( reg_size - 3 ));
+  constexpr Axis_counter<reg_size>&operator+=(const bitset< reg_size >&the_input){
+	uint8_t new_decimal = Slice_4_high_bits( the_input );
+	// It is not that elegant. It consume more resources but neglectable
+	// But it is more easy to validate.
+
+	// If they are equal, we are not going to trigger the counter again
+	while( new_decimal != last_decimal )
+	  {
+		if ( last_decimal == 0xf )
+		  last_decimal = 0;
+		else
+		  last_decimal += 1;
+		// We trigger only once, because last_decimal is spinning
+		if ( last_decimal == init_decimal )
+		  the_counter += 1;
+	  }
 	return*this;
- }
-  /** @brief Displays the number of times time angle passed through 0
+  }
+  /** @brief Displays the number of times time angle spun with some decimals
    *
-   * Displays the counter of passes through 0.
-   * Displays the last quadrant of the angle.
-   * Be careful, it does NOT adjusted against the angle of the initial vector.
+   * Displays, in this order:
+   * * the number of times the angle passed through the (simulation) initial angle.
+   * * the number of quadrants (from 0 to 3) the final angle "over ran" 
+   * * the decimals inside the quadrant from 0 to 3/4
    */
   constexpr operator const string()const{
-	switch( last_decimal )
-	  {
-	  case 0:
-		return to_string(the_counter) + " 0";
-	  case 4:
-		return to_string(the_counter) + " 1/2";
-	  case 2:
-	  case 6:
-		return to_string(the_counter) + ' ' + to_string(last_decimal/2) + "/4";
-      default:
-		return to_string(the_counter) + ' ' + to_string(last_decimal) + "/8";
-      }
+	uint32_t the_spin = (bitset<4>(last_decimal - init_decimal ) ).to_ulong();
+
+	string the_return = to_string(the_counter);
+	the_return += " ";
+	the_return += to_string( the_spin / 4 );
+	the_return += " ";
+	the_spin -= 4 * ( the_spin / 4 );
+	switch ( the_spin ) {
+	case 0: return the_return + " 0 ";
+	case 1: return the_return + "1/4";
+	case 2: return the_return + "1/2";
+	default: return the_return + "3/4";
+	}
   }
 };
 /** @brief Holds the last angle, the statistics and the number of X axis passes
@@ -242,7 +268,10 @@ struct Z_spin_data
 {
   cxx_reg_type last_Z;
   stats<stats_type> the_stats;
-  Axis_counter<cxx_reg_type,reg_size> the_X_counter;
+  Axis_counter<reg_size> the_X_counter;
   Z_spin_data()=delete;
-  Z_spin_data(const cxx_reg_type&last_Z,const stats<stats_type>&the_stats): last_Z(last_Z),the_stats(the_stats){}
+  Z_spin_data(const cxx_reg_type last_Z,const stats<stats_type>&the_stats):
+	last_Z(last_Z),
+	the_stats(the_stats),
+    the_X_counter(bitset<reg_size>(last_Z)){}
 };

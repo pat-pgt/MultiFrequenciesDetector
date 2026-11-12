@@ -73,6 +73,8 @@ struct SimulDataType
 	  map< pair< unsigned char, unsigned char >,
 		   stats< stats_type > >check_X_converges_per_ON;
 	  stats<stats_type>check_Y_converges;
+	  unsigned long strobe_cnt;
+	  unsigned long no_strobe_cnt;
 	}  Y_2_0;
 	unsigned char octave_of_input;
 	unsigned char note_of_input;

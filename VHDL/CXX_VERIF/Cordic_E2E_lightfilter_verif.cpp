@@ -40,7 +40,6 @@ Init(const stats_long_type&module_vector,
   // The expected module value is the initial module divided by the cosines
   cout << Z_2_0_stages << '\t' << module_vector << " * " << 1.0 / Z_2_0_cumul_cos << " = " << module_vector / Z_2_0_cumul_cos << '\t';
 
-
   stats_long_type Y_2_0_cumul_cos = 1.0;
   for ( ind = 0; ind < Y_2_0_stages; ind ++ )
 	Y_2_0_cumul_cos *= cos( atan( 1.0 / (float)pow( 2, ind + 1 )));
@@ -48,6 +47,9 @@ Init(const stats_long_type&module_vector,
   // The expected Y value is 0, no offset, but normalize to compare to X at the end
   Y_2_0.check_Y_converges.SetNormalize( module_vector / ( Z_2_0_cumul_cos * Y_2_0_cumul_cos ));
   // Diff Z value, no offset
+
+  Y_2_0.strobe_cnt = 0;
+  Y_2_0.no_strobe_cnt = 0;
 }
 
 
@@ -79,14 +81,14 @@ int main(int argc,char*argv[])
    *   is going to make a full spin
    * The value should be at least 2 to run the differences.
    */
-  unsigned short half_cycles_number = 20;
+  unsigned short half_cycles_number = 32;  // 2 power the number of octaves
   unsigned short half_cycles_start_stats = 0;
   unsigned short nbre_initial_vextors = 2;
-  unsigned char forced_octave = numeric_limits<unsigned char>::max();
+  deque<unsigned char> forced_octave;
   bool input_DC = false;
   bool input_square = false;
 
-  while((opt = getopt( argc,argv,"a:csl:n:o:hv"))!=EOF)
+  while((opt = getopt( argc,argv,"a:csl:o:hv"))!=EOF)
 	switch( opt)
 	  {
 	  case 'a':
@@ -98,14 +100,11 @@ int main(int argc,char*argv[])
 	  case 's':
 		input_square = true;
 		break;
-	  case 'n':
-		nbre_initial_vextors = atoi(optarg);
-		break;
 	  case 'l':
 		half_cycles_number = atoi(optarg);
 		break;
 	  case 'o':
-		forced_octave = atoi(optarg);
+		forced_octave.push_back(atoi(optarg));
 		break;
 	  case 'h':
 		PrintHelp();
@@ -116,8 +115,6 @@ int main(int argc,char*argv[])
 		has_hv = true;
 		break;
 	  }
-  if ( nbre_initial_vextors != 2 && forced_octave != numeric_limits<unsigned char>::max() )
-	cout << "WARNING the -n option (" << nbre_initial_vextors << ") should not be used with the forced octave option " << forced_octave << ")" << endl;
 
   if ( half_cycles_start_stats == 0 )
 	half_cycles_start_stats = half_cycles_number / 2;
@@ -128,12 +125,12 @@ int main(int argc,char*argv[])
 
   if ( has_hv )
 	return -1;
-  if ( half_cycles_number < 20 )
+  if ( half_cycles_number < 32 )
 	{
 	  // There is a need to spin the clock at lot
 	  //   as the filters need to converge to their values.
 	  // There is a warm up before collecting the results, see below.
-	  cout << "-l The number of half cycles should not be lower then 20" << endl;
+	  cout << "-l The number of half cycles should not be lower then 32" << endl;
 	  return -2;
 	}
 
@@ -147,13 +144,14 @@ int main(int argc,char*argv[])
   else
 	waveform_used = waveform_t::sine;
 
-  if ( forced_octave == numeric_limits<unsigned char>::max() )
+  if ( forced_octave.size() == 0 )
 	{
 	  wave_data_list.push_back( wave_data<int, 32>( 2, waveform_used ));
 	  wave_data_list.push_back( wave_data<int, 32>( 4, waveform_used ));
 	}
   else
-	wave_data_list.push_back( wave_data<int, 32>( forced_octave, waveform_used ));
+	for( const unsigned char fo : forced_octave )
+	  wave_data_list.push_back( wave_data<int, 32>( fo, waveform_used ));
   /** In some cases, the same result is expected for different initial values.
    *  A statistic (of the statistic) displays one time. TODO TODO
    * However, the detail can be displayed
@@ -353,7 +351,7 @@ int main(int argc,char*argv[])
 					   input_Value_isNeg =  false;
 					   if( ind_half_cycles % 30 == 0 )
 						 {
-						   cout << ind_half_cycles / 30 << "/" << half_cycles_number / 30 << '\t';
+						   cout << ind_half_cycles / 20 << "/" << half_cycles_number / 20 << '\t';
 						   cout.flush();
 						 }
 					 } else {
@@ -492,7 +490,10 @@ int main(int argc,char*argv[])
 								 // We should find a way to populate cleanly according to the N_octaves and N_notes
 								 octave_Y_2_0 = numeric_limits<decltype(octave_Y_2_0)>::max();
 								 note_Y_2_0 = numeric_limits<decltype(note_Y_2_0)>::max();
+								 simulData.Y_2_0.no_strobe_cnt += 1;
 							   }
+							 else
+							   simulData.Y_2_0.strobe_cnt += 1;
 
 			
 							 /**  Add the X value, which should increase of 32% from the initial value module, to the statistic
@@ -513,9 +514,9 @@ int main(int argc,char*argv[])
 							   {
 								 stats<double>&data_info = simulData.Y_2_0.check_X_converges_per_ON.find(key_ON_Y_2_0)->second;
 								 if ( octave_Y_2_0 != numeric_limits<decltype(octave_Y_2_0)>::max() ||
-									  note_Y_2_0 != numeric_limits<decltype(note_Y_2_0)>::max() ) {
+									  note_Y_2_0 != numeric_limits<decltype(note_Y_2_0)>::max() )
 								   data_info += (float)X_Y_2_0;
-								 }else
+								 else
 								   data_info += 0.0;
 								 //cout << 'y';
 							   }
@@ -546,7 +547,7 @@ int main(int argc,char*argv[])
 
 			   cout << endl;
 
-			   cout << "Strobe stable was " << strobe_stable_1 << " times '1', and " << strobe_stable_0 << " times '0'" << endl; 
+			   cout << dec << "Strobe stable was " << strobe_stable_1 << " times '1', and " << strobe_stable_0 << " times '0'" << endl; 
 
 			   return simulData;
 
@@ -673,12 +674,13 @@ int main(int argc,char*argv[])
 							cout << (unsigned int)ON_iter.second << '\t';
 							cout << ON_iter.second.Basic_display() << "\t\t";
 							cout << ON_iter.second.Display_without_offset_normalize();
+							cout << endl;
 						  }else{
 							cout << "O: /, N: /\t";
 							cout << (unsigned int)ON_iter.second;
 						  }
-						  cout << endl;
 						});
+			  cout << dec << " Strobe " << sim.Y_2_0.strobe_cnt << ", no strobe " << sim.Y_2_0.no_strobe_cnt;
 			  cout << endl;
 			});
 
