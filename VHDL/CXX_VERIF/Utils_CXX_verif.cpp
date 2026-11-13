@@ -5,6 +5,9 @@
  */
 
 template <typename cxx_reg_type, unsigned short reg_size>
+requires( numeric_limits<cxx_reg_type>::is_integer &&
+		  numeric_limits<cxx_reg_type>::is_signed &&
+		  numeric_limits<cxx_reg_type>::digits >= ( reg_size - 1 ))
 Value_Data<cxx_reg_type,reg_size>::Value_Data(const cxx_reg_type&value_init):
   value_init(value_init)
 {};
@@ -12,7 +15,7 @@ Value_Data<cxx_reg_type,reg_size>::Value_Data(const cxx_reg_type&value_init):
 
 
 template <>
-void Value_Data<int,32>::TwoDividedValidation()const
+void Value_Data<int32_t,32>::TwoDividedValidation()const
 {
   // Check if the numbers are 31 bits
   if ( ( value_init & 0xc0000000 ) == 0x80000000 || ( value_init & 0xc0000000 ) == 0x40000000 )

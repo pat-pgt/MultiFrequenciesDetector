@@ -21,6 +21,9 @@ using namespace std;
 /** @brief
  */ 
 template <typename cxx_reg_type, unsigned short reg_size>
+requires( numeric_limits<cxx_reg_type>::is_integer &&
+		  numeric_limits<cxx_reg_type>::is_signed &&
+		  numeric_limits<cxx_reg_type>::digits >= ( reg_size - 1 ))
 class Value_Data
 {
   cxx_reg_type value_init;
@@ -199,6 +202,7 @@ public:
  * For more information, see the sub classes.
  */
 template<unsigned short reg_size>
+requires( reg_size > 3 )
 class Axis_counter_base
 {
 protected:
@@ -283,6 +287,11 @@ public:
 /** @brief Holds the last angle, the statistics and the number of X axis passes
  */
 template <typename stats_type, typename cxx_reg_type, unsigned short reg_size>
+requires( numeric_limits<stats_type>::is_integer == false &&
+		  numeric_limits<stats_type>::digits >= numeric_limits<cxx_reg_type>::digits &&
+		  numeric_limits<cxx_reg_type>::is_integer &&
+		  numeric_limits<cxx_reg_type>::is_signed == false &&
+		  numeric_limits<cxx_reg_type>::digits >= reg_size )
 class Z_spin_data
 {
   /** The cxx_reg_type is a standard IT type, with its size.
