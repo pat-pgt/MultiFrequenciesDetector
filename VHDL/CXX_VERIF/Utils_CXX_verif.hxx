@@ -189,22 +189,24 @@ public:
   string Display_arccos_Nth_turns()const;
 };
 
-/** @brief Stores the data to count the number of times a vector passes the origin.
+/** @brief Computes some high level statistics about the Y to 0 angle Z
  *
- * The assume is the spin, at each iteration, is always less than PI.
- * The last high bit is stored. If it was 1 and now it is 0,
- *   the counter is incremented
+ * This class has 2 sub classes:
+ * * If the vector is known to spin only CCW.
+ *   Large values are allowed from 0 to 31/16 PI
+ * * If the vector can spin CZ or CCW.
+ *   The values should be known to be limited to 7/16 PI
+ * For more information, see the sub classes.
  */
 template<unsigned short reg_size>
-class Axis_counter
+class Axis_counter_base
 {
+protected:
   uint8_t init_decimal;
   uint8_t last_decimal;
-  unsigned long the_counter;
 public:
-  Axis_counter(const bitset<reg_size>&val_Z):
-	init_decimal(Slice_4_high_bits( val_Z )),last_decimal(Slice_4_high_bits( val_Z )),
-	the_counter(0)
+  Axis_counter_base(const bitset<reg_size>&val_Z):
+	init_decimal(Slice_4_high_bits( val_Z )),last_decimal(Slice_4_high_bits( val_Z ))
   {}
   constexpr uint8_t Slice_4_high_bits( const bitset< reg_size >&the_input )
   {
@@ -220,20 +222,37 @@ public:
 	  the_return += 1;
 	return the_return;
   }
-  constexpr Axis_counter<reg_size>&operator+=(const bitset< reg_size >&the_input){
-	uint8_t new_decimal = Slice_4_high_bits( the_input );
+};
+/** @brief CCW only specific compute of some high level statistics about the Y to 0 angle Z
+ *
+ * * Counts the number of times a vector passes the origin.
+ * * Computes the delta between the first and the last time,
+ *     in order to get decimals to the number of spins.
+ * It is mostly useful for the end to end DC test as
+ *   one can compare different results from different initial conditions of X and Y
+ */
+template<unsigned short reg_size>
+class Axis_counter_CCW : public Axis_counter_base<reg_size>
+{
+  unsigned long the_counter;
+public:
+  Axis_counter_CCW(const bitset<reg_size>&val_Z):
+	Axis_counter_base<reg_size>( val_Z ),the_counter(0)
+  {}
+  constexpr Axis_counter_CCW<reg_size>&operator+=(const bitset< reg_size >&the_input){
+	uint8_t new_decimal = this->Slice_4_high_bits( the_input );
 	// It is not that elegant. It consume more resources but neglectable
 	// But it is more easy to validate.
 
 	// If they are equal, we are not going to trigger the counter again
-	while( new_decimal != last_decimal )
+	while( new_decimal != this->last_decimal )
 	  {
-		if ( last_decimal == 0xf )
-		  last_decimal = 0;
+		if ( this->last_decimal == 0xf )
+		  this->last_decimal = 0;
 		else
-		  last_decimal += 1;
+		  this->last_decimal += 1;
 		// We trigger only once, because last_decimal is spinning
-		if ( last_decimal == init_decimal )
+		if ( this->last_decimal == this->init_decimal )
 		  the_counter += 1;
 	  }
 	return*this;
@@ -246,7 +265,7 @@ public:
    * * the decimals inside the quadrant from 0 to 3/4
    */
   constexpr operator const string()const{
-	uint32_t the_spin = (bitset<4>(last_decimal - init_decimal ) ).to_ulong();
+	uint32_t the_spin = (bitset<4>(this->last_decimal - this->init_decimal ) ).to_ulong();
 
 	string the_return = to_string(the_counter);
 	the_return += " ";
@@ -264,14 +283,38 @@ public:
 /** @brief Holds the last angle, the statistics and the number of X axis passes
  */
 template <typename stats_type, typename cxx_reg_type, unsigned short reg_size>
-struct Z_spin_data
+class Z_spin_data
 {
+  /** The cxx_reg_type is a standard IT type, with its size.
+	  The VHDL register is a reg_size length.
+	  Then, in case of non standard one, the mask fixes the Arithmetic **/
+  cxx_reg_type reg_size_mask;
   cxx_reg_type last_Z;
+ public:
   stats<stats_type> the_stats;
-  Axis_counter<reg_size> the_X_counter;
+  Axis_counter_CCW<reg_size> the_X_counter;
   Z_spin_data()=delete;
-  Z_spin_data(const cxx_reg_type last_Z,const stats<stats_type>&the_stats):
+  Z_spin_data(const cxx_reg_type&last_Z,const stats<stats_type>&the_stats):
 	last_Z(last_Z),
 	the_stats(the_stats),
-    the_X_counter(bitset<reg_size>(last_Z)){}
+    the_X_counter(bitset<reg_size>(last_Z)){
+	reg_size_mask = 0x0;
+	for ( auto ind = 0; ind < reg_size; ind++ )
+	  {
+		reg_size_mask <<= 1;
+		reg_size_mask |= 0x1;
+	  }
+  }
+  constexpr Z_spin_data<stats_type,cxx_reg_type,reg_size>&operator+=(const cxx_reg_type&new_Z){
+	the_X_counter += bitset<reg_size>(new_Z);
+
+	cxx_reg_type the_diff = new_Z - last_Z;
+	the_diff &= reg_size_mask;
+
+	the_stats += (double)the_diff;
+
+	last_Z = new_Z;
+
+	return*this;
+  }
 };

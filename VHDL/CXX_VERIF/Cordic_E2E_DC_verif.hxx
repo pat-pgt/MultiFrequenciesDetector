@@ -38,7 +38,8 @@
  *   it would have been irrelevant to try smaller size,
  *   for instance for 16 or 24 bits.
  */
-template <typename stats_type, typename stats_long_type, typename cxx_reg_type, unsigned short reg_size>
+template <typename stats_type, typename stats_long_type,
+		  typename XY_cxx_reg_type, typename Z_cxx_reg_type, unsigned short reg_size>
 struct SimulDataType
   {	
   public:
@@ -50,7 +51,7 @@ struct SimulDataType
 	struct {
 	  stats<stats_long_type>check_module_constant;
 	  map< pair< unsigned char, unsigned char >,
-		   pair<XY_Data<cxx_reg_type,reg_size>,stats<stats_long_type> > > check_scalar_prod_per_ON_constant;
+		   pair<XY_Data<XY_cxx_reg_type,reg_size>,stats<stats_long_type> > > check_scalar_prod_per_ON_constant;
 	  stats<stats_type>check_Z_converges;
 	}  Z_2_0;
 	struct {
@@ -58,7 +59,7 @@ struct SimulDataType
 	  stats<stats_type>check_X_converges;
 	  stats<stats_type>check_Y_converges;
 	  map< pair< unsigned char, unsigned char >,
-		   Z_spin_data< stats_type, cxx_reg_type, reg_size > > check_spin_per_ON_constant;
+		   Z_spin_data< stats_type, Z_cxx_reg_type, reg_size > > check_spin_per_ON_constant;
 	}  Y_2_0;
 
 	void Init(const stats_long_type&module_vector,

@@ -17,8 +17,9 @@
 #include <getopt.h>
 
 
-template <typename stats_type, typename stats_long_type,typename cxx_reg_type, unsigned short reg_size>
-void SimulDataType<stats_type,stats_long_type,cxx_reg_type,reg_size>::
+template <typename stats_type, typename stats_long_type,
+		  typename XY_cxx_reg_type, typename Z_cxx_reg_type, unsigned short reg_size>
+void SimulDataType<stats_type,stats_long_type,XY_cxx_reg_type,Z_cxx_reg_type,reg_size>::
 Init(const stats_long_type&module_vector,
 			  const unsigned short &Z_2_0_stages,const unsigned short&Y_2_0_stages)
 {
@@ -48,8 +49,10 @@ Init(const stats_long_type&module_vector,
 }
 
 
-template <typename stats_type, typename stats_long_type,typename cxx_reg_type, unsigned short reg_size>
-optional<unsigned int> SimulDataType<stats_type,stats_long_type,cxx_reg_type,reg_size>::
+template <typename stats_type, typename stats_long_type,
+		  typename XY_cxx_reg_type, typename Z_cxx_reg_type, unsigned short reg_size>
+optional<unsigned int> SimulDataType<stats_type,stats_long_type,
+									 XY_cxx_reg_type,Z_cxx_reg_type,reg_size>::
 GetAndCheck_nbre_points()const
 {
   unsigned int nbre_points = (unsigned int)Z_2_0.check_module_constant;
@@ -152,9 +155,9 @@ int main(int argc,char*argv[])
   for ( unsigned short indniv; indniv < nbre_initial_vextors; indniv++ )
 	theInitialData.push_back(theInitialDataCandidates[ indniv ]);
 
-  vector<SimulDataType<double,long double,int,32>>theSimulData;
+  vector<SimulDataType<double,long double,int32_t,uint32_t,32>>theSimulData;
   for( auto ind_ID : theInitialData )
-	theSimulData.push_back(SimulDataType<double,long double,int,32>());
+	theSimulData.push_back(SimulDataType<double,long double,int32_t,uint32_t,32>());
 
 
   auto chrono_start = chrono::high_resolution_clock::now();
@@ -202,7 +205,7 @@ int main(int argc,char*argv[])
 			   if ( dat.GetRegSize() != top.p_reg__size__4__verif.get<unsigned char>() )
 				 throw length_error("The C++ and the VHDL registers size mismatch");
 
-			   SimulDataType<double,long double,int,32> simulData;
+			   SimulDataType<double,long double,int32_t,uint32_t,32> simulData;
 
 			   simulData.N_notes = top.p_nbre__N__notes.get<uint8_t>();
 
@@ -407,19 +410,13 @@ int main(int argc,char*argv[])
 						 if ( simulData.Y_2_0.check_spin_per_ON_constant.contains(key_ON_Y_2_0) )
 						   {
 							 // Found, then process the diff, replace the old value and add the diff in the statistics
-							 Z_spin_data<double, int, 32>&data_info =
+							 Z_spin_data<double, uint32_t, 32>&data_info =
 							   simulData.Y_2_0.check_spin_per_ON_constant.find( key_ON_Y_2_0 )->second;
 							 if ( octave_Y_2_0 != numeric_limits<decltype(octave_Y_2_0)>::max() ||
-								  note_Y_2_0 != numeric_limits<decltype(note_Y_2_0)>::max() ) {
-							   data_info.the_stats += (double)((unsigned int)Z_Y_2_0 - (unsigned int)data_info.last_Z);
-							   data_info.last_Z = Z_Y_2_0;
-							   data_info.the_X_counter += bitset<32>(Z_Y_2_0);
-							 }else
-							   {
-								 data_info.the_stats += 0.0;
-								 data_info.last_Z = 0;
-							   }
-							 //cout << 'y';
+								  note_Y_2_0 != numeric_limits<decltype(note_Y_2_0)>::max() )
+							   data_info += Z_Y_2_0;
+							 else
+							   data_info += 0.0;
 						   }
 						 else
 						   {
@@ -431,7 +428,7 @@ int main(int argc,char*argv[])
 							 simulData.
 							   Y_2_0.
 							   check_spin_per_ON_constant.
-							   insert(make_pair(key_ON_Y_2_0,Z_spin_data<double, int, 32>(Z_Y_2_0,theNewYStats)));
+							   insert(make_pair(key_ON_Y_2_0,Z_spin_data<double, uint32_t, 32>(Z_Y_2_0,theNewYStats)));
 							 //cout << 'Y';
 						   }
 					   } // top.p_reg__sync.get<bool>() == true
