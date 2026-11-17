@@ -507,8 +507,6 @@ int main(int argc,char*argv[])
 							 }
 
 
-							 // TEMP TEMP Looks like there is a shift between the meta data and the data
-							 // A branch makes a quick and dirty temporary fix.
 							 pair< unsigned char, unsigned char > key_ON_Y_2_0 = make_pair( octave_Y_2_0, note_Y_2_0 );
 							 if ( simulData.Y_2_0.check_module_and_Z_per_ON.contains(key_ON_Y_2_0) )
 							   {
