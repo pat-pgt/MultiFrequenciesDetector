@@ -259,8 +259,12 @@ public:
 		if ( this->last_decimal == this->init_decimal )
 		  the_counter += 1;
 	  }
+
+	this->last_decimal = new_decimal;
+
 	return*this;
   }
+
   /** @brief Displays the number of times time angle spun with some decimals
    *
    * Displays, in this order:
@@ -319,6 +323,106 @@ class Z_spin_data
 
 	cxx_reg_type the_diff = new_Z - last_Z;
 	the_diff &= reg_size_mask;
+
+	the_stats += (double)the_diff;
+
+	last_Z = new_Z;
+
+	return*this;
+  }
+};
+/**
+ *
+ */
+template<unsigned short reg_size>
+class Axis_counter_CW_CCW : public Axis_counter_base<reg_size>
+{
+  unsigned long the_counter_P;
+  unsigned long the_counter_N;
+public:
+  Axis_counter_CW_CCW(const bitset<reg_size>&val_Z):
+	Axis_counter_base<reg_size>( val_Z ),the_counter_P(0),the_counter_N(0)
+  {}
+  constexpr Axis_counter_CW_CCW<reg_size>&operator+=(const bitset< reg_size >&the_input){
+	uint8_t new_decimal = this->Slice_4_high_bits( the_input );
+	// It is not that elegant. It consume more resources but neglectable
+	// But it is more easy to validate.
+	uint8_t last_decimal_P = this->last_decimal;
+	uint8_t last_decimal_N = this->last_decimal;
+	bool count_P_candidate = false; 
+	bool count_N_candidate = false; 
+	// If they are equal, we are not going to trigger the counter again
+	while( new_decimal != last_decimal_P && new_decimal != last_decimal_N )
+	  {
+		if ( last_decimal_P == 0xf )
+		  last_decimal_P = 0;
+		else
+		  last_decimal_P += 1;
+		// We trigger only once, because last_decimal is spinning
+		// the a basic boolean is enough
+		if ( last_decimal_P == this->init_decimal )
+		  	count_P_candidate = true; 
+
+		if ( last_decimal_N == 0x0 )
+		  last_decimal_N = 0xf;
+		else
+		  last_decimal_N -= 1;
+		// We trigger only once, because last_decimal is spinning
+		// the a basic boolean is enough
+		if ( last_decimal_N == this->init_decimal )
+		  count_N_candidate = true; 
+	  }
+	// Check who triggered the exit, and, if so increment the counter
+	if( new_decimal == last_decimal_P && count_P_candidate == true )
+	  the_counter_P += 1;
+	if( new_decimal == last_decimal_N && count_N_candidate == true )
+	  the_counter_N += 1;
+
+	this->last_decimal = new_decimal;
+
+	return*this;
+  }
+  constexpr operator const string()const{
+	string the_return;
+	
+	the_return += "P:";
+	the_return += to_string( the_counter_P );
+	the_return += ", N:";
+	the_return += to_string( the_counter_N );
+
+	return the_return;
+  }
+};
+
+
+/** @brief Holds the last angle, the statistics and the number of X axis passes
+ */
+template <typename stats_type, typename cxx_reg_type, unsigned short reg_size>
+requires( numeric_limits<stats_type>::is_integer == false &&
+		  numeric_limits<stats_type>::digits >= numeric_limits<cxx_reg_type>::digits &&
+		  numeric_limits<cxx_reg_type>::is_integer &&
+		  numeric_limits<cxx_reg_type>::is_signed == true &&
+		  numeric_limits<cxx_reg_type>::digits >= ( reg_size - 1 ) )
+class Z_CW_CCW_data
+{
+  /** The cxx_reg_type is a standard IT type, with its size.
+	  The VHDL register is a reg_size length.
+	  Then, in case of non standard one, the mask fixes the Arithmetic **/
+  cxx_reg_type reg_size_mask;
+  cxx_reg_type last_Z;
+ public:
+  stats<stats_type> the_stats;
+  Axis_counter_CW_CCW<reg_size> the_X_counter;
+  Z_CW_CCW_data()=delete;
+  Z_CW_CCW_data(const cxx_reg_type&last_Z,const stats<stats_type>&the_stats):
+	last_Z(last_Z),
+	the_stats(the_stats),
+    the_X_counter(bitset<reg_size>(last_Z)){
+  }
+  constexpr Z_CW_CCW_data<stats_type,cxx_reg_type,reg_size>&operator+=(const cxx_reg_type&new_Z){
+	the_X_counter += bitset<reg_size>(new_Z);
+
+	cxx_reg_type the_diff = new_Z - last_Z;
 
 	the_stats += (double)the_diff;
 

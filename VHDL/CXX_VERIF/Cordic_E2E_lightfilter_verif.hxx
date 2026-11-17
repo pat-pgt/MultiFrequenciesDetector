@@ -46,6 +46,17 @@ struct wave_data
   wave_data(const unsigned char&octave, const waveform_t&);
   Value_Data<cxx_reg_type,reg_size> the_vector;
 };
+
+template<typename stats_type, typename cxx_reg_type, unsigned short reg_size>
+struct module_and_Z
+{
+  /*  module_and_Z()=delete;
+  module_and_Z( const stats<stats_type>&a,const Z_CW_CCW_data< stats_type, cxx_reg_type, reg_size >&b):
+	check_X_converges( a ),check_spin( b )
+	{}*/
+  stats< stats_type > check_X_converges;
+  Z_CW_CCW_data< stats_type, cxx_reg_type, reg_size > check_spin;
+};
 /** @brief Stores the result of all the verifications
  *
  * The types are hard-coded.\n
@@ -70,9 +81,9 @@ struct SimulDataType
 	}  prefilter_1;
 	struct {
    	  stats_type avg_ratios_between_stats;
-	  map< pair< unsigned char, unsigned char >,
-		   stats< stats_type > >check_X_converges_per_ON;
 	  stats<stats_type>check_Y_converges;
+	  map< pair< unsigned char, unsigned char >,
+		   module_and_Z< stats_type, cxx_reg_type, reg_size > > check_module_and_Z_per_ON;	  
 	  unsigned long strobe_cnt;
 	  unsigned long no_strobe_cnt;
 	}  Y_2_0;

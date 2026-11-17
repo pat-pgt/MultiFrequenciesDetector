@@ -241,7 +241,7 @@ int main(int argc,char*argv[])
 			   /** Run until the DC input reaches the output.
 				   It is mostly a number of frames (reg_sync) equal to
 				   the sum of the number of Z to 0 stages plus the number of Y to 0 stages.
-				   The number is a bit higher as there are pre processings
+				   The number is a bit higher as there are pre processing
 			   */
 			   uint16_t reset_count = 0;
 			   uint16_t reset_count_stage_1;
@@ -273,11 +273,11 @@ int main(int argc,char*argv[])
 				*   similar to the end to end DC test checks how many cycles are required to get
 				*   an half turn of the Z output
 				*   X and Y start with the same 0 initial value as they are not.
-				*   As soon as the simetry is reached, the module exits with the lenth of the half periode
+				*   As soon as the symmetry is reached, the module exits with the length of the half period
 				*/
 			   long input_half_periode;
 			   unsigned long HP_counter = 0;
-			   cout << "Spin the clock to find the half periode of the octave " << (unsigned short)wave.octave << " note 0" << endl;
+			   cout << "Spin the clock to find the half period of the octave " << (unsigned short)wave.octave << " note 0" << endl;
 			   enum auto_detect_state_t { wait4start, wait4first1, isstarted, isdone };
 			   auto_detect_state_t auto_detect_state;
 			   unsigned short Z_high_note0;
@@ -324,12 +324,12 @@ int main(int argc,char*argv[])
 			   }while ( auto_detect_state != auto_detect_state_t::isdone  );
 			   cout << "Frequency found at octave " << dec << (unsigned short)wave.octave;
 			   cout << ", requires " << input_half_periode;
-			   cout << " reg_sync cycles for a half periode " << endl;
+			   cout << " reg_sync cycles for a half period " << endl;
 
 
 			   // According with the end to end DC test, octave 4 note 0 takes 128 reg_sync to spin one full turn.
-			   // Then the helf is 64. Since there are 4 notes and 6 octaves, the result is:
-			   //			   input_half_periode = 24576 / pow( 2, wave.octave );
+			   // Then the half is 64. Since there are 4 notes and 6 octaves, the result is:
+			   //			   input_half_period = 24576 / pow( 2, wave.octave );
 			   //cout << "To speed up the simulation, set to " << input_half_periode << endl;
 
 
@@ -390,7 +390,7 @@ int main(int argc,char*argv[])
 					   {
 						 full_cycle_loop += 1;
 
-						 // Start a litle bit later to stabilise the filters
+						 // Start a little bit later to stabilize the filters
 						 if ( ind_half_cycles > half_cycles_start_stats )
 						   {
 							 /** Fetch Z to confirm it works
@@ -510,14 +510,20 @@ int main(int argc,char*argv[])
 							 // TEMP TEMP Looks like there is a shift between the meta data and the data
 							 // A branch makes a quick and dirty temporary fix.
 							 pair< unsigned char, unsigned char > key_ON_Y_2_0 = make_pair( octave_Y_2_0, note_Y_2_0 );
-							 if ( simulData.Y_2_0.check_X_converges_per_ON.contains(key_ON_Y_2_0) )
+							 if ( simulData.Y_2_0.check_module_and_Z_per_ON.contains(key_ON_Y_2_0) )
 							   {
-								 stats<double>&data_info = simulData.Y_2_0.check_X_converges_per_ON.find(key_ON_Y_2_0)->second;
+								 module_and_Z<double,int32_t,32>&data_info = simulData.Y_2_0.check_module_and_Z_per_ON.find(key_ON_Y_2_0)->second;
 								 if ( octave_Y_2_0 != numeric_limits<decltype(octave_Y_2_0)>::max() ||
 									  note_Y_2_0 != numeric_limits<decltype(note_Y_2_0)>::max() )
-								   data_info += (float)X_Y_2_0;
+								   {
+									 data_info.check_X_converges += (float)X_Y_2_0;
+									 data_info.check_spin += Z_Y_2_0;
+								   }								   
 								 else
-								   data_info += 0.0;
+								   {
+									 data_info.check_X_converges += 0.0;
+									 data_info.check_spin += 0.0;
+								   }
 								 //cout << 'y';
 							   }
 							 else
@@ -525,12 +531,19 @@ int main(int argc,char*argv[])
 								 // Not found, create the records and initialize the statistics
 								 // Set the value that should be found
 								 // TODO
-								 stats<double>new_stats;
-								 new_stats += (double)X_Y_2_0;
+								 stats<double>new_X_stats;
+								 new_X_stats += (double)X_Y_2_0;
+
+								 stats<double>new_Z_stats(&simulData.Y_2_0.avg_ratios_between_stats);
+								 new_Z_stats.SetNormalize( pow( 2, wave.the_vector.GetRegSize() ) / 180 );
+
+								 Z_CW_CCW_data< double, int32_t, 32 >spin_Z_data(Z_Y_2_0,new_Z_stats); 
+
+								 module_and_Z<double,int32_t,32>new_maz(new_X_stats, Z_CW_CCW_data<double,int32_t,32>(spin_Z_data));
 								 simulData.
 								   Y_2_0.
-								   check_X_converges_per_ON.
-								   insert(make_pair(key_ON_Y_2_0,new_stats));
+								   check_module_and_Z_per_ON.
+								   insert(make_pair(key_ON_Y_2_0,new_maz));
 								 //cout << 'Y';
 							   }
 						   } // ind_half_cycles > half_cycles_number / 2
@@ -658,8 +671,8 @@ int main(int argc,char*argv[])
 			[](auto&sim){
 			  uint8_t N_notes = sim.N_notes;
 			  for_each( execution::seq,
-						sim.Y_2_0.check_X_converges_per_ON.begin(),
-						sim.Y_2_0.check_X_converges_per_ON.end(),
+						sim.Y_2_0.check_module_and_Z_per_ON.begin(),
+						sim.Y_2_0.check_module_and_Z_per_ON.end(),
 						[&sim,N_notes=cref(N_notes)](auto&ON_iter){
 						  if ( ON_iter.first.first != numeric_limits<decltype(ON_iter.first.first)>::max() ||
 							   ON_iter.first.second != numeric_limits<decltype(ON_iter.first.second)>::max() ) {
@@ -671,13 +684,14 @@ int main(int argc,char*argv[])
 							ratio = round( ratio * 100.0 ) / 100.0;
 							cout << format( "{:6.3f}", ratio);
 							cout << '\t';
-							cout << (unsigned int)ON_iter.second << '\t';
-							cout << ON_iter.second.Basic_display() << "\t\t";
-							cout << ON_iter.second.Display_without_offset_normalize();
+							cout << (unsigned int)ON_iter.second.check_X_converges << '\t';
+							cout << ON_iter.second.check_X_converges.Basic_display() << "\t\t";
+							cout << ON_iter.second.check_spin.the_stats.Basic_display() << '\t';
+							cout << (string)ON_iter.second.check_spin.the_X_counter;
 							cout << endl;
 						  }else{
 							cout << "O: /, N: /\t";
-							cout << (unsigned int)ON_iter.second;
+							cout << (unsigned int)ON_iter.second.check_X_converges;
 						  }
 						});
 			  cout << dec << " Strobe " << sim.Y_2_0.strobe_cnt << ", no strobe " << sim.Y_2_0.no_strobe_cnt;
