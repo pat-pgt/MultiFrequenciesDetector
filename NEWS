@@ -1,0 +1,52 @@
+Release 0.1.0
+-------------
+
+This is a pretty good version for resources evaluations and extended engine tests with many configurations.
+
+People is encouraged to make tests with parameters other than 32 bits registers, 1 bit arithmetic size etc...
+
+What is NOT included:
+
+
+Angle gene does not follow the serial calculation schema.
+The resources may be a little bit underestimated. The master clock is lower than it could have been.
+
+
+The filters are not connected to the signal analysis.
+This is an intermediary version to hard-code the shifts of the first order filters.
+One is encouraged to modify the values (in the pre filter package file) and check if the results are coherent.
+
+
+The folders schema and the Makefiles are not yet decided.
+There are some standard way to organize the files, especially for ASIC.
+This project is highly configurable and intended to build on many targets ASIC and FPGA.
+There are tests at high level (VHDL) and low level (C++).
+The FPGA version is going to build on many FPGA and some might have a sample draw of the PCB.
+A huge reorganization is coming.
+
+
+The RAM based prefilter (and light filter) is not tested at all.
+Two of the 3 ways are tested, the barrel shifter and the direct access. The RAM based is not.
+For an ASIC build, there are RAM generators that can build the relevant configuration and fit the direct access.
+However, for FPGA, the resources are over estimated as the 2 tested solutions are consuming many logic elements, and leave the RAM idle.
+
+
+The main filter has not yet be designed.
+The main filter is currently badly simulated using a set of first order prefilters.
+An idea is the resources sizes can be taken from many low pass filter implementation.
+Despite of some analogue implementation using cascaded RC, this one "virtually" include a 1 gain isolation amplifier between the stages.
+That means the curve is a little bit more close to the 2 asymptotes of the low pass filter.
+
+
+Some extra modules are planned to test the project out of the shelf.
+* A mantissa exponent converter.
+  The goal is to limit the bandwidth with a pseudo logarithm output with less bits.
+* An AGC. All the exponents of all the channels are going to be increased or decreased to allow a better display.
+  In case of an overflow, all the exponents are decreased immediately.
+  In case no channel reaches the highest value, all the exponents are increased very slowly.
+* A Q&D VGA graphical output.
+* Perhaps an Ethernet output. The data is going to be sent as basic proprietary packets of size lower than $8000.
+  Linux and perhaps MacOS-X machines can read using the raw_data constant rather than the AF_INET, AF_INET6, ARP etc...
+  while opening the port (and not associate IPv4 nor IPv6 configuration).
+* A Q&D ADC handler.
+* Some more clean (than the CXX verification one) waveform generators.
